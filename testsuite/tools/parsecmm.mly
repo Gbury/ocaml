@@ -40,9 +40,11 @@ let make_switch n selector caselist =
 let access_array base numelt size =
   match numelt with
     Cconst_int 0 -> base
-  | Cconst_int n -> Cop(Cadda, [base; Cconst_int(n * size)], Debuginfo.none)
-  | _ -> Cop(Cadda, [base;
-                     Cop(Clsl, [numelt; Cconst_int(Misc.log2 size)],
+  | Cconst_int n ->
+    Cop(Cadd Cannot_be_live_at_gc, [base; Cconst_int(n * size)],
+      Debuginfo.none)
+  | _ -> Cop(Cadd Cannot_be_live_at_gc, [base;
+                     Cop(Clsl Cannot_scan, [numelt; Cconst_int(Misc.log2 size)],
                          Debuginfo.none)],
              Debuginfo.none)
 
@@ -53,6 +55,7 @@ let access_array base numelt size =
 %token ADDF
 %token ADDI
 %token ADDV
+%token ADDX
 %token ADDR
 %token ALIGN
 %token ALLOC
@@ -133,6 +136,7 @@ let access_array base numelt size =
 %token <string> STRING
 %token SUBF
 %token SUBI
+%token SUBX
 %token SWITCH
 %token TRY
 %token UNIT
@@ -185,10 +189,10 @@ machtype:
   | componentlist               { Array.of_list(List.rev $1) }
 ;
 component:
-    VAL                         { Val }
-  | ADDR                        { Addr }
-  | INT                         { Int }
-  | FLOAT                       { Float }
+    VAL                         { (Int_reg Must_scan) }
+  | ADDR                        { (Int_reg Cannot_be_live_at_gc) }
+  | INT                         { (Int_reg Can_scan) }
+  | FLOAT                       { Float_reg }
 ;
 componentlist:
     component                    { [$1] }
@@ -197,7 +201,7 @@ componentlist:
 expr:
     INTCONST    { Cconst_int $1 }
   | FLOATCONST  { Cconst_float (float_of_string $1) }
-  | STRING      { Cconst_symbol $1 }
+  | STRING      { Cconst_symbol ($1, Other) }
   | POINTER     { Cconst_pointer $1 }
   | IDENT       { Cvar(find_ident $1) }
   | LBRACKET RBRACKET { Ctuple [] }
@@ -234,22 +238,24 @@ expr:
   | LPAREN TRY sequence WITH bind_ident sequence RPAREN
                 { unbind_ident $5; Ctrywith($3, $5, $6) }
   | LPAREN VAL expr expr RPAREN
-      { Cop(Cload (Word_val, Mutable), [access_array $3 $4 Arch.size_addr],
-          debuginfo ()) }
+      { Cop(Cload (Word Must_scan, Mutable),
+            [access_array $3 $4 Arch.size_addr],
+            debuginfo ()) }
   | LPAREN ADDRAREF expr expr RPAREN
-      { Cop(Cload (Word_val, Mutable), [access_array $3 $4 Arch.size_addr],
-          Debuginfo.none) }
+      { Cop(Cload (Word Must_scan, Mutable),
+            [access_array $3 $4 Arch.size_addr],
+            Debuginfo.none) }
   | LPAREN INTAREF expr expr RPAREN
-      { Cop(Cload (Word_int, Mutable), [access_array $3 $4 Arch.size_int],
+      { Cop(Cload (Word Can_scan, Mutable), [access_array $3 $4 Arch.size_int],
           Debuginfo.none) }
   | LPAREN FLOATAREF expr expr RPAREN
       { Cop(Cload (Double_u, Mutable), [access_array $3 $4 Arch.size_float],
           Debuginfo.none) }
   | LPAREN ADDRASET expr expr expr RPAREN
-      { Cop(Cstore (Word_val, Assignment),
+      { Cop(Cstore (Word Must_scan, Assignment),
             [access_array $3 $4 Arch.size_addr; $5], Debuginfo.none) }
   | LPAREN INTASET expr expr expr RPAREN
-      { Cop(Cstore (Word_int, Assignment),
+      { Cop(Cstore (Word Can_scan, Assignment),
             [access_array $3 $4 Arch.size_int; $5], Debuginfo.none) }
   | LPAREN FLOATASET expr expr expr RPAREN
       { Cop(Cstore (Double_u, Assignment),
@@ -277,12 +283,12 @@ chunk:
   | SIGNED HALF                 { Sixteen_signed }
   | UNSIGNED INT32              { Thirtytwo_unsigned }
   | SIGNED INT32                { Thirtytwo_signed }
-  | INT                         { Word_int }
-  | ADDR                        { Word_val }
+  | INT                         { (Word Can_scan) }
+  | ADDR                        { (Word Cannot_be_live_at_gc) }
   | FLOAT32                     { Single }
   | FLOAT64                     { Double }
   | FLOAT                       { Double_u }
-  | VAL                         { Word_val }
+  | VAL                         { (Word Must_scan) }
 ;
 unaryop:
     LOAD chunk                  { Cload ($2, Mutable) }
@@ -293,31 +299,33 @@ unaryop:
 ;
 binaryop:
     STORE chunk                 { Cstore ($2, Assignment) }
-  | ADDI                        { Caddi }
-  | SUBI                        { Csubi }
-  | STAR                        { Cmuli }
-  | DIVI                        { Cdivi }
-  | MODI                        { Cmodi }
-  | AND                         { Cand }
-  | OR                          { Cor }
-  | XOR                         { Cxor }
-  | LSL                         { Clsl }
-  | LSR                         { Clsr }
-  | ASR                         { Casr }
-  | EQI                         { Ccmpi Ceq }
-  | NEI                         { Ccmpi Cne }
-  | LTI                         { Ccmpi Clt }
-  | LEI                         { Ccmpi Cle }
-  | GTI                         { Ccmpi Cgt }
-  | GEI                         { Ccmpi Cge }
-  | ADDA                        { Cadda }
-  | ADDV                        { Caddv }
-  | EQA                         { Ccmpa Ceq }
-  | NEA                         { Ccmpa Cne }
-  | LTA                         { Ccmpa Clt }
-  | LEA                         { Ccmpa Cle }
-  | GTA                         { Ccmpa Cgt }
-  | GEA                         { Ccmpa Cge }
+  | ADDA                        { Cadd Cannot_be_live_at_gc }
+  | ADDI                        { Cadd Cannot_scan }
+  | ADDV                        { Cadd Must_scan }
+  | ADDX                        { Cadd Can_scan }
+  | SUBI                        { Csub Cannot_scan }
+  | SUBX                        { Csub Can_scan }
+  | STAR                        { Cmul Cannot_scan }
+  | DIVI                        { Cdiv Cannot_scan }
+  | MODI                        { Cmod Cannot_scan }
+  | AND                         { Cand Cannot_scan }
+  | OR                          { Cor Cannot_scan }
+  | XOR                         { Cxor Cannot_scan }
+  | LSL                         { Clsl Cannot_scan }
+  | LSR                         { Clsr Cannot_scan }
+  | ASR                         { Casr Cannot_scan }
+  | EQI                         { Ccmps Ceq }
+  | NEI                         { Ccmps Cne }
+  | LTI                         { Ccmps Clt }
+  | LEI                         { Ccmps Cle }
+  | GTI                         { Ccmps Cgt }
+  | GEI                         { Ccmps Cge }
+  | EQA                         { Ccmpu Ceq }
+  | NEA                         { Ccmpu Cne }
+  | LTA                         { Ccmpu Clt }
+  | LEA                         { Ccmpu Cle }
+  | GTA                         { Ccmpu Cgt }
+  | GEA                         { Ccmpu Cge }
   | ADDF                        { Caddf }
   | MULF                        { Cmulf }
   | DIVF                        { Cdivf }
@@ -332,7 +340,7 @@ binaryop:
   | GEF                         { Ccmpf CFge }
   | NGEF                        { Ccmpf CFnge }
   | CHECKBOUND                  { Ccheckbound }
-  | MULH                        { Cmulhi }
+  | MULH                        { (Cmulh Can_scan) }
 ;
 sequence:
     expr sequence               { Csequence($1, $2) }

@@ -58,17 +58,22 @@ let oper_result_type = function
   | Cextcall(_s, ty, _alloc, _) -> ty
   | Cload (c, _) ->
       begin match c with
-      | Word_val -> typ_val
+      | Byte_unsigned
+      | Byte_signed
+      | Sixteen_unsigned
+      | Sixteen_signed
+      | Thirtytwo_unsigned
+      | Thirtytwo_signed -> [| Int_reg Cannot_scan |]
+      | Word gc_action -> [| Int_reg gc_action |]
       | Single | Double | Double_u -> typ_float
-      | _ -> typ_int
       end
   | Calloc -> typ_val
   | Cstore (_c, _) -> typ_void
-  | Caddi | Csubi | Cmuli | Cmulhi | Cdivi | Cmodi |
-    Cand | Cor | Cxor | Clsl | Clsr | Casr |
-    Ccmpi _ | Ccmpa _ | Ccmpf _ -> typ_int
-  | Caddv -> typ_val
-  | Cadda -> typ_addr
+  | Cadd gc_action | Csub gc_action | Cmul gc_action
+  | Cmulh gc_action | Cdiv gc_action | Cmod gc_action
+  | Cand gc_action | Cor gc_action | Cxor gc_action
+  | Clsl gc_action | Clsr gc_action | Casr gc_action -> [| Int_reg gc_action |]
+  | Ccmps _ | Ccmpu _ | Ccmpf _ -> typ_int
   | Cnegf | Cabsf | Caddf | Csubf | Cmulf | Cdivf -> typ_float
   | Cfloatofint -> typ_float
   | Cintoffloat -> typ_int
@@ -304,8 +309,8 @@ method is_simple_expr = function
         (* The following may have side effects *)
       | Capply _ | Cextcall _ | Calloc | Cstore _ | Craise _ -> false
         (* The remaining operations are simple if their args are *)
-      | Cload _ | Caddi | Csubi | Cmuli | Cmulhi | Cdivi | Cmodi | Cand | Cor
-      | Cxor | Clsl | Clsr | Casr | Ccmpi _ | Caddv | Cadda | Ccmpa _ | Cnegf
+      | Cload _ | Cadd _ | Csub _ | Cmul _ | Cmulh _ | Cdiv _ | Cmod _ | Cand _
+      | Cor _ | Cxor _ | Clsl _ | Clsr _ | Casr _ | Ccmps _ | Ccmpu _ | Cnegf
       | Cabsf | Caddf | Csubf | Cmulf | Cdivf | Cfloatofint | Cintoffloat
       | Ccmpf _ | Ccheckbound -> List.for_all self#is_simple_expr args
       end
@@ -348,8 +353,8 @@ method effects_of exp =
       | Craise _ | Ccheckbound -> EC.effect_only Effect.Raise
       | Cload (_, Asttypes.Immutable) -> EC.none
       | Cload (_, Asttypes.Mutable) -> EC.coeffect_only Coeffect.Read_mutable
-      | Caddi | Csubi | Cmuli | Cmulhi | Cdivi | Cmodi | Cand | Cor | Cxor
-      | Clsl | Clsr | Casr | Ccmpi _ | Caddv | Cadda | Ccmpa _ | Cnegf | Cabsf
+      | Cadd _ | Csub _ | Cmul _ | Cmulh _ | Cdiv _ | Cmod _ | Cand _ | Cor _
+      | Cxor _ | Clsl _ | Clsr _ | Casr _ | Ccmps _ | Ccmpu _ | Cnegf | Cabsf
       | Caddf | Csubf | Cmulf | Cdivf | Cfloatofint | Cintoffloat | Ccmpf _ ->
         EC.none
     in
@@ -369,7 +374,7 @@ method virtual select_addressing :
 (* Default instruction selection for stores (of words) *)
 
 method select_store is_assign addr arg =
-  (Istore(Word_val, addr, is_assign), arg)
+  (Istore(Word Must_scan, addr, is_assign), arg)
 
 (* call marking methods, documented in selectgen.mli *)
 
@@ -414,7 +419,7 @@ method select_checkbound_extra_args () = []
 
 method select_operation op args _dbg =
   match (op, args) with
-  | (Capply _, Cconst_symbol func :: rem) ->
+  | (Capply _, Cconst_symbol (func, _) :: rem) ->
     let label_after = Cmm.new_label () in
     (Icall_imm { func; label_after; }, rem)
   | (Capply _, _) ->
@@ -438,30 +443,29 @@ method select_operation op args _dbg =
         | Lambda.Heap_initialization -> false
         | Lambda.Assignment -> true
       in
-      if chunk = Word_int || chunk = Word_val then begin
+      begin match chunk with
+      | Word _ ->
         let (op, newarg2) = self#select_store is_assign addr arg2 in
         (op, [newarg2; eloc])
-      end else begin
+      | _ ->
         (Istore(chunk, addr, is_assign), [arg2; eloc])
         (* Inversion addr/datum in Istore *)
       end
   | (Calloc, _) -> (self#select_allocation 0), args
-  | (Caddi, _) -> self#select_arith_comm Iadd args
-  | (Csubi, _) -> self#select_arith Isub args
-  | (Cmuli, _) -> self#select_arith_comm Imul args
-  | (Cmulhi, _) -> self#select_arith_comm Imulh args
-  | (Cdivi, _) -> (Iintop Idiv, args)
-  | (Cmodi, _) -> (Iintop Imod, args)
-  | (Cand, _) -> self#select_arith_comm Iand args
-  | (Cor, _) -> self#select_arith_comm Ior args
-  | (Cxor, _) -> self#select_arith_comm Ixor args
-  | (Clsl, _) -> self#select_shift Ilsl args
-  | (Clsr, _) -> self#select_shift Ilsr args
-  | (Casr, _) -> self#select_shift Iasr args
-  | (Ccmpi comp, _) -> self#select_arith_comp (Isigned comp) args
-  | (Caddv, _) -> self#select_arith_comm Iadd args
-  | (Cadda, _) -> self#select_arith_comm Iadd args
-  | (Ccmpa comp, _) -> self#select_arith_comp (Iunsigned comp) args
+  | (Cadd _, _) -> self#select_arith_comm Iadd args
+  | (Csub _, _) -> self#select_arith Isub args
+  | (Cmul _, _) -> self#select_arith_comm Imul args
+  | (Cmulh _, _) -> self#select_arith_comm Imulh args
+  | (Cdiv _, _) -> (Iintop Idiv, args)
+  | (Cmod _, _) -> (Iintop Imod, args)
+  | (Cand _, _) -> self#select_arith_comm Iand args
+  | (Cor _, _) -> self#select_arith_comm Ior args
+  | (Cxor _, _) -> self#select_arith_comm Ixor args
+  | (Clsl _, _) -> self#select_shift Ilsl args
+  | (Clsr _, _) -> self#select_shift Ilsr args
+  | (Casr _, _) -> self#select_shift Iasr args
+  | (Ccmps comp, _) -> self#select_arith_comp (Isigned comp) args
+  | (Ccmpu comp, _) -> self#select_arith_comp (Iunsigned comp) args
   | (Cnegf, _) -> (Inegf, args)
   | (Cabsf, _) -> (Iabsf, args)
   | (Caddf, _) -> (Iaddf, args)
@@ -517,29 +521,29 @@ method private select_arith_comp cmp = function
 (* Instruction selection for conditionals *)
 
 method select_condition = function
-    Cop(Ccmpi cmp, [arg1; Cconst_int n], _) when self#is_immediate n ->
+    Cop(Ccmps cmp, [arg1; Cconst_int n], _) when self#is_immediate n ->
       (Iinttest_imm(Isigned cmp, n), arg1)
-  | Cop(Ccmpi cmp, [Cconst_int n; arg2], _) when self#is_immediate n ->
+  | Cop(Ccmps cmp, [Cconst_int n; arg2], _) when self#is_immediate n ->
       (Iinttest_imm(Isigned(swap_integer_comparison cmp), n), arg2)
-  | Cop(Ccmpi cmp, [arg1; Cconst_pointer n], _) when self#is_immediate n ->
+  | Cop(Ccmps cmp, [arg1; Cconst_pointer n], _) when self#is_immediate n ->
       (Iinttest_imm(Isigned cmp, n), arg1)
-  | Cop(Ccmpi cmp, [Cconst_pointer n; arg2], _) when self#is_immediate n ->
+  | Cop(Ccmps cmp, [Cconst_pointer n; arg2], _) when self#is_immediate n ->
       (Iinttest_imm(Isigned(swap_integer_comparison cmp), n), arg2)
-  | Cop(Ccmpi cmp, args, _) ->
+  | Cop(Ccmps cmp, args, _) ->
       (Iinttest(Isigned cmp), Ctuple args)
-  | Cop(Ccmpa cmp, [arg1; Cconst_pointer n], _) when self#is_immediate n ->
+  | Cop(Ccmpu cmp, [arg1; Cconst_pointer n], _) when self#is_immediate n ->
       (Iinttest_imm(Iunsigned cmp, n), arg1)
-  | Cop(Ccmpa cmp, [arg1; Cconst_int n], _) when self#is_immediate n ->
+  | Cop(Ccmpu cmp, [arg1; Cconst_int n], _) when self#is_immediate n ->
       (Iinttest_imm(Iunsigned cmp, n), arg1)
-  | Cop(Ccmpa cmp, [Cconst_pointer n; arg2], _) when self#is_immediate n ->
+  | Cop(Ccmpu cmp, [Cconst_pointer n; arg2], _) when self#is_immediate n ->
       (Iinttest_imm(Iunsigned(swap_integer_comparison cmp), n), arg2)
-  | Cop(Ccmpa cmp, [Cconst_int n; arg2], _) when self#is_immediate n ->
+  | Cop(Ccmpu cmp, [Cconst_int n; arg2], _) when self#is_immediate n ->
       (Iinttest_imm(Iunsigned(swap_integer_comparison cmp), n), arg2)
-  | Cop(Ccmpa cmp, args, _) ->
+  | Cop(Ccmpu cmp, args, _) ->
       (Iinttest(Iunsigned cmp), Ctuple args)
   | Cop(Ccmpf cmp, args, _) ->
       (Ifloattest cmp, Ctuple args)
-  | Cop(Cand, [arg; Cconst_int 1], _) ->
+  | Cop(Cand _, [arg; Cconst_int 1], _) ->
       (Ioddtest, arg)
   | arg ->
       (Itruetest, arg)
@@ -582,18 +586,18 @@ method insert_moves src dst =
     self#insert_move src.(i) dst.(i)
   done
 
-(* Adjust the types of destination pseudoregs for a [Cassign] assignment.
-   The type inferred at [let] binding might be [Int] while we assign
-   something of type [Val] (PR#6501). *)
+(* Adjust the types of destination pseudoregs for a [Cassign] assignment
+   (PR#6501) -- analogous to what happens at join points. *)
 
 method adjust_type src dst =
   let ts = src.typ and td = dst.typ in
-  if ts <> td then
-    match ts, td with
-    | Val, Int -> dst.typ <- Val
-    | Int, Val -> ()
-    | _, _ -> Misc.fatal_error("Selection.adjust_type: bad assignment to "
-                               ^ Reg.name dst)
+  if ts <> td then begin
+    match lub_component ts td with
+    | exception _ ->
+        Misc.fatal_error
+          ("Selection.adjust_type: bad assignment to " ^ Reg.name dst)
+    | typ -> dst.typ <- typ
+  end
 
 method adjust_types src dst =
   for i = 0 to min (Array.length src) (Array.length dst) - 1 do
@@ -641,16 +645,19 @@ method private maybe_emit_spacetime_move ~spacetime_reg =
 method emit_expr (env:environment) exp =
   match exp with
     Cconst_int n ->
-      let r = self#regs_for typ_int in
+      let typ = if n mod 2 = 0 then typ_raw else typ_int in
+      let r = self#regs_for typ in
       Some(self#insert_op (Iconst_int(Nativeint.of_int n)) [||] r)
   | Cconst_natint n ->
-      let r = self#regs_for typ_int in
+      let typ = if Nativeint.(equal (rem n 2n) 0n) then typ_raw else typ_int in
+      let r = self#regs_for typ in
       Some(self#insert_op (Iconst_int n) [||] r)
   | Cconst_float n ->
       let r = self#regs_for typ_float in
       Some(self#insert_op (Iconst_float (Int64.bits_of_float n)) [||] r)
-  | Cconst_symbol n ->
-      let r = self#regs_for typ_val in
+  | Cconst_symbol (n, kind) ->
+      let typ = machtype_component_of_symbol_kind kind in
+      let r = self#regs_for [| typ |] in
       Some(self#insert_op (Iconst_symbol n) [||] r)
   | Cconst_pointer n ->
       let r = self#regs_for typ_val in  (* integer as Caml value *)
@@ -778,7 +785,7 @@ method emit_expr (env:environment) exp =
           let (relse, selse) = self#emit_sequence env eelse in
           let r = join rif sif relse selse in
           self#insert (Iifthenelse(cond, sif#extract, selse#extract))
-                      rarg [||];
+            rarg [||];
           r
       end
   | Cswitch(esel, index, ecases, _dbg) ->
@@ -843,8 +850,6 @@ method emit_expr (env:environment) exp =
           (* Intermediate registers to handle cases where some
              registers from src are present in dest *)
           let tmp_regs = Reg.createv_like src in
-          (* Ccatch registers must not contain out of heap pointers *)
-          Array.iter (fun reg -> assert(reg.typ <> Addr)) src;
           self#insert_moves src tmp_regs ;
           self#insert_moves tmp_regs (Array.concat dest_args) ;
           self#insert (Iexit nfail) [||] [||];
@@ -1009,7 +1014,11 @@ method emit_stores env data regs_addr =
             Istore(_, _, _) ->
               for i = 0 to Array.length regs - 1 do
                 let r = regs.(i) in
-                let kind = if r.typ = Float then Double_u else Word_val in
+                let kind =
+                  match r.typ with
+                  | Int_reg _ -> Word Must_scan
+                  | Float_reg -> Double_u
+                in
                 self#insert (Iop(Istore(kind, !a, false)))
                             (Array.append [|r|] regs_addr) [||];
                 a := Arch.offset_addressing !a (size_component r.typ)
@@ -1235,7 +1244,7 @@ end
 *)
 
 let is_tail_call nargs =
-  assert (Reg.dummy.typ = Int);
+  assert (match Reg.dummy.typ with Int_reg _ -> true | Float_reg -> false);
   let args = Array.make (nargs + 1) Reg.dummy in
   let (_loc_arg, stack_ofs) = Proc.loc_arguments args in
   stack_ofs = 0

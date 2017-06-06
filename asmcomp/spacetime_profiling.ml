@@ -76,8 +76,9 @@ let code_for_function_prologue ~function_name ~node_hole =
           (* Cf. [Direct_callee_node] in the runtime. *)
           let offset_in_bytes = index * Arch.size_addr in
           Csequence (
-            Cop (Cstore (Word_int, Lambda.Assignment),
-              [Cop (Caddi, [Cvar new_node; Cconst_int offset_in_bytes], dbg);
+            Cop (Cstore (Word Cannot_scan, Lambda.Assignment),
+              [Cop (Cadd Cannot_scan,
+                 [Cvar new_node; Cconst_int offset_in_bytes], dbg);
                Cvar new_node_encoded], dbg),
             init_code))
         (Cvar new_node)
@@ -88,32 +89,33 @@ let code_for_function_prologue ~function_name ~node_hole =
     | _ ->
       Clet (VP.create new_node_encoded,
         (* Cf. [Encode_tail_caller_node] in the runtime. *)
-        Cop (Cor, [Cvar new_node; Cconst_int 1], dbg),
+        Cop (Cor Can_scan, [Cvar new_node; Cconst_int 1], dbg),
         body)
   in
   let pc = V.create_local "pc" in
   Clet (VP.create node,
-    Cop (Cload (Word_int, Asttypes.Mutable), [Cvar node_hole], dbg),
+    Cop (Cload (Word Cannot_scan, Asttypes.Mutable), [Cvar node_hole], dbg),
       Clet (VP.create must_allocate_node,
-        Cop (Cand, [Cvar node; Cconst_int 1], dbg),
+        Cop (Cand Cannot_scan, [Cvar node; Cconst_int 1], dbg),
         Cifthenelse (
-          Cop (Ccmpi Cne, [Cvar must_allocate_node; Cconst_int 1], dbg),
+          Cop (Ccmps Cne, [Cvar must_allocate_node; Cconst_int 1], dbg),
           Cvar node,
           Clet (VP.create is_new_node,
-            Clet (VP.create pc, Cconst_symbol function_name,
+            Clet (VP.create pc, Cconst_symbol (function_name, Function),
               Cop (Cextcall ("caml_spacetime_allocate_node",
-                  [| Int |], false, None),
+                  [| Int_reg Cannot_scan |], false, None),
                 [Cconst_int (1 (* header *) + !index_within_node);
                 Cvar pc;
                 Cvar node_hole;
                 ],
                 dbg)),
               Clet (VP.create new_node,
-                Cop (Cload (Word_int, Asttypes.Mutable), [Cvar node_hole], dbg),
+                Cop (Cload (Word Cannot_scan, Asttypes.Mutable),
+                     [Cvar node_hole], dbg),
                 if no_tail_calls then Cvar new_node
                 else
                   Cifthenelse (
-                    Cop (Ccmpi Ceq, [Cvar is_new_node; Cconst_int 0], dbg),
+                    Cop (Ccmps Ceq, [Cvar is_new_node; Cconst_int 0], dbg),
                     Cvar new_node,
                     initialize_direct_tail_call_points_and_return_node))))))
 
@@ -138,8 +140,8 @@ let code_for_blockheader ~value's_header ~node ~dbg =
        the latter table to be used for resolving a program counter at such
        a point to a location.
     *)
-    Cop (Cextcall ("caml_spacetime_generate_profinfo", [| Int |],
-        false, Some label),
+    Cop (Cextcall ("caml_spacetime_generate_profinfo",
+        [| Int_reg Can_scan |], false, Some label),
       [Cvar address_of_profinfo;
        Cconst_int (index_within_node + 1)],
       dbg)
@@ -148,28 +150,28 @@ let code_for_blockheader ~value's_header ~node ~dbg =
      point with the current backtrace.  If so, use that value; if not,
      allocate a new one. *)
   Clet (VP.create address_of_profinfo,
-    Cop (Caddi, [
+    Cop (Cadd Cannot_scan, [
       Cvar node;
       Cconst_int offset_into_node;
     ], dbg),
     Clet (VP.create existing_profinfo,
-        Cop (Cload (Word_int, Asttypes.Mutable), [Cvar address_of_profinfo],
-          dbg),
+          Cop (Cload (Word Can_scan, Asttypes.Mutable),
+               [Cvar address_of_profinfo], dbg),
       Clet (VP.create profinfo,
         Cifthenelse (
-          Cop (Ccmpi Cne, [Cvar existing_profinfo; Cconst_int 1 (* () *)], dbg),
+          Cop (Ccmps Cne, [Cvar existing_profinfo; Cconst_int 1 (* () *)], dbg),
           Cvar existing_profinfo,
           generate_new_profinfo),
         Clet (VP.create existing_count,
-          Cop (Cload (Word_int, Asttypes.Mutable), [
-            Cop (Caddi,
+          Cop (Cload (Word Can_scan, Asttypes.Mutable), [
+            Cop (Cadd Cannot_scan,
               [Cvar address_of_profinfo; Cconst_int Arch.size_addr], dbg)
           ], dbg),
           Csequence (
-            Cop (Cstore (Word_int, Lambda.Assignment),
-              [Cop (Caddi,
+            Cop (Cstore (Word Can_scan, Lambda.Assignment),
+              [Cop (Cadd Cannot_scan,
                 [Cvar address_of_profinfo; Cconst_int Arch.size_addr], dbg);
-                Cop (Caddi, [
+               Cop (Cadd Can_scan, [
                   Cvar existing_count;
                   (* N.B. "*2" since the count is an OCaml integer.
                      The "1 +" is to count the value's header. *)
@@ -188,7 +190,8 @@ let code_for_blockheader ~value's_header ~node ~dbg =
                     (* The following is the [Infix_offset_val], in words. *)
                     (Nativeint.of_int (index_within_node + 1)) 10))
             in
-            Cop (Cxor, [Cvar profinfo; Cconst_natint value's_header], dbg))))))
+            Cop (Cxor Cannot_scan,
+                 [Cvar profinfo; Cconst_natint value's_header], dbg))))))
 
 type callee =
   | Direct of string
@@ -224,7 +227,8 @@ let code_for_call ~node ~callee ~is_tail ~label =
   let dbg = Debuginfo.none in
   let open Cmm in
   Clet (VP.create place_within_node,
-    Cop (Caddi, [node; Cconst_int (index_within_node * Arch.size_addr)], dbg),
+    Cop (Cadd Cannot_scan,
+      [node; Cconst_int (index_within_node * Arch.size_addr)], dbg),
     (* The following code returns the address that is to be moved into the
        (hard) node hole pointer register immediately before the call.
        (That move is inserted in [Selectgen].) *)
@@ -234,14 +238,17 @@ let code_for_call ~node ~callee ~is_tail ~label =
         let count_addr = V.create_local "call_count_addr" in
         let count = V.create_local "call_count" in
         Clet (VP.create count_addr,
-          Cop (Caddi, [Cvar place_within_node; Cconst_int Arch.size_addr], dbg),
+          Cop (Cadd Cannot_scan,
+            [Cvar place_within_node; Cconst_int Arch.size_addr], dbg),
           Clet (VP.create count,
-            Cop (Cload (Word_int, Asttypes.Mutable), [Cvar count_addr], dbg),
+            Cop (Cload (Word Can_scan, Asttypes.Mutable), [Cvar count_addr],
+              dbg),
             Csequence (
-              Cop (Cstore (Word_int, Lambda.Assignment),
+              Cop (Cstore (Word Can_scan, Lambda.Assignment),
                 (* Adding 2 really means adding 1; the count is encoded
                    as an OCaml integer. *)
-                [Cvar count_addr; Cop (Caddi, [Cvar count; Cconst_int 2], dbg)],
+                [Cvar count_addr;
+                 Cop (Cadd Can_scan, [Cvar count; Cconst_int 2], dbg)],
                 dbg),
               Cvar place_within_node)))
       end else begin
@@ -253,7 +260,7 @@ let code_for_call ~node ~callee ~is_tail ~label =
         else Cconst_int 1  (* [Val_unit] *)
       in
       Cop (Cextcall ("caml_spacetime_indirect_node_hole_ptr",
-          [| Int |], false, None),
+          [| Int_reg Cannot_scan |], false, None),
         [callee; Cvar place_within_node; caller_node],
         dbg))
 

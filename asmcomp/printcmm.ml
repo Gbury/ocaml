@@ -26,10 +26,11 @@ let rec_flag ppf = function
   | Recursive -> fprintf ppf " rec"
 
 let machtype_component ppf = function
-  | Val -> fprintf ppf "val"
-  | Addr -> fprintf ppf "addr"
-  | Int -> fprintf ppf "int"
-  | Float -> fprintf ppf "float"
+  | Int_reg Must_scan -> fprintf ppf "val"
+  | Int_reg Can_scan -> fprintf ppf "int"
+  | Int_reg Cannot_scan -> fprintf ppf "cannot_scan"
+  | Int_reg Cannot_be_live_at_gc -> fprintf ppf "addr"
+  | Float_reg -> fprintf ppf "float"
 
 let machtype ppf mty =
   match Array.length mty with
@@ -66,8 +67,10 @@ let chunk = function
   | Sixteen_signed -> "signed int16"
   | Thirtytwo_unsigned -> "unsigned int32"
   | Thirtytwo_signed -> "signed int32"
-  | Word_int -> "int"
-  | Word_val -> "val"
+  | Word Must_scan -> "val"
+  | Word Can_scan -> "int"
+  | Word Cannot_scan -> "cannot_scan"
+  | Word Cannot_be_live_at_gc -> "addr"
   | Single -> "float32"
   | Double -> "float64"
   | Double_u -> "float64u"
@@ -99,6 +102,12 @@ let phantom_defining_expr_opt ppf defining_expr =
   | None -> Format.pp_print_string ppf "()"
   | Some defining_expr -> phantom_defining_expr ppf defining_expr
 
+let operation_arith base = function
+  | Can_scan -> base ^ "x"
+  | Must_scan -> base ^ "v"
+  | Cannot_scan -> base
+  | Cannot_be_live_at_gc -> base ^ "a"
+
 let operation d = function
   | Capply _ty -> "app" ^ Debuginfo.to_string d
   | Cextcall(lbl, _ty, _alloc, _) ->
@@ -114,22 +123,21 @@ let operation d = function
       | Lambda.Assignment -> ""
     in
     Printf.sprintf "store %s%s" (chunk c) init
-  | Caddi -> "+"
-  | Csubi -> "-"
-  | Cmuli -> "*"
-  | Cmulhi -> "*h"
-  | Cdivi -> "/"
-  | Cmodi -> "mod"
-  | Cand -> "and"
-  | Cor -> "or"
-  | Cxor -> "xor"
-  | Clsl -> "<<"
-  | Clsr -> ">>u"
-  | Casr -> ">>s"
-  | Ccmpi c -> integer_comparison c
-  | Caddv -> "+v"
-  | Cadda -> "+a"
-  | Ccmpa c -> Printf.sprintf "%sa" (integer_comparison c)
+  (* CR-someday Gbury: use better names for operations *)
+  | Cadd gc_action -> operation_arith "+" gc_action
+  | Csub gc_action -> operation_arith "-" gc_action
+  | Cmul gc_action -> operation_arith "*" gc_action
+  | Cmulh gc_action -> operation_arith "*h" gc_action
+  | Cdiv gc_action -> operation_arith "/" gc_action
+  | Cmod gc_action -> operation_arith "mod" gc_action
+  | Cand gc_action -> operation_arith "and" gc_action
+  | Cor gc_action -> operation_arith "or" gc_action
+  | Cxor gc_action -> operation_arith "xor" gc_action
+  | Clsl gc_action -> operation_arith "<<" gc_action
+  | Clsr gc_action -> operation_arith ">>u" gc_action
+  | Casr gc_action -> operation_arith ">>s" gc_action
+  | Ccmps c -> integer_comparison c
+  | Ccmpu c -> Printf.sprintf "%sa" (integer_comparison c)
   | Cnegf -> "~f"
   | Cabsf -> "absf"
   | Caddf -> "+f"
@@ -150,7 +158,7 @@ let rec expr ppf = function
     fprintf ppf "block-hdr(%s)%s"
       (Nativeint.to_string n) (Debuginfo.to_string d)
   | Cconst_float n -> fprintf ppf "%F" n
-  | Cconst_symbol s -> fprintf ppf "\"%s\"" s
+  | Cconst_symbol (s, _) -> fprintf ppf "\"%s\"" s
   | Cconst_pointer n -> fprintf ppf "%ia" n
   | Cconst_natpointer n -> fprintf ppf "%sa" (Nativeint.to_string n)
   | Cvar id -> V.print ppf id

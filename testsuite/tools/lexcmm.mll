@@ -148,7 +148,8 @@ rule token = parse
   | "+a" { ADDA }
   | "+v" { ADDV }
   | "+f" { ADDF }
-  | "+" { ADDI }
+  | "+x" { ADDX }
+  | "+"  { ADDI }
   | ">>s" { ASR }
   | ":" { COLON }
   | "/f" { DIVF }
@@ -186,6 +187,7 @@ rule token = parse
   | ")" { RPAREN }
   | "-f" { SUBF }
   | "-" { SUBI }
+  | "-x" { SUBX }
   | '-'? (['0'-'9']+ | "0x" ['0'-'9' 'a'-'f' 'A'-'F']+
                      | "0o" ['0'-'7']+ | "0b" ['0'-'1']+)
       { INTCONST(int_of_string(Lexing.lexeme lexbuf)) }
