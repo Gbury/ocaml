@@ -41,27 +41,21 @@ let size_component = function
 
 (* [gc_actions] are partially ordered as follows:
 
-      Cannot_be_live_at_gc
-              ^
-            /   \
-           /     \
-          /       \
-         /         \
-        /           \
+            Cannot_be_live_at_gc
+                     ^
+                     |
+                     |
+                     |
+                     |
+                     |
     Must_scan   Cannot_scan
-        ^           ^
+        ^            ^
          \          /
           \        /
            \      /
             \    /
            Can_scan
 
-  In particular, [Cannot_be_live_at_gc] must be above [Must_scan], to ensure
-  that if there is a join point between a code path yielding
-  [Cannot_be_live_at_gc] and one yielding [Must_scan] then the result is treated
-  as a derived pointer into the heap (i.e. [Cannot_be_live_at_gc]). (Such a
-  result may not be live across any call site or a fatal compiler error will
-  result.)
 *)
 
 let lub_gc_action act1 act2 =
@@ -72,10 +66,10 @@ let lub_gc_action act1 act2 =
   | Can_scan, Cannot_scan -> Cannot_scan
   | Must_scan, Can_scan -> Must_scan
   | Must_scan, Must_scan -> Must_scan
-  | Must_scan, Cannot_be_live_at_gc -> Cannot_be_live_at_gc
+  | Must_scan, Cannot_be_live_at_gc -> assert false
   | Must_scan, Cannot_scan -> assert false
   | Cannot_be_live_at_gc, Can_scan -> Cannot_be_live_at_gc
-  | Cannot_be_live_at_gc, Must_scan -> Cannot_be_live_at_gc
+  | Cannot_be_live_at_gc, Must_scan -> assert false
   | Cannot_be_live_at_gc, Cannot_be_live_at_gc -> Cannot_be_live_at_gc
   | Cannot_be_live_at_gc, Cannot_scan -> Cannot_be_live_at_gc
   | Cannot_scan, Can_scan -> Cannot_scan
@@ -100,10 +94,10 @@ let ge_gc_action act1 act2 =
   | Can_scan, Cannot_scan -> false
   | Must_scan, Can_scan -> true
   | Must_scan, Must_scan -> true
-  | Must_scan, Cannot_be_live_at_gc -> false
+  | Must_scan, Cannot_be_live_at_gc -> assert false
   | Must_scan, Cannot_scan -> assert false
   | Cannot_be_live_at_gc, Can_scan -> true
-  | Cannot_be_live_at_gc, Must_scan -> true
+  | Cannot_be_live_at_gc, Must_scan -> assert false
   | Cannot_be_live_at_gc, Cannot_be_live_at_gc -> true
   | Cannot_be_live_at_gc, Cannot_scan -> true
   | Cannot_scan, Can_scan -> true
