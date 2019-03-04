@@ -59,8 +59,8 @@ let num_register_classes = 2
 
 let register_class r =
   match r.typ with
-  | Val | Int | Addr -> 0
-  | Float -> 1
+  | Int_reg _ -> 0
+  | Float_reg -> 1
 
 let num_available_registers = [| 23; 31 |]
 
@@ -75,11 +75,11 @@ let rotate_registers = true
 
 let hard_int_reg =
   let v = Array.make 23 Reg.dummy in
-  for i = 0 to 22 do v.(i) <- Reg.at_location Int (Reg i) done; v
+  for i = 0 to 22 do v.(i) <- Reg.at_location (Int_reg Must_scan) (Reg i) done; v
 
 let hard_float_reg =
   let v = Array.make 31 Reg.dummy in
-  for i = 0 to 30 do v.(i) <- Reg.at_location Float (Reg(100 + i)) done; v
+  for i = 0 to 30 do v.(i) <- Reg.at_location Float_reg (Reg(100 + i)) done; v
 
 let all_phys_regs =
   Array.append hard_int_reg hard_float_reg
@@ -105,7 +105,7 @@ let calling_conventions
     match arg.(i) with
     | [| arg |] ->
       begin match arg.typ with
-      | Val | Int | Addr as ty ->
+      | Int_reg _ as ty ->
           if !int <= last_int then begin
             loc.(i) <- [| phys_reg !int |];
             incr int;
@@ -114,7 +114,7 @@ let calling_conventions
             loc.(i) <- [| stack_slot (make_stack !ofs) ty |];
             ofs := !ofs + size_int
           end
-      | Float ->
+      | Float_reg ->
           if !float <= last_float then begin
             loc.(i) <- [| phys_reg !float |];
             incr float;
@@ -124,7 +124,7 @@ let calling_conventions
             if reg_use_stack then ofs := !ofs + size_float
           end else begin
             ofs := Misc.align !ofs size_float;
-            loc.(i) <- [| stack_slot (make_stack !ofs) Float |];
+            loc.(i) <- [| stack_slot (make_stack !ofs) Float_reg |];
             ofs := !ofs + size_float
           end
       end
@@ -133,7 +133,7 @@ let calling_conventions
          on 32-bit platform. *)
       assert (size_int = 4);
       begin match arg1.typ, arg2.typ with
-      | Int, Int ->
+      | Int_reg Cannot_scan, Int_reg Cannot_scan ->
           (* 64-bit quantities split across two registers must either be in a
              consecutive pair of registers where the lowest numbered is an
              even-numbered register; or in a stack slot that is 8-byte
@@ -149,13 +149,19 @@ let calling_conventions
             ofs := Misc.align !ofs size_int64;
             let ofs_lower = !ofs in
             let ofs_upper = !ofs + size_int in
-            let stack_lower = stack_slot (make_stack ofs_lower) Int in
-            let stack_upper = stack_slot (make_stack ofs_upper) Int in
+            let stack_lower = stack_slot (make_stack ofs_lower) (Int_reg Cannot_scan) in
+            let stack_upper = stack_slot (make_stack ofs_upper) (Int_reg Cannot_scan) in
             loc.(i) <- [| stack_lower; stack_upper |];
             ofs := !ofs + size_int64
           end
       | _, _ ->
-        let f = function Int -> "I" | Addr -> "A" | Val -> "V" | Float -> "F" in
+        let f = function
+            Int_reg Can_scan -> "Can_scan"
+          | Int_reg Cannot_be_live_at_gc -> "Cannot_live"
+          | Int_reg Must_scan -> "Must_scan"
+          | Int_reg Cannot_scan -> "Cannot_scan"
+          | Float_reg -> "Float"
+        in
         fatal_error (Printf.sprintf "Proc.calling_conventions: bad register \
             type(s) for multi-register argument: %s, %s"
           (f arg1.typ) (f arg2.typ))

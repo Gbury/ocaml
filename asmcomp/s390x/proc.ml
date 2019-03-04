@@ -63,8 +63,8 @@ let num_register_classes = 2
 
 let register_class r =
   match r.typ with
-  | Val | Int | Addr -> 0
-  | Float -> 1
+  | Int_reg _ -> 0
+  | Float_reg -> 1
 
 let num_available_registers = [| 9; 15 |]
 
@@ -79,11 +79,11 @@ let rotate_registers = true
 
 let hard_int_reg =
   let v = Array.make 9 Reg.dummy in
-  for i = 0 to 8 do v.(i) <- Reg.at_location Int (Reg i) done; v
+  for i = 0 to 8 do v.(i) <- Reg.at_location (Int_reg Must_scan) (Reg i) done; v
 
 let hard_float_reg =
   let v = Array.make 16 Reg.dummy in
-  for i = 0 to 15 do v.(i) <- Reg.at_location Float (Reg(100 + i)) done; v
+  for i = 0 to 15 do v.(i) <- Reg.at_location Float_reg (Reg(100 + i)) done; v
 
 let all_phys_regs =
   Array.append hard_int_reg hard_float_reg
@@ -106,7 +106,7 @@ let calling_conventions
   let ofs = ref stack_ofs in
   for i = 0 to Array.length arg - 1 do
     match arg.(i).typ with
-    | Val | Int | Addr as ty ->
+    | Int_reg _ as ty ->
         if !int <= last_int then begin
           loc.(i) <- phys_reg !int;
           incr int
@@ -114,12 +114,12 @@ let calling_conventions
           loc.(i) <- stack_slot (make_stack !ofs) ty;
           ofs := !ofs + size_int
         end
-    | Float ->
+    | Float_reg ->
         if !float <= last_float then begin
           loc.(i) <- phys_reg !float;
           incr float
         end else begin
-          loc.(i) <- stack_slot (make_stack !ofs) Float;
+          loc.(i) <- stack_slot (make_stack !ofs) Float_reg;
           ofs := !ofs + size_float
         end
   done;

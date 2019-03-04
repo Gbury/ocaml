@@ -30,7 +30,7 @@ let is_offset chunk n =
   (* ARM load/store byte/word have -4095 to 4095 *)
   | Byte_unsigned | Byte_signed
   | Thirtytwo_unsigned | Thirtytwo_signed
-  | Word_int | Word_val | Single
+  | Word _ | Single
     when not !thumb ->
       n >= -4095 && n <= 4095
   (* Thumb-2 load/store have -255 to 4095 *)
@@ -41,9 +41,9 @@ let is_offset chunk n =
       n >= -255 && n <= 255
 
 let select_shiftop = function
-    Clsl -> Ishiftlogicalleft
-  | Clsr -> Ishiftlogicalright
-  | Casr -> Ishiftarithmeticright
+    Clsl _ -> Ishiftlogicalleft
+  | Clsr _ -> Ishiftlogicalright
+  | Casr _ -> Ishiftarithmeticright
   | __-> assert false
 
 (* Special constraints on operand and result registers *)
@@ -95,7 +95,8 @@ method! regs_for tyv =
                     the unboxed external functionality *)
                  let rec expand = function
                    [] -> []
-                 | Float :: tyl -> Int :: Int :: expand tyl
+                 | Float_reg :: tyl ->
+                    Int_reg Cannot_scan :: Int_reg Cannot_scan :: expand tyl
                  | ty :: tyl -> ty :: expand tyl in
                  Array.of_list (expand (Array.to_list tyv))
                end else begin
@@ -131,10 +132,11 @@ method! effects_of e =
   | e -> super#effects_of e
 
 method select_addressing chunk = function
-  | Cop((Cadda | Caddv), [arg; Cconst_int n], _)
+  | Cop(Cadd (Must_scan | Cannot_be_live_at_gc), [arg; Cconst_int n], _)
     when is_offset chunk n ->
       (Iindexed n, arg)
-  | Cop((Cadda | Caddv as op), [arg1; Cop(Caddi, [arg2; Cconst_int n], _)], dbg)
+  | Cop(Cadd (Must_scan | Cannot_be_live_at_gc) as op,
+        [arg1; Cop(Cadd (Must_scan | Cannot_be_live_at_gc), [arg2; Cconst_int n], _)], dbg)
     when is_offset chunk n ->
       (Iindexed n, Cop(op, [arg1; arg2], dbg))
   | arg ->
@@ -142,35 +144,35 @@ method select_addressing chunk = function
 
 method select_shift_arith op dbg arithop arithrevop args =
   match args with
-    [arg1; Cop(Clsl | Clsr | Casr as op, [arg2; Cconst_int n], _)]
+    [arg1; Cop(Clsl _ | Clsr _ | Casr _ as op, [arg2; Cconst_int n], _)]
     when n > 0 && n < 32 ->
       (Ispecific(Ishiftarith(arithop, select_shiftop op, n)), [arg1; arg2])
-  | [Cop(Clsl | Clsr | Casr as op, [arg1; Cconst_int n], _); arg2]
+  | [Cop(Clsl _ | Clsr _ | Casr _ as op, [arg1; Cconst_int n], _); arg2]
     when n > 0 && n < 32 ->
       (Ispecific(Ishiftarith(arithrevop, select_shiftop op, n)), [arg2; arg1])
   | args ->
       begin match super#select_operation op args dbg with
       (* Recognize multiply high and add *)
-        (Iintop Iadd, [Cop(Cmulhi, args, _); arg3])
-      | (Iintop Iadd, [arg3; Cop(Cmulhi, args, _)]) as op_args
+        (Iintop Iadd, [Cop(Cmulh _, args, _); arg3])
+      | (Iintop Iadd, [arg3; Cop(Cmulh _, args, _)]) as op_args
         when !arch >= ARMv6 ->
-          begin match self#select_operation Cmulhi args dbg with
+          begin match self#select_operation (Cmulh Cannot_scan) args dbg with
             (Iintop Imulh, [arg1; arg2]) ->
               (Ispecific Imulhadd, [arg1; arg2; arg3])
           | _ -> op_args
           end
       (* Recognize multiply and add *)
-      | (Iintop Iadd, [Cop(Cmuli, args, _); arg3])
-      | (Iintop Iadd, [arg3; Cop(Cmuli, args, _)]) as op_args ->
-          begin match self#select_operation Cmuli args dbg with
+      | (Iintop Iadd, [Cop(Cmul _, args, _); arg3])
+      | (Iintop Iadd, [arg3; Cop(Cmul _, args, _)]) as op_args ->
+          begin match self#select_operation (Cmul Cannot_scan) args dbg with
             (Iintop Imul, [arg1; arg2]) ->
               (Ispecific Imuladd, [arg1; arg2; arg3])
           | _ -> op_args
           end
       (* Recognize multiply and subtract *)
-      | (Iintop Isub, [arg3; Cop(Cmuli, args, _)]) as op_args
+      | (Iintop Isub, [arg3; Cop(Cmul _, args, _)]) as op_args
         when !arch > ARMv6 ->
-          begin match self#select_operation Cmuli args dbg with
+          begin match self#select_operation (Cmul Cannot_scan) args dbg with
             (Iintop Imul, [arg1; arg2]) ->
               (Ispecific Imulsub, [arg1; arg2; arg3])
           | _ -> op_args
@@ -184,38 +186,38 @@ method private iextcall (func, alloc) =
 method! select_operation op args dbg =
   match (op, args) with
   (* Recognize special shift arithmetic *)
-    ((Caddv | Cadda | Caddi), [arg; Cconst_int n])
+    (Cadd _, [arg; Cconst_int n])
     when n < 0 && self#is_immediate (-n) ->
       (Iintop_imm(Isub, -n), [arg])
-  | ((Caddv | Cadda | Caddi as op), args) ->
+  | ((Cadd _ as op), args) ->
       self#select_shift_arith op dbg Ishiftadd Ishiftadd args
-  | (Csubi, [arg; Cconst_int n])
+  | (Csub _, [arg; Cconst_int n])
     when n < 0 && self#is_immediate (-n) ->
       (Iintop_imm(Iadd, -n), [arg])
-  | (Csubi, [Cconst_int n; arg])
+  | (Csub _, [Cconst_int n; arg])
     when self#is_immediate n ->
       (Ispecific(Irevsubimm n), [arg])
-  | (Csubi as op, args) ->
+  | (Csub _ as op, args) ->
       self#select_shift_arith op dbg Ishiftsub Ishiftsubrev args
-  | (Cand as op, args) ->
+  | (Cand _ as op, args) ->
       self#select_shift_arith op dbg Ishiftand Ishiftand args
-  | (Cor as op, args) ->
+  | (Cor _ as op, args) ->
       self#select_shift_arith op dbg Ishiftor Ishiftor args
-  | (Cxor as op, args) ->
+  | (Cxor _ as op, args) ->
       self#select_shift_arith op dbg Ishiftxor Ishiftxor args
   | (Ccheckbound,
-      [Cop(Clsl | Clsr | Casr as op, [arg1; Cconst_int n], _); arg2])
+      [Cop(Clsl _ | Clsr _ | Casr _ as op, [arg1; Cconst_int n], _); arg2])
     when n > 0 && n < 32 ->
       (Ispecific(Ishiftcheckbound(select_shiftop op, n)), [arg1; arg2])
   (* ARM does not support immediate operands for multiplication *)
-  | (Cmuli, args) ->
+  | (Cmul _, args) ->
       (Iintop Imul, args)
-  | (Cmulhi, args) ->
+  | (Cmulh _, args) ->
       (Iintop Imulh, args)
   (* Turn integer division/modulus into runtime ABI calls *)
-  | (Cdivi, args) ->
+  | (Cdiv _, args) ->
       (self#iextcall("__aeabi_idiv", false), args)
-  | (Cmodi, args) ->
+  | (Cmod _, args) ->
       (* See above for fix up of return register *)
       (self#iextcall("__aeabi_idivmod", false), args)
   (* Recognize 16-bit bswap instruction (ARMv6T2 because we need movt) *)
@@ -258,11 +260,11 @@ method private select_operation_softfp op args dbg =
   (* Add coercions around loads and stores of 32-bit floats *)
   | (Cload (Single, mut), args) ->
       (self#iextcall("__aeabi_f2d", false),
-        [Cop(Cload (Word_int, mut), args, dbg)])
+        [Cop(Cload (Word Cannot_scan, mut), args, dbg)])
   | (Cstore (Single, init), [arg1; arg2]) ->
       let arg2' =
         Cop(Cextcall("__aeabi_d2f", typ_int, false, None), [arg2], dbg) in
-      self#select_operation (Cstore (Word_int, init)) [arg1; arg2'] dbg
+      self#select_operation (Cstore (Word Cannot_scan, init)) [arg1; arg2'] dbg
   (* Other operations are regular *)
   | (op, args) -> super#select_operation op args dbg
 

@@ -30,11 +30,11 @@ type addressing_expr =
   | Aadd of expression * expression
 
 let rec select_addr = function
-  | Cop((Caddi | Cadda | Caddv), [arg; Cconst_int m], _) ->
+  | Cop(Cadd _, [arg; Cconst_int m], _) ->
       let (a, n) = select_addr arg in (a, n + m)
-  | Cop((Caddi | Cadda | Caddv), [Cconst_int m; arg], _) ->
+  | Cop(Cadd _, [Cconst_int m; arg], _) ->
       let (a, n) = select_addr arg in (a, n + m)
-  | Cop((Caddi | Cadda | Caddv), [arg1; arg2], _) ->
+  | Cop(Cadd _, [arg1; arg2], _) ->
       begin match (select_addr arg1, select_addr arg2) with
           ((Alinear e1, n1), (Alinear e2, n2)) ->
               (Aadd(e1, e2), n1 + n2)
@@ -79,13 +79,13 @@ method select_addressing _chunk exp =
 method! select_operation op args dbg =
   match (op, args) with
   (* Z does not support immediate operands for multiply high *)
-    (Cmulhi, _) -> (Iintop Imulh, args)
+    (Cmulh _, _) -> (Iintop Imulh, args)
   (* The and, or and xor instructions have a different range of immediate
      operands than the other instructions *)
-  | (Cand, _) ->
+  | (Cand _, _) ->
       self#select_logical Iand (-1 lsl 32 (*0x1_0000_0000*)) (-1) args
-  | (Cor, _) -> self#select_logical Ior 0 (1 lsl 32 - 1 (*0xFFFF_FFFF*)) args
-  | (Cxor, _) -> self#select_logical Ixor  0 (1 lsl 32 - 1 (*0xFFFF_FFFF*)) args
+  | (Cor _, _) -> self#select_logical Ior 0 (1 lsl 32 - 1 (*0xFFFF_FFFF*)) args
+  | (Cxor _, _) -> self#select_logical Ixor  0 (1 lsl 32 - 1 (*0xFFFF_FFFF*)) args
   (* Recognize mult-add and mult-sub instructions *)
   | (Caddf, [Cop(Cmulf, [arg1; arg2], _); arg3]) ->
       (Ispecific Imultaddf, [arg1; arg2; arg3])

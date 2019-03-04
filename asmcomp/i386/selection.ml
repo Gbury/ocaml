@@ -32,30 +32,30 @@ type addressing_expr =
 
 let rec select_addr exp =
   match exp with
-    Cconst_symbol s ->
+    Cconst_symbol (s, _) ->
       (Asymbol s, 0)
-  | Cop((Caddi | Caddv | Cadda), [arg; Cconst_int m], _) ->
+  | Cop((Cadd _), [arg; Cconst_int m], _) ->
       let (a, n) = select_addr arg in (a, n + m)
-  | Cop(Csubi, [arg; Cconst_int m], _) ->
+  | Cop(Csub _, [arg; Cconst_int m], _) ->
       let (a, n) = select_addr arg in (a, n - m)
-  | Cop((Caddi | Caddv | Cadda), [Cconst_int m; arg], _) ->
+  | Cop((Cadd _), [Cconst_int m; arg], _) ->
       let (a, n) = select_addr arg in (a, n + m)
-  | Cop(Clsl, [arg; Cconst_int(1|2|3 as shift)], _) ->
+  | Cop(Clsl _, [arg; Cconst_int(1|2|3 as shift)], _) ->
       begin match select_addr arg with
         (Alinear e, n) -> (Ascale(e, 1 lsl shift), n lsl shift)
       | _ -> (Alinear exp, 0)
       end
-  | Cop(Cmuli, [arg; Cconst_int(2|4|8 as mult)], _) ->
+  | Cop(Cmul _, [arg; Cconst_int(2|4|8 as mult)], _) ->
       begin match select_addr arg with
         (Alinear e, n) -> (Ascale(e, mult), n * mult)
       | _ -> (Alinear exp, 0)
       end
-  | Cop(Cmuli, [Cconst_int(2|4|8 as mult); arg], _) ->
+  | Cop(Cmul _, [Cconst_int(2|4|8 as mult); arg], _) ->
       begin match select_addr arg with
         (Alinear e, n) -> (Ascale(e, mult), n * mult)
       | _ -> (Alinear exp, 0)
       end
-  | Cop((Caddi | Cadda | Caddv), [arg1; arg2], _) ->
+  | Cop((Cadd _), [arg1; arg2], _) ->
       begin match (select_addr arg1, select_addr arg2) with
           ((Alinear e1, n1), (Alinear e2, n2)) ->
               (Aadd(e1, e2), n1 + n2)
@@ -200,7 +200,7 @@ method! select_store is_assign addr exp =
       (Ispecific(Istore_int(Nativeint.of_int n, addr, is_assign)), Ctuple [])
   | Cconst_natpointer n ->
       (Ispecific(Istore_int(n, addr, is_assign)), Ctuple [])
-  | Cconst_symbol s ->
+  | Cconst_symbol (s, _) ->
       (Ispecific(Istore_symbol(s, addr, is_assign)), Ctuple [])
   | _ ->
       super#select_store is_assign addr exp
@@ -208,8 +208,8 @@ method! select_store is_assign addr exp =
 method! select_operation op args dbg =
   match op with
   (* Recognize the LEA instruction *)
-    Caddi | Caddv | Cadda | Csubi ->
-      begin match self#select_addressing Word_int (Cop(op, args, dbg)) with
+    Cadd _ | Csub _ -> (* The Can_scan here is arbitrary. *)
+      begin match self#select_addressing (Word Can_scan) (Cop(op, args, dbg)) with
         (Iindexed _, _)
       | (Iindexed2 0, _) -> super#select_operation op args dbg
       | (addr, arg) -> (Ispecific(Ilea addr), [arg])
@@ -227,9 +227,9 @@ method! select_operation op args dbg =
       self#select_floatarith Idivf (Ispecific Idivfrev) Ifloatdiv Ifloatdivrev
                              args
   (* Recognize store instructions *)
-  | Cstore ((Word_int | Word_val) as chunk, _) ->
+  | Cstore (Word _ as chunk, _) ->
       begin match args with
-        [loc; Cop(Caddi, [Cop(Cload _, [loc'], _); Cconst_int n], _)]
+        [loc; Cop(Cadd _, [Cop(Cload _, [loc'], _); Cconst_int n], _)]
         when loc = loc' ->
           let (addr, arg) = self#select_addressing chunk loc in
           (Ispecific(Ioffset_loc(n, addr)), [arg])
@@ -241,7 +241,7 @@ method! select_operation op args dbg =
     when !fast_math && List.mem fn inline_float_ops ->
       (Ispecific(Ifloatspecial fn), args)
   (* i386 does not support immediate operands for multiply high signed *)
-  | Cmulhi ->
+  | Cmulh _ ->
       (Iintop Imulh, args)
   (* Default *)
   | _ -> super#select_operation op args dbg
@@ -291,8 +291,8 @@ method select_push exp =
   | Cconst_natint n -> (Ispecific(Ipush_int n), Ctuple [])
   | Cconst_pointer n -> (Ispecific(Ipush_int(Nativeint.of_int n)), Ctuple [])
   | Cconst_natpointer n -> (Ispecific(Ipush_int n), Ctuple [])
-  | Cconst_symbol s -> (Ispecific(Ipush_symbol s), Ctuple [])
-  | Cop(Cload ((Word_int | Word_val as chunk), _), [loc], _) ->
+  | Cconst_symbol (s, _) -> (Ispecific(Ipush_symbol s), Ctuple [])
+  | Cop(Cload ((Word _ as chunk), _), [loc], _) ->
       let (addr, arg) = self#select_addressing chunk loc in
       (Ispecific(Ipush_load addr), arg)
   | Cop(Cload (Double_u, _), [loc], _) ->
