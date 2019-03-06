@@ -1,0 +1,19 @@
+(* TEST
+files = "main.c"
+arguments = "-DINT_INT -DFUN=fib main.c"
+* asmgen
+*)
+
+(function "next_fib" (a:raw b:raw)
+  [ b (+ a b) ])
+
+(function "fib_aux" (n:raw a:raw b:raw)
+  (if (== n 0) a
+    (let t (app "next_fib" a b raw*raw)
+    (let c (extract 0 1 t)
+    (let d (extract 1 1 t)
+    (app "fib_aux" (- n 1) c d raw))))
+  )
+)
+
+(function "fib" (n: raw) (app "fib_aux" n 0 1 raw))

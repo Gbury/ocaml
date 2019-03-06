@@ -220,6 +220,7 @@ and expression =
       * phantom_defining_expr option * expression
   | Cassign of Backend_var.t * expression
   | Ctuple of expression list
+  | Cextract of expression * int * int
   | Cop of operation * expression list * Debuginfo.t
   | Csequence of expression * expression
   | Cifthenelse of expression * expression * expression

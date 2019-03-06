@@ -45,6 +45,7 @@ let keyword_table =
     "data", DATA;
     "exit", EXIT;
     "extcall", EXTCALL;
+    "extract", EXTRACT;
     "float", FLOAT;
     "float32", FLOAT32;
     "float64", FLOAT64;
@@ -65,6 +66,7 @@ let keyword_table =
     "proj", PROJ;
     "raise_withtrace", RAISE Cmm.Raise_withtrace;
     "raise_notrace", RAISE Cmm.Raise_notrace;
+    "raw", RAW;
     "seq", SEQ;
     "signed", SIGNED;
     "skip", SKIP;

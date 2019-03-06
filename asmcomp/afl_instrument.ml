@@ -72,6 +72,7 @@ and instrument = function
     Cphantom_let (v, defining_expr, instrument body)
   | Cassign (v, e) -> Cassign (v, instrument e)
   | Ctuple es -> Ctuple (List.map instrument es)
+  | Cextract (e, i, l) -> Cextract (instrument e, i, l)
   | Cop (op, es, dbg) -> Cop (op, List.map instrument es, dbg)
   | Csequence (e1, e2) -> Csequence (instrument e1, instrument e2)
   | Ccatch (isrec, cases, body) ->

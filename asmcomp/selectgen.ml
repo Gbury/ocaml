@@ -301,6 +301,7 @@ method is_simple_expr = function
   | Cblockheader _ -> true
   | Cvar _ -> true
   | Ctuple el -> List.for_all self#is_simple_expr el
+  | Cextract (e, _, _) -> self#is_simple_expr e
   | Clet(_id, arg, body) -> self#is_simple_expr arg && self#is_simple_expr body
   | Cphantom_let(_var, _defining_expr, body) -> self#is_simple_expr body
   | Csequence(e1, e2) -> self#is_simple_expr e1 && self#is_simple_expr e2
@@ -336,6 +337,7 @@ method effects_of exp =
   | Cconst_pointer _ | Cconst_natpointer _ | Cblockheader _
   | Cvar _ -> EC.none
   | Ctuple el -> EC.join_list_map el self#effects_of
+  | Cextract (e, _, _) -> self#effects_of e
   | Clet (_id, arg, body) ->
     EC.join (self#effects_of arg) (self#effects_of body)
   | Cphantom_let (_var, _defining_expr, body) -> self#effects_of body
@@ -697,6 +699,17 @@ method emit_expr (env:environment) exp =
         None -> None
       | Some(simple_list, ext_env) ->
           Some(self#emit_tuple ext_env simple_list)
+      end
+  | Cextract (e, s, l) ->
+      begin match self#emit_expr env e with
+      | None -> assert false
+      | Some r ->
+          (* CR Gbury: catch an Invalid_argument from Array.sub *)
+          let r' = createv_like (Array.sub r s l) in
+          for i = 0 to l - 1 do
+            self#insert_move r.(s + i) r'.(i)
+          done;
+          Some r'
       end
   | Cop(Craise k, [arg], dbg) ->
       begin match self#emit_expr env arg with

@@ -77,6 +77,7 @@ let access_array base numelt size =
 %token EQI
 %token EXIT
 %token EXTCALL
+%token EXTRACT
 %token FLOAT
 %token FLOAT32
 %token FLOAT64
@@ -126,6 +127,7 @@ let access_array base numelt size =
 %token <int> POINTER
 %token PROJ
 %token <Cmm.raise_kind> RAISE
+%token RAW
 %token RBRACKET
 %token RPAREN
 %token SEQ
@@ -192,6 +194,7 @@ component:
     VAL                         { (Int_reg Must_scan) }
   | ADDR                        { (Int_reg Cannot_be_live_at_gc) }
   | INT                         { (Int_reg Can_scan) }
+  | RAW                         { (Int_reg Cannot_scan) }
   | FLOAT                       { Float_reg }
 ;
 componentlist:
@@ -204,7 +207,7 @@ expr:
   | STRING      { Cconst_symbol ($1, Other) }
   | POINTER     { Cconst_pointer $1 }
   | IDENT       { Cvar(find_ident $1) }
-  | LBRACKET RBRACKET { Ctuple [] }
+  | LBRACKET exprlist RBRACKET { Ctuple (List.rev $2) }
   | LPAREN LET letdef sequence RPAREN { make_letdef $3 $4 }
   | LPAREN ASSIGN IDENT expr RPAREN { Cassign(find_ident $3, $4) }
   | LPAREN APPLY location expr exprlist machtype RPAREN
@@ -216,6 +219,7 @@ expr:
   | LPAREN SUBF expr expr RPAREN { Cop(Csubf, [$3; $4], debuginfo ()) }
   | LPAREN unaryop expr RPAREN { Cop($2, [$3], debuginfo ()) }
   | LPAREN binaryop expr expr RPAREN { Cop($2, [$3; $4], debuginfo ()) }
+  | LPAREN EXTRACT INTCONST INTCONST expr RPAREN { Cextract ($5, $3, $4) }
   | LPAREN SEQ sequence RPAREN { $3 }
   | LPAREN IF expr expr expr RPAREN { Cifthenelse($3, $4, $5) }
   | LPAREN SWITCH INTCONST expr caselist RPAREN { make_switch $3 $4 $5 }

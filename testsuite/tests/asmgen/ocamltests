@@ -10,6 +10,7 @@ even-odd-spill-float.cmm
 even-odd.cmm
 fib.cmm
 integr.cmm
+multi.cmm
 pgcd.cmm
 quicksort.cmm
 quicksort2.cmm
