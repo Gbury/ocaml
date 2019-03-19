@@ -80,6 +80,7 @@ let oper_result_type = function
   | Craise _ -> typ_void
   | Ccheckbound -> typ_void
 
+
 (* Infer the size in bytes of the result of an expression whose evaluation
    may be deferred (cf. [emit_parts]). *)
 
@@ -103,6 +104,8 @@ let size_expr (env:environment) exp =
         end
     | Ctuple el ->
         List.fold_right (fun e sz -> size localenv e + sz) el 0
+    | Cextract (_, _, typ) ->
+        size_machtype typ
     | Cop(op, _, _) ->
         size_machtype(oper_result_type op)
     | Clet(id, arg, body) ->
@@ -700,13 +703,13 @@ method emit_expr (env:environment) exp =
       | Some(simple_list, ext_env) ->
           Some(self#emit_tuple ext_env simple_list)
       end
-  | Cextract (e, s, l) ->
+  | Cextract (e, s, typ) ->
       begin match self#emit_expr env e with
       | None -> assert false
       | Some r ->
-          (* CR Gbury: catch an Invalid_argument from Array.sub *)
-          let r' = createv_like (Array.sub r s l) in
-          for i = 0 to l - 1 do
+          let r' = createv typ in
+          for i = 0 to Array.length typ - 1 do
+            assert (r.(s+i).typ = r'.(i).typ);
             self#insert_move r.(s + i) r'.(i)
           done;
           Some r'

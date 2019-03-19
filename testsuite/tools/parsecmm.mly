@@ -219,7 +219,7 @@ expr:
   | LPAREN SUBF expr expr RPAREN { Cop(Csubf, [$3; $4], debuginfo ()) }
   | LPAREN unaryop expr RPAREN { Cop($2, [$3], debuginfo ()) }
   | LPAREN binaryop expr expr RPAREN { Cop($2, [$3; $4], debuginfo ()) }
-  | LPAREN EXTRACT INTCONST INTCONST expr RPAREN { Cextract ($5, $3, $4) }
+  | LPAREN EXTRACT expr INTCONST machtype RPAREN { Cextract ($3, $4, $5) }
   | LPAREN SEQ sequence RPAREN { $3 }
   | LPAREN IF expr expr expr RPAREN { Cifthenelse($3, $4, $5) }
   | LPAREN SWITCH INTCONST expr caselist RPAREN { make_switch $3 $4 $5 }

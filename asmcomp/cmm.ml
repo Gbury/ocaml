@@ -225,7 +225,7 @@ type expression =
       * phantom_defining_expr option * expression
   | Cassign of Backend_var.t * expression
   | Ctuple of expression list
-  | Cextract of expression * int * int (* expr, start_idx, length *)
+  | Cextract of expression * int * machtype (* expr, start, typ *)
   | Cop of operation * expression list * Debuginfo.t
   | Csequence of expression * expression
   | Cifthenelse of expression * expression * expression

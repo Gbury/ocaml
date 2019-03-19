@@ -208,8 +208,8 @@ let rec expr ppf = function
           expr ppf e)
         el in
       fprintf ppf "@[<1>[%a]@]" tuple el
-  | Cextract (e, s, l) ->
-      fprintf ppf "@[<2>(extract@ %d@ %d@ %a)@]" s l expr e
+  | Cextract (e, s, typ) ->
+      fprintf ppf "@[<2>(extract@ %a@ %d@ %a)@]" expr e s machtype typ
   | Cop(op, el, dbg) ->
       fprintf ppf "@[<2>(%s" (operation dbg op);
       List.iter (fun e -> fprintf ppf "@ %a" expr e) el;
