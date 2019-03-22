@@ -75,6 +75,12 @@ val typ_float: machtype
 
 val size_component: machtype_component -> int
 
+(* Size of machine integers manipulated by arithmetic operations *)
+type size_arith =
+  | A32
+  | A64
+  | Atarget
+
 (** Least upper bound of two [machtype_component]s. *)
 val lub_component
    : machtype_component
@@ -181,7 +187,7 @@ type operation =
   | Cload of memory_chunk * Asttypes.mutable_flag
   | Calloc
   | Cstore of memory_chunk * Lambda.initialization_or_assignment
-  | Cadd of gc_action  (* the [gc_action] gives the type of the result *)
+  | Cadd of size_arith * gc_action  (* the [gc_action] gives the type of the result *)
   | Csub of gc_action
   | Cmul of gc_action
   | Cmulh of gc_action

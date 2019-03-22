@@ -25,7 +25,7 @@ inherit Reloadgen.reload_generic as super
 method! reload_operation op arg res =
   let ((arg', res') as argres') = super#reload_operation op arg res in
   match op with
-  | Iintop Imul | Ispecific Imuladd ->
+  | Iintop (_, Imul) | Ispecific Imuladd ->
       (* On ARM v4 and v5, module [Selection] adds a second, dummy
          result to multiplication instructions (mul and muladd).  This
          second result is the same pseudoregister as the first

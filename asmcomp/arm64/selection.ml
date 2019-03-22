@@ -109,16 +109,16 @@ method! effects_of e =
   | e -> super#effects_of e
 
 method select_addressing chunk = function
-  | Cop(Cadd (Must_scan | Cannot_be_live_at_gc),
+  | Cop(Cadd (_, (Must_scan | Cannot_be_live_at_gc)),
         [Cconst_symbol (s, _); Cconst_int n], _)
     when use_direct_addressing s ->
       (Ibased(s, n), Ctuple [])
-  | Cop(Cadd (Must_scan | Cannot_be_live_at_gc), [arg; Cconst_int n], _)
+  | Cop(Cadd (_, (Must_scan | Cannot_be_live_at_gc)), [arg; Cconst_int n], _)
     when is_offset chunk n ->
       (Iindexed n, arg)
-  | Cop((Cadd (Must_scan | Cannot_be_live_at_gc) as op),
-        [arg1; Cop(Cadd (Must_scan | Cannot_be_live_at_gc), [arg2; Cconst_int n], _)], dbg)
-    when is_offset chunk n ->
+  | Cop((Cadd (sz, (Must_scan | Cannot_be_live_at_gc)) as op),
+        [arg1; Cop(Cadd (sz', (Must_scan | Cannot_be_live_at_gc)), [arg2; Cconst_int n], _)], dbg)
+    when sz = sz' && is_offset chunk n ->
       (Iindexed n, Cop(op, [arg1; arg2], dbg))
   | Cconst_symbol (s, _)
     when use_direct_addressing s ->
@@ -129,14 +129,14 @@ method select_addressing chunk = function
 method! select_operation op args dbg =
   match op with
   (* Integer addition *)
-  | Cadd _ ->
+  | Cadd (sz, _) ->
       begin match args with
       (* Add immediate *)
       | [arg; Cconst_int n] when self#is_immediate n ->
-          ((if n >= 0 then Iintop_imm(Iadd, n) else Iintop_imm(Isub, -n)),
+          ((if n >= 0 then Iintop_imm(sz, Iadd, n) else Iintop_imm(sz, Isub, -n)),
            [arg])
       | [Cconst_int n; arg] when self#is_immediate n ->
-          ((if n >= 0 then Iintop_imm(Iadd, n) else Iintop_imm(Isub, -n)),
+          ((if n >= 0 then Iintop_imm(sz, Iadd, n) else Iintop_imm(sz, Isub, -n)),
            [arg])
       (* Shift-add *)
       | [arg1; Cop(Clsl _, [arg2; Cconst_int n], _)] when n > 0 && n < 64 ->
@@ -147,12 +147,12 @@ method! select_operation op args dbg =
           (Ispecific(Ishiftarith(Ishiftadd, n)), [arg2; arg1])
       | [Cop(Casr _, [arg1; Cconst_int n], _); arg2] when n > 0 && n < 64 ->
           (Ispecific(Ishiftarith(Ishiftadd, -n)), [arg2; arg1])
-      (* Multiply-add *)
+      (* Multiply-add *) (* TODO: adapt size *)
       | [arg1; Cop(Cmul _, args2, dbg)] | [Cop(Cmul _, args2, dbg); arg1] ->
           begin match self#select_operation (Cmul Cannot_scan) args2 dbg with
-          | (Iintop_imm(Ilsl, l), [arg3]) ->
+          | (Iintop_imm(Atarget, Ilsl, l), [arg3]) ->
               (Ispecific(Ishiftarith(Ishiftadd, l)), [arg1; arg3])
-          | (Iintop Imul, [arg3; arg4]) ->
+          | (Iintop (Atarget, Imul), [arg3; arg4]) ->
               (Ispecific Imuladd, [arg3; arg4; arg1])
           | _ ->
               super#select_operation op args dbg
@@ -161,23 +161,23 @@ method! select_operation op args dbg =
           super#select_operation op args dbg
       end
   (* Integer subtraction *)
-  | Csub _ ->
+  | Csub _ -> (* TODO: adapt size *)
       begin match args with
       (* Sub immediate *)
       | [arg; Cconst_int n] when self#is_immediate n ->
-          ((if n >= 0 then Iintop_imm(Isub, n) else Iintop_imm(Iadd, -n)),
+          ((if n >= 0 then Iintop_imm(Atarget, Isub, n) else Iintop_imm(Atarget, Iadd, -n)),
            [arg])
       (* Shift-sub *)
       | [arg1; Cop(Clsl _, [arg2; Cconst_int n], _)] when n > 0 && n < 64 ->
           (Ispecific(Ishiftarith(Ishiftsub, n)), [arg1; arg2])
       | [arg1; Cop(Casr _, [arg2; Cconst_int n], _)] when n > 0 && n < 64 ->
           (Ispecific(Ishiftarith(Ishiftsub, -n)), [arg1; arg2])
-      (* Multiply-sub *)
+      (* Multiply-sub *) (* TODO: adapt size *)
       | [arg1; Cop(Cmul _, args2, dbg)] ->
           begin match self#select_operation (Cmul Cannot_scan) args2 dbg with
-          | (Iintop_imm(Ilsl, l), [arg3]) ->
+          | (Iintop_imm(Atarget, Ilsl, l), [arg3]) ->
               (Ispecific(Ishiftarith(Ishiftsub, l)), [arg1; arg3])
-          | (Iintop Imul, [arg3; arg4]) ->
+          | (Iintop (Atarget, Imul), [arg3; arg4]) ->
               (Ispecific Imulsub, [arg3; arg4; arg1])
           | _ ->
               super#select_operation op args dbg
@@ -196,15 +196,15 @@ method! select_operation op args dbg =
       end
   (* Integer multiplication *)
   (* ARM does not support immediate operands for multiplication *)
-  | Cmul _ ->
-      (Iintop Imul, args)
+  | Cmul _ -> (* TODO: adapt size *)
+      (Iintop (Atarget, Imul), args)
   | Cmulh _ ->
-      (Iintop Imulh, args)
+      (Iintop (Atarget, Imulh), args)
   (* Bitwise logical operations have a different range of immediate
-     operands than the other instructions *)
-  | Cand _ -> self#select_logical Iand args
-  | Cor _ -> self#select_logical Ior args
-  | Cxor _ -> self#select_logical Ixor args
+     operands than the other instructions *) (* TODO: adapt size *)
+  | Cand _ -> self#select_logical Atarget Iand args
+  | Cor _ -> self#select_logical Atarget Ior args
+  | Cxor _ -> self#select_logical Atarget Ixor args
   (* Recognize floating-point negate and multiply *)
   | Cnegf ->
       begin match args with
@@ -243,13 +243,13 @@ method! select_operation op args dbg =
   | _ ->
       super#select_operation op args dbg
 
-method select_logical op = function
+method select_logical sz op = function
   | [arg; Cconst_int n] when is_logical_immediate n ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(sz, op, n), [arg])
   | [Cconst_int n; arg] when is_logical_immediate n ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(sz, op, n), [arg])
   | args ->
-      (Iintop op, args)
+      (Iintop (sz, op), args)
 
 end
 

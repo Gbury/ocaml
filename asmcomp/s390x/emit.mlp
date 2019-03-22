@@ -143,6 +143,11 @@ let emit_addimm res arg n =
     `	agfi	{emit_reg res}, {emit_int n}\n`
   end
 
+let emit_addimm32 res arg n =
+  if arg.loc <> res.loc then
+    `	lr	{emit_reg res}, {emit_reg arg}\n`;
+  `	afi	{emit_reg res}, {emit_int n}\n`
+
 (* After a comparison, extract the result as 0 or 1 *)
 (* The locgr instruction is not available in the z10 architecture,
    so this code is currently unused. *)
@@ -244,13 +249,21 @@ let branch_for_comparison = function
   | Cle -> 0b1100 | Cgt -> 0b0010
   | Cge -> 0b1010 | Clt -> 0b0100
 
-let name_for_int_comparison = function
-    Isigned cmp -> ("cgr", branch_for_comparison cmp)
-  | Iunsigned cmp -> ("clgr", branch_for_comparison cmp)
+let name_for_int_comparison sz = function
+    Isigned cmp ->
+      let instr = match sz with Atarget | A64 -> "cgr" | A32 -> "cr" in
+      (instr, branch_for_comparison cmp)
+  | Iunsigned cmp ->
+      let instr = match sz with Atarget | A64 -> "clgr" | A32 -> "clr" in
+      (instr, branch_for_comparison cmp)
 
-let name_for_int_comparison_imm = function
-    Isigned cmp -> ("cgfi", branch_for_comparison cmp)
-  | Iunsigned cmp -> ("clgfi", branch_for_comparison cmp)
+let name_for_int_comparison_imm sz = function
+    Isigned cmp ->
+      let instr = match sz with Atarget | A64 -> "cgfi" | A32 -> "cfi" in
+      (instr, branch_for_comparison cmp)
+  | Iunsigned cmp ->
+      let instr = match sz with Atarget | A64 -> "clgfi" | A32 -> "clfi" in
+      (instr, branch_for_comparison cmp)
 
 (* bit 0 = eq, bit 1 = lt, bit 2 = gt, bit 3 = unordered*)
 let branch_for_float_comparison = function
@@ -271,13 +284,20 @@ let branch_for_float_comparison = function
 
 (* Names for various instructions *)
 
-let name_for_intop = function
-    Iadd  -> "agr"
-  | Isub  -> "sgr"
-  | Imul  -> "msgr"
-  | Iand  -> "ngr"
-  | Ior   -> "ogr"
-  | Ixor  -> "xgr"
+let name_for_intop sz op =
+  match sz, op with
+    (Atarget|A64), Iadd  -> "agr"
+  | (Atarget|A64), Isub  -> "sgr"
+  | (Atarget|A64), Imul  -> "msgr"
+  | (Atarget|A64), Iand  -> "ngr"
+  | (Atarget|A64), Ior   -> "ogr"
+  | (Atarget|A64), Ixor  -> "xgr"
+  | A32, Iadd  -> "ar"
+  | A32, Isub -> "sr"
+  | A32, Imul  -> "msr"
+  | A32, Iand  -> "nr"
+  | A32, Ior   -> "or"
+  | A32, Ixor  -> "xr"
   | _ -> Misc.fatal_error "Emit.Intop"
 
 let name_for_floatop1 = function
@@ -434,7 +454,11 @@ let emit_instr i =
         `	brcl	4, {emit_label lbl_call_gc}\n`;  (* less than *)
         `	la	{emit_reg i.res.(0)}, 8(%r11)\n`
 
-    | Lop(Iintop Imulh) ->
+    | Lop(Iintop (A32, Imulh)) ->
+        `	lr	%r1, {emit_reg i.arg.(0)}\n`;
+        `	mr	%r0, {emit_reg i.arg.(1)}\n`;
+        `	lr	{emit_reg i.res.(0)}, %r0\n`
+    | Lop(Iintop ((Atarget|A64), Imulh)) ->
        (* Hacker's Delight section 8.3:
             mul-high-signed(a, b) = mul-high-unsigned(a, b)
                                     - a  if b < 0
@@ -454,49 +478,74 @@ let emit_instr i =
        `	ngr	%r1, {emit_reg i.arg.(0)}\n`;
        `	sgr	%r0, %r1\n`;
        `	lgr	{emit_reg i.res.(0)}, %r0\n`
-    | Lop(Iintop Imod) ->
+    | Lop(Iintop (A32, Imod)) ->
+        `	lgfi	%r0, 0\n`;
+        `	lr	%r1, {emit_reg i.arg.(0)}\n`;
+        `	dr	%r0, {emit_reg i.arg.(1)}\n`;
+        `	lr	{emit_reg i.res.(0)}, %r0\n`
+    | Lop(Iintop ((Atarget|A64), Imod)) ->
         `	lgr	%r1, {emit_reg i.arg.(0)}\n`;
         `	dsgr	%r0, {emit_reg i.arg.(1)}\n`;
         `	lgr	{emit_reg i.res.(0)}, %r0\n`
-    | Lop(Iintop Idiv) ->
+    | Lop(Iintop (A32, Idiv)) ->
+        `	lgfi	%r0, 0\n`;
+        `	lr	%r1, {emit_reg i.arg.(0)}\n`;
+        `	dr	%r0, {emit_reg i.arg.(1)}\n`;
+        `	lr	{emit_reg i.res.(0)}, %r1\n`
+    | Lop(Iintop ((Atarget|A64), Idiv)) ->
         `	lgr	%r1, {emit_reg i.arg.(0)}\n`;
         `	dsgr	%r0, {emit_reg i.arg.(1)}\n`;
         `	lgr	{emit_reg i.res.(0)}, %r1\n`
-    | Lop(Iintop Ilsl) ->
+    | Lop(Iintop (A32, Ilsl)) ->
+        `	sll	{emit_reg i.arg.(0)}, 0({emit_reg i.arg.(1)})\n`;
+        `	lr	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}\n`
+    | Lop(Iintop ((Atarget|A64), Ilsl)) ->
         `	sllg	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, 0({emit_reg i.arg.(1)})\n`
-    | Lop(Iintop Ilsr) ->
+    | Lop(Iintop (A32, Ilsr)) ->
+        `	srl	{emit_reg i.arg.(0)}, 0({emit_reg i.arg.(1)})\n`;
+        `	lr	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}\n`
+    | Lop(Iintop ((Atarget|A64), Ilsr)) ->
         `	srlg	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, 0({emit_reg i.arg.(1)})\n`
-    | Lop(Iintop Iasr) ->
+    | Lop(Iintop (A32, Iasr)) ->
+        `	sra	{emit_reg i.arg.(0)}, 0({emit_reg i.arg.(1)})\n`;
+        `	lr	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}\n`
+    | Lop(Iintop ((Atarget|A64), Iasr)) ->
         `	srag	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, 0({emit_reg i.arg.(1)})\n`
-    | Lop(Iintop(Icomp cmp)) ->
+    | Lop(Iintop(sz, Icomp cmp)) ->
         let lbl = new_label() in
-        let (comp, mask) = name_for_int_comparison cmp in
+        let (comp, mask) = name_for_int_comparison sz cmp in
         `	{emit_string comp}	{emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
         `	lghi	{emit_reg i.res.(0)}, 1\n`;
         `	brc	{emit_int mask}, {emit_label lbl}\n`;
         `	lghi	{emit_reg i.res.(0)}, 0\n`;
         `{emit_label lbl}:\n`
-    | Lop(Iintop (Icheckbound { label_after_error; })) ->
+    | Lop(Iintop (sz, Icheckbound { label_after_error; })) ->
+        assert (sz = Atarget);
         let lbl = bound_error_label i.dbg ?label:label_after_error in
         `	clgr	{emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
         `	brcl	12, {emit_label lbl}\n`  (* branch if unsigned le *)
-    | Lop(Iintop op) ->
+    | Lop(Iintop (sz, op)) ->
         assert (i.arg.(0).loc = i.res.(0).loc);
-        let instr = name_for_intop op in
+        let instr = name_for_intop sz op in
         `	{emit_string instr}	{emit_reg i.res.(0)}, {emit_reg i.arg.(1)}\n`
-    | Lop(Iintop_imm(Iadd, n)) ->
+    | Lop(Iintop_imm(A32, Iadd, n)) ->
+        emit_addimm32 i.res.(0) i.arg.(0) n
+    | Lop(Iintop_imm((Atarget|A64), Iadd, n)) ->
         emit_addimm i.res.(0) i.arg.(0) n
-    | Lop(Iintop_imm(Isub, n)) ->
+    | Lop(Iintop_imm(A32, Isub, n)) ->
+        emit_addimm32 i.res.(0) i.arg.(0) (-n)
+    | Lop(Iintop_imm((Atarget|A64), Isub, n)) ->
         emit_addimm i.res.(0) i.arg.(0) (-n)
-    | Lop(Iintop_imm(Icomp cmp, n)) ->
+    | Lop(Iintop_imm(sz, Icomp cmp, n)) ->
         let lbl = new_label() in
-        let (comp, mask) = name_for_int_comparison_imm cmp in
+        let (comp, mask) = name_for_int_comparison_imm sz cmp in
         `	{emit_string comp}	{emit_reg i.arg.(0)}, {emit_int n}\n`;
         `	lghi	{emit_reg i.res.(0)}, 1\n`;
         `	brc	{emit_int mask}, {emit_label lbl}\n`;
         `	lghi	{emit_reg i.res.(0)}, 0\n`;
         `{emit_label lbl}:\n`
-    | Lop(Iintop_imm(Icheckbound { label_after_error; }, n)) ->
+    | Lop(Iintop_imm(sz, Icheckbound { label_after_error; }, n)) ->
+       assert (sz = Atarget);
        let lbl = bound_error_label i.dbg ?label:label_after_error in
        if n >= 0 then begin
         `	clgfi	{emit_reg i.arg.(0)}, {emit_int n}\n`;
@@ -504,25 +553,34 @@ let emit_instr i =
        end else begin
         `	brcl	15, {emit_label lbl}\n`  (* branch always *)
        end
-    | Lop(Iintop_imm(Ilsl, n)) ->
+    | Lop(Iintop_imm(A32, Ilsl, n)) ->
+        `	sll	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)},{emit_int n}(%r0)\n`
+    | Lop(Iintop_imm((Atarget|A64), Ilsl, n)) ->
         `	sllg	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)},{emit_int n}(%r0)\n`
-    | Lop(Iintop_imm(Ilsr, n)) ->
+    | Lop(Iintop_imm(A32, Ilsr, n)) ->
+        `	srl	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)},{emit_int n}(%r0)\n`
+    | Lop(Iintop_imm((Atarget|A64), Ilsr, n)) ->
         `	srlg	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)},{emit_int n}(%r0)\n`
-    | Lop(Iintop_imm(Iasr, n)) ->
+    | Lop(Iintop_imm(A32, Iasr, n)) ->
+        `	sra	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)},{emit_int n}(%r0)\n`
+    | Lop(Iintop_imm((Atarget|A64), Iasr, n)) ->
         `	srag	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)},{emit_int n}(%r0)\n`
-    | Lop(Iintop_imm(Iand, n)) ->
+    | Lop(Iintop_imm((Atarget|A64|A32), Iand, n)) ->
         assert (i.arg.(0).loc = i.res.(0).loc);
         `	nilf	{emit_reg i.res.(0)}, {emit_int (n land (1 lsl 32 - 1)(*0xFFFF_FFFF*))}\n`
-    | Lop(Iintop_imm(Ior, n)) ->
+    | Lop(Iintop_imm((Atarget|A64|A32), Ior, n)) ->
         assert (i.arg.(0).loc = i.res.(0).loc);
         `	oilf	{emit_reg i.res.(0)}, {emit_int n}\n`
-    | Lop(Iintop_imm(Ixor, n)) ->
+    | Lop(Iintop_imm((Atarget|A64|A32), Ixor, n)) ->
         assert (i.arg.(0).loc = i.res.(0).loc);
         `	xilf	{emit_reg i.res.(0)}, {emit_int n}\n`
-    | Lop(Iintop_imm(Imul, n)) ->
+    | Lop(Iintop_imm(A32, Imul, n)) ->
+        assert (i.arg.(0).loc = i.res.(0).loc);
+          `	msfi	{emit_reg i.res.(0)}, {emit_int n}\n`
+    | Lop(Iintop_imm((Atarget|A64), Imul, n)) ->
         assert (i.arg.(0).loc = i.res.(0).loc);
           `	msgfi	{emit_reg i.res.(0)}, {emit_int n}\n`
-    | Lop(Iintop_imm((Imulh | Idiv | Imod), _)) ->
+    | Lop(Iintop_imm(_, (Imulh | Idiv | Imod), _)) ->
         assert false
     | Lop(Inegf | Iabsf as op) ->
         let instr = name_for_floatop1 op in
@@ -561,11 +619,11 @@ let emit_instr i =
             `	cgfi	{emit_reg i.arg.(0)}, 0\n`;
             `	brcl	8, {emit_label lbl}\n`
         | Iinttest cmp ->
-            let (comp, mask) = name_for_int_comparison cmp in
+            let (comp, mask) = name_for_int_comparison Atarget cmp in
             `	{emit_string comp}	{emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
             `	brcl	{emit_int mask}, {emit_label lbl}\n`
         | Iinttest_imm(cmp, n) ->
-            let (comp, mask) = name_for_int_comparison_imm cmp in
+            let (comp, mask) = name_for_int_comparison_imm Atarget cmp in
             `	{emit_string comp}	{emit_reg i.arg.(0)}, {emit_int n}\n`;
             `	brcl	{emit_int mask}, {emit_label lbl}\n`
         | Ifloattest cmp ->

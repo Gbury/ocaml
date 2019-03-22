@@ -60,17 +60,17 @@ method select_addressing _chunk exp =
   | (Aadd(e1, e2), d, dbg) ->
       if d = 0
       then (Iindexed2, Ctuple[e1; e2])
-      else (Iindexed d, Cop(Cadd Cannot_be_live_at_gc, [e1; e2], dbg))
+      else (Iindexed d, Cop(Cadd (Atarget, Cannot_be_live_at_gc), [e1; e2], dbg))
 
 method! select_operation op args dbg =
   match (op, args) with
   (* PowerPC does not support immediate operands for multiply high *)
-    (Cmulh _, _) -> (Iintop Imulh, args)
+    (Cmulh _, _) -> (Iintop (Atarget, Imulh), args) (* TODO: adapt size *)
   (* The and, or and xor instructions have a different range of immediate
-     operands than the other instructions *)
-  | (Cand _, _) -> self#select_logical Iand args
-  | (Cor _, _) -> self#select_logical Ior args
-  | (Cxor _, _) -> self#select_logical Ixor args
+     operands than the other instructions *) (* TODO: adapt size *)
+  | (Cand _, _) -> self#select_logical Iand Atarget args
+  | (Cor _, _) -> self#select_logical Ior Atarget args
+  | (Cxor _, _) -> self#select_logical Ixor Atarget args
   (* Recognize mult-add and mult-sub instructions *)
   | (Caddf, [Cop(Cmulf, [arg1; arg2], _); arg3]) ->
       (Ispecific Imultaddf, [arg1; arg2; arg3])
@@ -81,13 +81,13 @@ method! select_operation op args dbg =
   | _ ->
       super#select_operation op args dbg
 
-method select_logical op = function
+method select_logical op sz = function
     [arg; Cconst_int n] when n >= 0 && n <= 0xFFFF ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(sz, op, n), [arg])
   | [Cconst_int n; arg] when n >= 0 && n <= 0xFFFF ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(sz, op, n), [arg])
   | args ->
-      (Iintop op, args)
+      (Iintop (sz, op), args)
 
 end
 

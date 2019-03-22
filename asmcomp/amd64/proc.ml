@@ -314,15 +314,15 @@ let destroyed_at_oper = function
     Iop(Icall_ind _ | Icall_imm _ | Iextcall { alloc = true; }) ->
     all_phys_regs
   | Iop(Iextcall { alloc = false; }) -> destroyed_at_c_call
-  | Iop(Iintop(Idiv | Imod)) | Iop(Iintop_imm((Idiv | Imod), _))
+  | Iop(Iintop(_, (Idiv | Imod))) | Iop(Iintop_imm(_, (Idiv | Imod), _))
         -> [| rax; rdx |]
   | Iop(Istore(Single, _, _)) -> [| rxmm15 |]
   | Iop(Ialloc _) -> destroyed_at_alloc
-  | Iop(Iintop(Imulh | Icomp _) | Iintop_imm((Icomp _), _))
+  | Iop(Iintop(_, (Imulh | Icomp _)) | Iintop_imm(_, (Icomp _), _))
         -> [| rax |]
-  | Iop (Iintop (Icheckbound _)) when Config.spacetime ->
+  | Iop (Iintop (_, Icheckbound _)) when Config.spacetime ->
       [| loc_spacetime_node_hole |]
-  | Iop (Iintop_imm(Icheckbound _, _)) when Config.spacetime ->
+  | Iop (Iintop_imm(_, Icheckbound _, _)) when Config.spacetime ->
       [| loc_spacetime_node_hole |]
   | Iswitch(_, _) -> [| rax; rdx |]
   | _ ->
@@ -350,12 +350,12 @@ let max_register_pressure = function
         if fp then [| 7; 10 |]  else [| 8; 10 |]
         else
         if fp then [| 3; 0 |] else  [| 4; 0 |]
-  | Iintop(Idiv | Imod) | Iintop_imm((Idiv | Imod), _) ->
+  | Iintop(_, (Idiv | Imod)) | Iintop_imm(_, (Idiv | Imod), _) ->
     if fp then [| 10; 16 |] else [| 11; 16 |]
   | Ialloc _ ->
     if fp then [| 11 - num_destroyed_by_plt_stub; 16 |]
     else [| 12 - num_destroyed_by_plt_stub; 16 |]
-  | Iintop(Icomp _) | Iintop_imm((Icomp _), _) ->
+  | Iintop(_, Icomp _) | Iintop_imm(_, (Icomp _), _) ->
     if fp then [| 11; 16 |] else [| 12; 16 |]
   | Istore(Single, _, _) ->
     if fp then [| 12; 15 |] else [| 13; 15 |]
@@ -367,7 +367,7 @@ let max_register_pressure = function
 let op_is_pure = function
   | Icall_ind _ | Icall_imm _ | Itailcall_ind _ | Itailcall_imm _
   | Iextcall _ | Istackoffset _ | Istore _ | Ialloc _
-  | Iintop(Icheckbound _) | Iintop_imm(Icheckbound _, _) -> false
+  | Iintop(_, Icheckbound _) | Iintop_imm(_, Icheckbound _, _) -> false
   | Ispecific(Ilea _|Isextend32) -> true
   | Ispecific _ -> false
   | _ -> true

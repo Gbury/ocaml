@@ -213,6 +213,16 @@ let arg64 i n = reg64 i.arg.(n)
 let res16 i n = emit_subreg reg_low_16_name WORD i.res.(n)
 let res32 i n = emit_subreg reg_low_32_name DWORD i.res.(n)
 
+let arg_sz sz i n =
+  match sz with
+  | A32 -> arg32 i n
+  | A64 | Atarget -> arg i n
+
+let res_sz sz i n =
+  match sz with
+  | A32 -> res32 i n
+  | A64 | Atarget -> res i n
+
 (* Output an addressing mode *)
 
 let addressing addr typ i n =
@@ -704,15 +714,16 @@ let emit_instr fallthrough i =
         def_label label;
         I.lea (mem64 NONE 8 R15) (res i 0)
       end
-  | Lop(Iintop(Icomp cmp)) ->
-      I.cmp (arg i 1) (arg i 0);
+  | Lop(Iintop(sz, Icomp cmp)) ->
+      I.cmp (arg_sz sz i 1) (arg_sz sz i 0);
       I.set (cond cmp) al;
-      I.movzx al (res i 0)
-  | Lop(Iintop_imm(Icomp cmp, n)) ->
-      I.cmp (int n) (arg i 0);
+      I.movzx al (res_sz sz i 0)
+  | Lop(Iintop_imm(sz, Icomp cmp, n)) ->
+      I.cmp (int n) (arg_sz sz i 0);
       I.set (cond cmp) al;
-      I.movzx al (res i 0)
-  | Lop(Iintop (Icheckbound { label_after_error; spacetime_index; } )) ->
+      I.movzx al (res_sz sz i 0)
+  | Lop(Iintop (sz, Icheckbound { label_after_error; spacetime_index; } )) ->
+      assert (sz = Atarget);
       let spacetime =
         if not Config.spacetime then None
         else Some (arg i 2, spacetime_index)
@@ -720,7 +731,8 @@ let emit_instr fallthrough i =
       let lbl = bound_error_label ?label:label_after_error i.dbg ~spacetime in
       I.cmp (arg i 1) (arg i 0);
       I.jbe (label lbl)
-  | Lop(Iintop_imm(Icheckbound { label_after_error; spacetime_index; }, n)) ->
+  | Lop(Iintop_imm(sz, Icheckbound { label_after_error; spacetime_index; }, n)) ->
+      assert (sz = Atarget);
       let spacetime =
         if not Config.spacetime then None
         else Some (arg i 1, spacetime_index)
@@ -728,26 +740,35 @@ let emit_instr fallthrough i =
       let lbl = bound_error_label ?label:label_after_error i.dbg ~spacetime in
       I.cmp (int n) (arg i 0);
       I.jbe (label lbl)
-  | Lop(Iintop(Idiv | Imod)) ->
+  | Lop(Iintop((A64|Atarget), (Idiv | Imod))) ->
       I.cqo ();
       I.idiv (arg i 1)
-  | Lop(Iintop(Ilsl | Ilsr | Iasr as op)) ->
+  | Lop(Iintop(A32, (Idiv | Imod))) ->
+      I.cdq ();
+      I.idiv (arg32 i 1)
+  | Lop(Iintop(sz, (Ilsl | Ilsr | Iasr as op))) ->
       (* We have i.arg.(0) = i.res.(0) and i.arg.(1) = %rcx *)
-      instr_for_intop op cl (res i 0)
-  | Lop(Iintop Imulh) ->
-      I.imul (arg i 1) None
-  | Lop(Iintop op) ->
+      instr_for_intop op cl (res_sz sz i 0)
+  | Lop(Iintop (sz, Imulh)) ->
+      I.imul (arg_sz sz i 1) None
+  | Lop(Iintop (sz, op)) ->
       (* We have i.arg.(0) = i.res.(0) *)
-      instr_for_intop op (arg i 1) (res i 0)
-  | Lop(Iintop_imm(Iadd, n)) when i.arg.(0).loc <> i.res.(0).loc ->
+      instr_for_intop op (arg_sz sz i 1) (res_sz sz i 0)
+  | Lop(Iintop_imm((A64|Atarget), Iadd, n)) when i.arg.(0).loc <> i.res.(0).loc ->
       I.lea (mem64 NONE n (arg64 i 0)) (res i 0)
-  | Lop(Iintop_imm(Iadd, 1) | Iintop_imm(Isub, -1)) ->
-      I.inc (res i 0)
-  | Lop(Iintop_imm(Iadd, -1) | Iintop_imm(Isub, 1)) ->
-      I.dec (res i 0)
-  | Lop(Iintop_imm(op, n)) ->
+  | Lop(Iintop_imm(A32, Iadd, _n)) when i.arg.(0).loc <> i.res.(0).loc ->
+      assert false
+      (*
+      I.mov (arg32 i 0) (res32 i 0);
+      I.add (int n) (res32 i 0)
+      *)
+  | Lop(Iintop_imm(sz, Iadd, 1) | Iintop_imm(sz, Isub, -1)) ->
+      I.inc (res_sz sz i 0)
+  | Lop(Iintop_imm(sz, Iadd, -1) | Iintop_imm(sz, Isub, 1)) ->
+      I.dec (res_sz sz i 0)
+  | Lop(Iintop_imm(sz, op, n)) ->
       (* We have i.arg.(0) = i.res.(0) *)
-      instr_for_intop op (int n) (res i 0)
+      instr_for_intop op (int n) (res_sz sz i 0)
   | Lop(Inegf) ->
       I.xorpd (mem64_rip OWORD (emit_symbol "caml_negf_mask")) (res i 0)
   | Lop(Iabsf) ->

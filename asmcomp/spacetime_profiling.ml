@@ -77,7 +77,7 @@ let code_for_function_prologue ~function_name ~node_hole =
           let offset_in_bytes = index * Arch.size_addr in
           Csequence (
             Cop (Cstore (Word Cannot_scan, Lambda.Assignment),
-              [Cop (Cadd Cannot_scan,
+              [Cop (Cadd (Atarget, Cannot_scan),
                  [Cvar new_node; Cconst_int offset_in_bytes], dbg);
                Cvar new_node_encoded], dbg),
             init_code))
@@ -150,7 +150,7 @@ let code_for_blockheader ~value's_header ~node ~dbg =
      point with the current backtrace.  If so, use that value; if not,
      allocate a new one. *)
   Clet (VP.create address_of_profinfo,
-    Cop (Cadd Cannot_scan, [
+    Cop (Cadd (Atarget, Cannot_scan), [
       Cvar node;
       Cconst_int offset_into_node;
     ], dbg),
@@ -164,14 +164,14 @@ let code_for_blockheader ~value's_header ~node ~dbg =
           generate_new_profinfo),
         Clet (VP.create existing_count,
           Cop (Cload (Word Can_scan, Asttypes.Mutable), [
-            Cop (Cadd Cannot_scan,
+            Cop (Cadd (Atarget, Cannot_scan),
               [Cvar address_of_profinfo; Cconst_int Arch.size_addr], dbg)
           ], dbg),
           Csequence (
             Cop (Cstore (Word Can_scan, Lambda.Assignment),
-              [Cop (Cadd Cannot_scan,
+              [Cop (Cadd (Atarget, Cannot_scan),
                 [Cvar address_of_profinfo; Cconst_int Arch.size_addr], dbg);
-               Cop (Cadd Can_scan, [
+               Cop (Cadd (Atarget, Can_scan), [
                   Cvar existing_count;
                   (* N.B. "*2" since the count is an OCaml integer.
                      The "1 +" is to count the value's header. *)
@@ -227,7 +227,7 @@ let code_for_call ~node ~callee ~is_tail ~label =
   let dbg = Debuginfo.none in
   let open Cmm in
   Clet (VP.create place_within_node,
-    Cop (Cadd Cannot_scan,
+    Cop (Cadd (Atarget, Cannot_scan),
       [node; Cconst_int (index_within_node * Arch.size_addr)], dbg),
     (* The following code returns the address that is to be moved into the
        (hard) node hole pointer register immediately before the call.
@@ -238,7 +238,7 @@ let code_for_call ~node ~callee ~is_tail ~label =
         let count_addr = V.create_local "call_count_addr" in
         let count = V.create_local "call_count" in
         Clet (VP.create count_addr,
-          Cop (Cadd Cannot_scan,
+          Cop (Cadd (Atarget, Cannot_scan),
             [Cvar place_within_node; Cconst_int Arch.size_addr], dbg),
           Clet (VP.create count,
             Cop (Cload (Word Can_scan, Asttypes.Mutable), [Cvar count_addr],
@@ -248,7 +248,7 @@ let code_for_call ~node ~callee ~is_tail ~label =
                 (* Adding 2 really means adding 1; the count is encoded
                    as an OCaml integer. *)
                 [Cvar count_addr;
-                 Cop (Cadd Can_scan, [Cvar count; Cconst_int 2], dbg)],
+                 Cop (Cadd (Atarget, Can_scan), [Cvar count; Cconst_int 2], dbg)],
                 dbg),
               Cvar place_within_node)))
       end else begin

@@ -65,22 +65,22 @@ inherit Reloadgen.reload_generic as super
 
 method! reload_operation op arg res =
   match op with
-  | Iintop(Iadd|Isub|Iand|Ior|Ixor|Icomp _|Icheckbound _) ->
+  | Iintop(_, (Iadd|Isub|Iand|Ior|Ixor|Icomp _|Icheckbound _)) ->
       (* One of the two arguments can reside in the stack, but not both *)
       if stackp arg.(0) && stackp arg.(1)
       then ([|arg.(0); self#makereg arg.(1)|], res)
       else (arg, res)
-  | Iintop_imm(Iadd, _) when arg.(0).loc <> res.(0).loc ->
+  | Iintop_imm(_, Iadd, _) when arg.(0).loc <> res.(0).loc ->
       (* This add will be turned into a lea; args and results must be
          in registers *)
       super#reload_operation op arg res
-  | Iintop(Imulh | Idiv | Imod | Ilsl | Ilsr | Iasr)
-  | Iintop_imm(_, _) ->
+  | Iintop(_, (Imulh | Idiv | Imod | Ilsl | Ilsr | Iasr))
+  | Iintop_imm(_, _, _) ->
       (* The argument(s) and results can be either in register or on stack *)
       (* Note: Imulh, Idiv, Imod: arg(0) and res(0) already forced in regs
                Ilsl, Ilsr, Iasr: arg(1) already forced in regs *)
       (arg, res)
-  | Iintop(Imul) | Iaddf | Isubf | Imulf | Idivf ->
+  | Iintop(_, Imul) | Iaddf | Isubf | Imulf | Idivf ->
       (* First argument (= result) must be in register, second arg
          can reside in the stack *)
       if stackp arg.(0)

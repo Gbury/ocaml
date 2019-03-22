@@ -75,30 +75,35 @@ let regsetaddr ppf s =
     s
 
 let intcomp = function
-  | Isigned c -> Printf.sprintf " %ss " (Printcmm.integer_comparison c)
-  | Iunsigned c -> Printf.sprintf " %su " (Printcmm.integer_comparison c)
+  | Isigned c -> Printf.sprintf "%ss" (Printcmm.integer_comparison c)
+  | Iunsigned c -> Printf.sprintf "%su" (Printcmm.integer_comparison c)
 
 let floatcomp c =
     Printf.sprintf " %sf " (Printcmm.float_comparison c)
 
+let size_arith = function
+  | A32 -> "32"
+  | A64 -> "64"
+  | Atarget -> ""
+
 let intop = function
-  | Iadd -> " + "
-  | Isub -> " - "
-  | Imul -> " * "
-  | Imulh -> " *h "
-  | Idiv -> " div "
-  | Imod -> " mod "
-  | Iand -> " & "
-  | Ior ->  " | "
-  | Ixor -> " ^ "
-  | Ilsl -> " << "
-  | Ilsr -> " >>u "
-  | Iasr -> " >>s "
+  | Iadd -> "+"
+  | Isub -> "-"
+  | Imul -> "*"
+  | Imulh -> "*h"
+  | Idiv -> "div"
+  | Imod -> "mod"
+  | Iand -> "&"
+  | Ior ->  "|"
+  | Ixor -> "^"
+  | Ilsl -> "<<"
+  | Ilsr -> ">>u"
+  | Iasr -> ">>s"
   | Icomp cmp -> intcomp cmp
   | Icheckbound { label_after_error; spacetime_index; } ->
-    if not Config.spacetime then " check > "
+    if not Config.spacetime then "check >"
     else
-      Printf.sprintf "check[lbl=%s,index=%d] > "
+      Printf.sprintf "check[lbl=%s,index=%d] >"
         begin
           match label_after_error with
           | None -> ""
@@ -110,8 +115,8 @@ let test tst ppf arg =
   match tst with
   | Itruetest -> reg ppf arg.(0)
   | Ifalsetest -> fprintf ppf "not %a" reg arg.(0)
-  | Iinttest cmp -> fprintf ppf "%a%s%a" reg arg.(0) (intcomp cmp) reg arg.(1)
-  | Iinttest_imm(cmp, n) -> fprintf ppf "%a%s%i" reg arg.(0) (intcomp cmp) n
+  | Iinttest cmp -> fprintf ppf "%a %s %a" reg arg.(0) (intcomp cmp) reg arg.(1)
+  | Iinttest_imm(cmp, n) -> fprintf ppf "%a %s %i" reg arg.(0) (intcomp cmp) n
   | Ifloattest cmp ->
       fprintf ppf "%a%s%a"
        reg arg.(0) (floatcomp cmp) reg arg.(1)
@@ -153,8 +158,10 @@ let operation op arg ppf res =
     if Config.spacetime then begin
       fprintf ppf "(spacetime node = %a)" reg arg.(0)
     end
-  | Iintop(op) -> fprintf ppf "%a%s%a" reg arg.(0) (intop op) reg arg.(1)
-  | Iintop_imm(op, n) -> fprintf ppf "%a%s%i" reg arg.(0) (intop op) n
+  | Iintop(sz, op) ->
+      fprintf ppf "%a %s%s %a" reg arg.(0) (intop op) (size_arith sz) reg arg.(1)
+  | Iintop_imm(sz, op, n) ->
+      fprintf ppf "%a %s%s %i" reg arg.(0) (intop op) (size_arith sz) n
   | Inegf -> fprintf ppf "-f %a" reg arg.(0)
   | Iabsf -> fprintf ppf "absf %a" reg arg.(0)
   | Iaddf -> fprintf ppf "%a +f %a" reg arg.(0) reg arg.(1)

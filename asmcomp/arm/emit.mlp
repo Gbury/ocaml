@@ -632,17 +632,21 @@ let emit_instr i =
           `{emit_label lbl_frame}:	add	{emit_reg i.res.(0)}, alloc_ptr, #4\n`;
           1 + ninstr
         end
-    | Lop(Iintop(Icomp cmp)) ->
+    | Lop(Iintop(A64, _)) | Lop(Iintop_imm(A64, _, _)) ->
+        Misc.fatal_error "Emit_arm: 64-bit arithmetic on 32-bit platform"
+    | Lop(Iintop((A32|Atarget), Icomp cmp)) ->
         `	cmp	{emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
         1 + emit_set_condition cmp i.res.(0)
-    | Lop(Iintop_imm(Icomp cmp, n)) ->
+    | Lop(Iintop_imm((A32|Atarget), Icomp cmp, n)) ->
         `	cmp	{emit_reg i.arg.(0)}, #{emit_int n}\n`;
         1 + emit_set_condition cmp i.res.(0)
-    | Lop(Iintop (Icheckbound { label_after_error; } )) ->
+    | Lop(Iintop (sz, Icheckbound { label_after_error; } )) ->
+        assert (sz = Atarget);
         let lbl = bound_error_label ?label:label_after_error i.dbg in
         `	cmp	{emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
         `	bls	{emit_label lbl}\n`; 2
-    | Lop(Iintop_imm(Icheckbound { label_after_error; }, n)) ->
+    | Lop(Iintop_imm(sz, Icheckbound { label_after_error; }, n)) ->
+        assert (sz = Atarget);
         let lbl = bound_error_label ?label:label_after_error i.dbg in
         `	cmp	{emit_reg i.arg.(0)}, #{emit_int n}\n`;
         `	bls	{emit_label lbl}\n`; 2
@@ -651,14 +655,14 @@ let emit_instr i =
         let op = name_for_shift_operation shiftop in
         `	cmp	{emit_reg i.arg.(1)}, {emit_reg i.arg.(0)}, {emit_string op} #{emit_int n}\n`;
         `	bcs	{emit_label lbl}\n`; 2
-    | Lop(Iintop Imulh) when !arch < ARMv6 ->
+    | Lop(Iintop ((A32|Atarget), Imulh)) when !arch < ARMv6 ->
         `	smull	r12, {emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`; 1
     | Lop(Ispecific Imulhadd) ->
         `	smmla	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}, {emit_reg i.arg.(2)}\n`; 1
-    | Lop(Iintop op) ->
+    | Lop(Iintop ((A32|Atarget), op)) ->
         let instr = name_for_int_operation op in
         `	{emit_string instr}	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`; 1
-    | Lop(Iintop_imm(op, n)) ->
+    | Lop(Iintop_imm((A32|Atarget), op, n)) ->
         let instr = name_for_int_operation op in
         `	{emit_string instr}	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, #{emit_int n}\n`; 1
     | Lop(Iabsf | Inegf as op) when !fpu = Soft ->

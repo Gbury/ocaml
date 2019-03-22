@@ -83,10 +83,10 @@ let rdx = phys_reg 4
 let pseudoregs_for_operation op arg res =
   match op with
   (* Two-address binary operations: arg.(0) and res.(0) must be the same *)
-    Iintop(Iadd|Isub|Imul|Iand|Ior|Ixor) | Iaddf|Isubf|Imulf|Idivf ->
+    Iintop(_, (Iadd|Isub|Imul|Iand|Ior|Ixor)) | Iaddf|Isubf|Imulf|Idivf ->
       ([|res.(0); arg.(1)|], res)
   (* One-address unary operations: arg.(0) and res.(0) must be the same *)
-  | Iintop_imm((Iadd|Isub|Imul|Iand|Ior|Ixor|Ilsl|Ilsr|Iasr), _)
+  | Iintop_imm(_, (Iadd|Isub|Imul|Iand|Ior|Ixor|Ilsl|Ilsr|Iasr), _)
   | Iabsf | Inegf
   | Ispecific(Ibswap (32|64)) ->
       (res, res)
@@ -96,21 +96,21 @@ let pseudoregs_for_operation op arg res =
       ([| rax |], [| rax |])
   (* For imulq, first arg must be in rax, rax is clobbered, and result is in
      rdx. *)
-  | Iintop(Imulh) ->
+  | Iintop(_, Imulh) ->
       ([| rax; arg.(1) |], [| rdx |])
   | Ispecific(Ifloatarithmem(_,_)) ->
       let arg' = Array.copy arg in
       arg'.(0) <- res.(0);
       (arg', res)
   (* For shifts with variable shift count, second arg must be in rcx *)
-  | Iintop(Ilsl|Ilsr|Iasr) ->
+  | Iintop(_, (Ilsl|Ilsr|Iasr)) ->
       ([|res.(0); rcx|], res)
   (* For div and mod, first arg must be in rax, rdx is clobbered,
      and result is in rax or rdx respectively.
      Keep it simple, just force second argument in rcx. *)
-  | Iintop(Idiv) ->
+  | Iintop(_, Idiv) ->
       ([| rax; rcx |], [| rax |])
-  | Iintop(Imod) ->
+  | Iintop(_, Imod) ->
       ([| rax; rcx |], [| rdx |])
   (* Other instructions are regular *)
   | _ -> raise Use_default
@@ -232,7 +232,7 @@ method! select_operation op args dbg =
       (Ispecific (Ibswap 64), args)
   (* AMD64 does not support immediate operands for multiply high signed *)
   | Cmulh _ ->
-      (Iintop Imulh, args)
+      (Iintop (Atarget, Imulh), args)
   | Casr _ ->
       begin match args with
         (* Recognize sign extension *)

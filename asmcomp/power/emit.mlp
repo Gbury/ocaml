@@ -25,6 +25,13 @@ open Mach
 open Linearize
 open Emitaux
 
+(* Is the arithmetic size the native size of the processor. *)
+
+let is_native_size = function
+  | A32 -> not ppc64
+  | A64 -> ppc64
+  | Atarget -> true
+
 (* Reserved space at bottom of stack *)
 
 let reserved_stack_space =
@@ -105,15 +112,23 @@ let toc_space =
 
 (* Names of instructions that differ in 32 and 64-bit modes *)
 
-let lg = if ppc64 then "ld" else "lwz"
-let stg = if ppc64 then "std" else "stw"
-let lwa = if ppc64 then "lwa" else "lwz"
-let cmpg = if ppc64 then "cmpd" else "cmpw"
-let cmplg = if ppc64 then "cmpld" else "cmplw"
-let datag = if ppc64 then ".quad" else ".long"
-let mullg = if ppc64 then "mulld" else "mullw"
-let divg = if ppc64 then "divd" else "divw"
-let tglle = if ppc64 then "tdlle" else "twlle"
+let lg_sz sz = if ppc64 && sz <> A32 then "ld" else "lwz"
+let stg_sz sz = if ppc64 && sz <> A32 then "std" else "stw"
+let lwa_sz sz = if ppc64 && sz <> A32 then "lwa" else "lwz"
+let cmpg_sz sz = if ppc64 && sz <> A32 then "cmpd" else "cmpw"
+let cmplg_sz sz = if ppc64 && sz <> A32 then "cmpld" else "cmplw"
+let datag_sz sz = if ppc64 && sz <> A32 then ".quad" else ".long"
+let mullg_sz sz = if ppc64 && sz <> A32 then "mulld" else "mullw"
+let divg_sz sz = if ppc64 && sz <> A32 then "divd" else "divw"
+let tglle_sz sz = if ppc64 && sz <> A32 then "tdlle" else "twlle"
+
+let lg = lg_sz Atarget
+let stg = stg_sz Atarget
+let lwa = lwa_sz Atarget
+let cmpg = cmpg_sz Atarget
+let cmplg = cmplg_sz Atarget
+let datag = datag_sz Atarget
+let tglle = tglle_sz Atarget
 
 (* Output a processor register *)
 
@@ -216,6 +231,11 @@ let emit_upper emit_fun arg =
 
 let emit_lower emit_fun arg =
   emit_fun arg; emit_string "@l"
+
+(* Output an operation to clear the high 32-bits of a register (on 64 bit processors) *)
+
+let emit_clear_high32 arg =
+  `	clrldi	{emit_reg arg}, {emit_reg arg}, 32\n`
 
 (* Output a load or store operation *)
 
@@ -345,28 +365,28 @@ let name_for_int_comparison = function
 
 (* Names for various instructions *)
 
-let name_for_intop = function
+let name_for_intop sz = function
     Iadd  -> "add"
-  | Imul  -> if ppc64 then "mulld" else "mullw"
-  | Imulh -> if ppc64 then "mulhd" else "mulhw"
-  | Idiv  -> if ppc64 then "divd" else "divw"
+  | Imul  -> if ppc64 && sz <> A32 then "mulld" else "mullw"
+  | Imulh -> if ppc64 && sz <> A32 then "mulhd" else "mulhw"
+  | Idiv  -> if ppc64 && sz <> A32 then "divd" else "divw"
   | Iand  -> "and"
   | Ior   -> "or"
   | Ixor  -> "xor"
-  | Ilsl  -> if ppc64 then "sld" else "slw"
-  | Ilsr  -> if ppc64 then "srd" else "srw"
-  | Iasr  -> if ppc64 then "srad" else "sraw"
+  | Ilsl  -> if ppc64 && sz <> A32 then "sld" else "slw"
+  | Ilsr  -> if ppc64 && sz <> A32 then "srd" else "srw"
+  | Iasr  -> if ppc64 && sz <> A32 then "srad" else "sraw"
   | _ -> Misc.fatal_error "Emit.Intop"
 
-let name_for_intop_imm = function
+let name_for_intop_imm sz = function
     Iadd -> "addi"
   | Imul -> "mulli"
   | Iand -> "andi."
   | Ior  -> "ori"
   | Ixor -> "xori"
-  | Ilsl -> if ppc64 then "sldi" else "slwi"
-  | Ilsr -> if ppc64 then "srdi" else "srwi"
-  | Iasr -> if ppc64 then "sradi" else "srawi"
+  | Ilsl -> if ppc64 && sz <> A32 then "sldi" else "slwi"
+  | Ilsr -> if ppc64 && sz <> A32 then "srdi" else "srwi"
+  | Iasr -> if ppc64 && sz <> A32 then "sradi" else "srawi"
   | _ -> Misc.fatal_error "Emit.Intop_imm"
 
 let name_for_floatop1 = function
@@ -451,6 +471,8 @@ module BR = Branch_relaxation.Make (struct
     | Iindexed ofs -> if is_immediate ofs then 1 else 3
     | Iindexed2 -> 1
 
+  let non_native_penalty sz = if is_native_size sz then 0 else 1
+
   let instr_size = function
     | Lend -> 0
     | Lprologue -> prologue_size ()
@@ -482,11 +504,11 @@ module BR = Branch_relaxation.Make (struct
     | Lop(Istore(_chunk, addr, _)) -> load_store_size addr
     | Lop(Ialloc _) -> 4
     | Lop(Ispecific(Ialloc_far _)) -> 5
-    | Lop(Iintop Imod) -> 3
-    | Lop(Iintop(Icomp _)) -> 4
-    | Lop(Iintop _) -> 1
-    | Lop(Iintop_imm(Icomp _, _)) -> 4
-    | Lop(Iintop_imm _) -> 1
+    | Lop(Iintop (sz, Imod)) -> 3 + non_native_penalty sz
+    | Lop(Iintop (_, Icomp _)) -> 4
+    | Lop(Iintop (sz, _)) -> 1 + non_native_penalty sz
+    | Lop(Iintop_imm(_, Icomp _, _)) -> 4
+    | Lop(Iintop_imm (sz, _, _)) -> 1 + non_native_penalty sz
     | Lop(Inegf | Iabsf | Iaddf | Isubf | Imulf | Idivf) -> 1
     | Lop(Ifloatofint) -> 9
     | Lop(Iintoffloat) -> 4
@@ -796,46 +818,54 @@ let emit_instr i =
         (* Exactly 4 instructions after the beginning of the alloc sequence *)
         record_frame i.live false Debuginfo.none;
         `{emit_label lbl}:	addi	{emit_reg i.res.(0)}, 31, {emit_int size_addr}\n`
-    | Lop(Iintop Isub) ->               (* subfc has swapped arguments *)
-        `	subfc	{emit_reg i.res.(0)}, {emit_reg i.arg.(1)}, {emit_reg i.arg.(0)}\n`
-    | Lop(Iintop Imod) ->
-        `	{emit_string divg}	0, {emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
-        `	{emit_string mullg}	0, 0, {emit_reg i.arg.(1)}\n`;
-        `	subfc	{emit_reg i.res.(0)}, 0, {emit_reg i.arg.(0)}\n`
-    | Lop(Iintop(Icomp cmp)) ->
+    | Lop(Iintop (sz, Isub)) ->               (* subfc has swapped arguments *)
+        `	subfc	{emit_reg i.res.(0)}, {emit_reg i.arg.(1)}, {emit_reg i.arg.(0)}\n`;
+        if not (is_native_size sz) then emit_clear_high32 i.res.(0)
+    | Lop(Iintop (sz, Imod)) ->
+        `	{emit_string (divg_sz sz)}	0, {emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
+        `	{emit_string (mullg_sz sz)}	0, 0, {emit_reg i.arg.(1)}\n`;
+        `	subfc	{emit_reg i.res.(0)}, 0, {emit_reg i.arg.(0)}\n`;
+        if not (is_native_size sz) then emit_clear_high32 i.res.(0)
+    | Lop(Iintop(sz, Icomp cmp)) ->
+        assert (is_native_size sz); (* 64-bit arithmetic on 32-bit arch is not supported *)
         begin match cmp with
           Isigned c ->
-            `	{emit_string cmpg}	{emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
+            `	{emit_string (cmpg_sz sz)}	{emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
             emit_set_comp c i.res.(0)
         | Iunsigned c ->
-            `	{emit_string cmplg}	{emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
+            `	{emit_string (cmplg_sz sz)}	{emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
             emit_set_comp c i.res.(0)
         end
-    | Lop(Iintop (Icheckbound { label_after_error; })) ->
+    | Lop(Iintop (sz, Icheckbound { label_after_error; })) ->
+        assert (is_native_size sz);
         if !Clflags.debug then
           record_frame Reg.Set.empty false i.dbg ?label:label_after_error;
         `	{emit_string tglle}   {emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`
-    | Lop(Iintop op) ->
-        let instr = name_for_intop op in
-        `	{emit_string instr}	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`
-    | Lop(Iintop_imm(Isub, n)) ->
-        `	addi	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, {emit_int(-n)}\n`
-    | Lop(Iintop_imm(Icomp cmp, n)) ->
+    | Lop(Iintop (sz, op)) ->
+        let instr = name_for_intop sz op in
+        `	{emit_string instr}	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
+        if not (is_native_size sz) then emit_clear_high32 i.res.(0)
+    | Lop(Iintop_imm(sz, Isub, n)) ->
+        `	addi	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, {emit_int(-n)}\n`;
+        if not (is_native_size sz) then emit_clear_high32 i.res.(0)
+    | Lop(Iintop_imm(sz, Icomp cmp, n)) ->
         begin match cmp with
           Isigned c ->
-            `	{emit_string cmpg}i	{emit_reg i.arg.(0)}, {emit_int n}\n`;
+            `	{emit_string (cmpg_sz sz)}i	{emit_reg i.arg.(0)}, {emit_int n}\n`;
             emit_set_comp c i.res.(0)
         | Iunsigned c ->
-            `	{emit_string cmplg}i	{emit_reg i.arg.(0)}, {emit_int n}\n`;
+            `	{emit_string (cmplg_sz sz)}i	{emit_reg i.arg.(0)}, {emit_int n}\n`;
             emit_set_comp c i.res.(0)
         end
-    | Lop(Iintop_imm(Icheckbound { label_after_error; }, n)) ->
+    | Lop(Iintop_imm(sz, Icheckbound { label_after_error; }, n)) ->
+        assert (is_native_size sz);
         if !Clflags.debug then
           record_frame Reg.Set.empty false i.dbg ?label:label_after_error;
         `	{emit_string tglle}i   {emit_reg i.arg.(0)}, {emit_int n}\n`
-    | Lop(Iintop_imm(op, n)) ->
-        let instr = name_for_intop_imm op in
-        `	{emit_string instr}	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, {emit_int n}\n`
+    | Lop(Iintop_imm(sz, op, n)) ->
+        let instr = name_for_intop_imm sz op in
+        `	{emit_string instr}	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, {emit_int n}\n`;
+        if not (is_native_size sz) then emit_clear_high32 i.res.(0)
     | Lop(Inegf | Iabsf as op) ->
         let instr = name_for_floatop1 op in
         `	{emit_string instr}	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}\n`

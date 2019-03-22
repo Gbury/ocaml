@@ -147,9 +147,13 @@ rule token = parse
       { token lexbuf }
   | "+a" { ADDA }
   | "+v" { ADDV }
-  | "+f" { ADDF }
   | "+x" { ADDX }
   | "+"  { ADDI }
+  | "+32a" { ADD32A }
+  | "+32v" { ADD32V }
+  | "+32x" { ADD32X }
+  | "+32"  { ADD32I }
+  | "+f" { ADDF }
   | ">>s" { ASR }
   | ":" { COLON }
   | "/f" { DIVF }

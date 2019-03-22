@@ -111,24 +111,24 @@ let tos = phys_reg 100
 let pseudoregs_for_operation op arg res =
   match op with
   (* Two-address binary operations *)
-    Iintop(Iadd|Isub|Imul|Iand|Ior|Ixor) ->
+    Iintop(_, (Iadd|Isub|Imul|Iand|Ior|Ixor)) ->
       ([|res.(0); arg.(1)|], res, false)
   (* Two-address unary operations *)
-  | Iintop_imm((Iadd|Isub|Imul|Iand|Ior|Ixor|Ilsl|Ilsr|Iasr), _) ->
+  | Iintop_imm(_, (Iadd|Isub|Imul|Iand|Ior|Ixor|Ilsl|Ilsr|Iasr), _) ->
       (res, res, false)
   (* For imull, first arg must be in eax, eax is clobbered, and result is in
      edx. *)
-  | Iintop(Imulh) ->
+  | Iintop(_, Imulh) ->
       ([| eax; arg.(1) |], [| edx |], true)
   (* For shifts with variable shift count, second arg must be in ecx *)
-  | Iintop(Ilsl|Ilsr|Iasr) ->
+  | Iintop(_, (Ilsl|Ilsr|Iasr)) ->
       ([|res.(0); ecx|], res, false)
   (* For div and mod, first arg must be in eax, edx is clobbered,
      and result is in eax or edx respectively.
      Keep it simple, just force second argument in ecx. *)
-  | Iintop(Idiv) ->
+  | Iintop(_, Idiv) ->
       ([| eax; ecx |], [| eax |], true)
-  | Iintop(Imod) ->
+  | Iintop(_, Imod) ->
       ([| eax; ecx |], [| edx |], true)
   (* For floating-point operations and floating-point loads,
      the result is always left at the top of the floating-point stack *)
@@ -242,7 +242,7 @@ method! select_operation op args dbg =
       (Ispecific(Ifloatspecial fn), args)
   (* i386 does not support immediate operands for multiply high signed *)
   | Cmulh _ ->
-      (Iintop Imulh, args)
+      (Iintop (Atarget, Imulh), args)
   (* Default *)
   | _ -> super#select_operation op args dbg
 

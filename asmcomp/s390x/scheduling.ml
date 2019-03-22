@@ -37,8 +37,8 @@ method oper_latency = function
     Ireload -> 4
   | Iload(_, _) -> 4
   | Iconst_float _ -> 4 (* turned into a load *)
-  | Iintop(Imul) -> 10
-  | Iintop_imm(Imul, _) -> 10
+  | Iintop(_, Imul) -> 10
+  | Iintop_imm(_, Imul, _) -> 10
   | Iaddf | Isubf | Imulf -> 8
   | Idivf -> 40
   | Ispecific(Imultaddf | Imultsubf) -> 8
@@ -50,10 +50,10 @@ method! reload_retaddr_latency = 4
 
 method oper_issue_cycles = function
   | Ialloc _ -> 4
-  | Iintop(Imulh) -> 15
-  | Iintop(Idiv|Imod) -> 20
-  | Iintop(Icomp _) -> 4
-  | Iintop_imm(Icomp _, _) -> 4
+  | Iintop(_, Imulh) -> 15
+  | Iintop(_, (Idiv|Imod)) -> 20
+  | Iintop(_, Icomp _) -> 4
+  | Iintop_imm(_, Icomp _, _) -> 4
   | _ -> 1
 
 method! reload_retaddr_issue_cycles = 1

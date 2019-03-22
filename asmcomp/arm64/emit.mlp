@@ -67,6 +67,10 @@ let emit_wreg = function
     {loc = Reg r} -> emit_string int_reg_name_w.(r)
   | _ -> fatal_error "Emit.emit_wreg"
 
+let emit_sz = function
+  | A32 -> emit_wreg
+  | Atarget | A64 -> emit_reg
+
 (* Layout of the stack frame *)
 
 let stack_offset = ref 0
@@ -342,8 +346,8 @@ let num_call_gc_and_check_bound_points instr =
     | Lend -> totals
     | Lop (Ialloc _) when !fastcode_flag ->
       loop instr.next (call_gc + 1, check_bound)
-    | Lop (Iintop Icheckbound _)
-    | Lop (Iintop_imm (Icheckbound _, _))
+    | Lop (Iintop (_, Icheckbound _))
+    | Lop (Iintop_imm (_, Icheckbound _, _))
     | Lop (Ispecific (Ishiftcheckbound _)) ->
       let check_bound =
         (* When not in debug mode, there is at most one check-bound point. *)
@@ -400,8 +404,8 @@ module BR = Branch_relaxation.Make (struct
 
     let classify_instr = function
       | Lop (Ialloc _)
-      | Lop (Iintop Icheckbound _)
-      | Lop (Iintop_imm (Icheckbound _, _))
+      | Lop (Iintop (_, Icheckbound _))
+      | Lop (Iintop_imm (_, Icheckbound _, _))
       | Lop (Ispecific (Ishiftcheckbound _)) -> Some Bcc
       (* The various "far" variants in [specific_operation] don't need to
          return [Some] here, since their code sequences never contain any
@@ -455,16 +459,16 @@ module BR = Branch_relaxation.Make (struct
       | 16 | 24 | 32 -> 1
       | _ -> 1 + num_instructions_for_intconst (Nativeint.of_int num_bytes)
       end
-    | Lop (Iintop (Icomp _)) -> 2
-    | Lop (Iintop_imm (Icomp _, _)) -> 2
-    | Lop (Iintop (Icheckbound _)) -> 2
+    | Lop (Iintop (_, Icomp _)) -> 2
+    | Lop (Iintop_imm (_, Icomp _, _)) -> 2
+    | Lop (Iintop (_, Icheckbound _)) -> 2
     | Lop (Ispecific (Ifar_intop_checkbound _)) -> 3
-    | Lop (Iintop_imm (Icheckbound _, _)) -> 2
+    | Lop (Iintop_imm (_, Icheckbound _, _)) -> 2
     | Lop (Ispecific (Ifar_intop_imm_checkbound _)) -> 3
     | Lop (Ispecific (Ishiftcheckbound _)) -> 2
     | Lop (Ispecific (Ifar_shiftcheckbound _)) -> 3
-    | Lop (Iintop Imod) -> 2
-    | Lop (Iintop Imulh) -> 1
+    | Lop (Iintop (_, Imod)) -> 2
+    | Lop (Iintop (_, Imulh)) -> 1
     | Lop (Iintop _) -> 1
     | Lop (Iintop_imm _) -> 1
     | Lop (Ifloatofint | Iintoffloat | Iabsf | Inegf | Ispecific Isqrtf) -> 1
@@ -692,13 +696,14 @@ let emit_instr i =
         assembly_code_for_allocation i ~n ~far:false ?label_after_call_gc
     | Lop(Ispecific (Ifar_alloc { bytes = n; label_after_call_gc; })) ->
         assembly_code_for_allocation i ~n ~far:true ?label_after_call_gc
-    | Lop(Iintop(Icomp cmp)) ->
-        `	cmp	{emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
-        `	cset	{emit_reg i.res.(0)}, {emit_string (name_for_comparison cmp)}\n`
-    | Lop(Iintop_imm(Icomp cmp, n)) ->
-        `	cmp	{emit_reg i.arg.(0)}, #{emit_int n}\n`;
-        `	cset	{emit_reg i.res.(0)}, {emit_string (name_for_comparison cmp)}\n`
-    | Lop(Iintop (Icheckbound { label_after_error; })) ->
+    | Lop(Iintop(sz, Icomp cmp)) ->
+        `	cmp	{emit_sz sz i.arg.(0)}, {emit_sz sz i.arg.(1)}\n`;
+        `	cset	{emit_sz sz i.res.(0)}, {emit_string (name_for_comparison cmp)}\n`
+    | Lop(Iintop_imm(sz, Icomp cmp, n)) ->
+        `	cmp	{emit_sz sz i.arg.(0)}, #{emit_int n}\n`;
+        `	cset	{emit_sz sz i.res.(0)}, {emit_string (name_for_comparison cmp)}\n`
+    | Lop(Iintop (sz, Icheckbound { label_after_error; })) ->
+        assert (sz = Atarget);
         let lbl = bound_error_label i.dbg ?label:label_after_error in
         `	cmp	{emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
         `	b.ls	{emit_label lbl}\n`
@@ -709,7 +714,8 @@ let emit_instr i =
         `	b.hi	{emit_label lbl2}\n`;
         `	b	{emit_label lbl}\n`;
         `{emit_label lbl2}:\n`;
-    | Lop(Iintop_imm(Icheckbound { label_after_error; }, n)) ->
+    | Lop(Iintop_imm(sz, Icheckbound { label_after_error; }, n)) ->
+        assert (sz = Atarget);
         let lbl = bound_error_label i.dbg ?label:label_after_error in
         `	cmp	{emit_reg i.arg.(0)}, #{emit_int n}\n`;
         `	b.ls	{emit_label lbl}\n`
@@ -732,17 +738,17 @@ let emit_instr i =
         `	b.lo	{emit_label lbl2}\n`;
         `	b	{emit_label lbl}\n`;
         `{emit_label lbl2}:\n`;
-    | Lop(Iintop Imod) ->
-        `	sdiv	{emit_reg reg_tmp1}, {emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`;
-        `	msub	{emit_reg i.res.(0)}, {emit_reg reg_tmp1}, {emit_reg i.arg.(1)}, {emit_reg i.arg.(0)}\n`
-    | Lop(Iintop Imulh) ->
-        `	smulh	{emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`
-    | Lop(Iintop op) ->
+    | Lop(Iintop (sz, Imod)) ->
+        `	sdiv	{emit_sz sz reg_tmp1}, {emit_sz sz i.arg.(0)}, {emit_sz sz i.arg.(1)}\n`;
+        `	msub	{emit_sz sz i.res.(0)}, {emit_sz sz reg_tmp1}, {emit_sz sz i.arg.(1)}, {emit_sz sz i.arg.(0)}\n`
+    | Lop(Iintop (sz, Imulh)) ->
+        `	smulh	{emit_sz sz i.res.(0)}, {emit_sz sz i.arg.(0)}, {emit_sz sz i.arg.(1)}\n`
+    | Lop(Iintop (sz, op)) ->
         let instr = name_for_int_operation op in
-        `	{emit_string instr}     {emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, {emit_reg i.arg.(1)}\n`
-    | Lop(Iintop_imm(op, n)) ->
+        `	{emit_string instr}     {emit_sz sz i.res.(0)}, {emit_sz sz i.arg.(0)}, {emit_sz sz i.arg.(1)}\n`
+    | Lop(Iintop_imm(sz, op, n)) ->
         let instr = name_for_int_operation op in
-        `	{emit_string instr}     {emit_reg i.res.(0)}, {emit_reg i.arg.(0)}, #{emit_int n}\n`
+        `	{emit_string instr}     {emit_sz sz i.res.(0)}, {emit_sz sz i.arg.(0)}, #{emit_int n}\n`
     | Lop(Ifloatofint | Iintoffloat | Iabsf | Inegf | Ispecific Isqrtf as op) ->
         let instr = (match op with
                      | Ifloatofint      -> "scvtf"

@@ -102,11 +102,17 @@ let phantom_defining_expr_opt ppf defining_expr =
   | None -> Format.pp_print_string ppf "()"
   | Some defining_expr -> phantom_defining_expr ppf defining_expr
 
-let operation_arith base = function
-  | Can_scan -> base ^ "x"
-  | Must_scan -> base ^ "v"
-  | Cannot_scan -> base
-  | Cannot_be_live_at_gc -> base ^ "a"
+let size_suffix = function
+  | None -> ""
+  | Some A32 -> "32"
+  | Some A64 -> "64"
+  | Some Atarget -> ""
+
+let operation_arith ?size base = function
+  | Can_scan -> base ^ size_suffix size ^ "x"
+  | Must_scan -> base ^ size_suffix size ^ "v"
+  | Cannot_scan -> base ^ size_suffix size
+  | Cannot_be_live_at_gc -> base ^ size_suffix size ^ "a"
 
 let operation d = function
   | Capply _ty -> "app" ^ Debuginfo.to_string d
@@ -124,7 +130,7 @@ let operation d = function
     in
     Printf.sprintf "store %s%s" (chunk c) init
   (* CR-someday Gbury: use better names for operations *)
-  | Cadd gc_action -> operation_arith "+" gc_action
+  | Cadd (size, gc_action) -> operation_arith ~size "+" gc_action
   | Csub gc_action -> operation_arith "-" gc_action
   | Cmul gc_action -> operation_arith "*" gc_action
   | Cmulh gc_action -> operation_arith "*h" gc_action

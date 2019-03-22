@@ -23,15 +23,16 @@ class scheduler = object
 inherit Schedgen.scheduler_generic
 
 (* Latencies (in cycles). Based roughly on the "common model". *)
+(* TODO: adapt latency and issue cycle for 32-bit arithmetic on 64-bit archs ? *)
 
 method oper_latency = function
     Ireload -> 2
   | Iload(_, _) -> 2
   | Iconst_float _ -> 2 (* turned into a load *)
   | Iconst_symbol _ -> 1
-  | Iintop(Imul | Imulh) -> 9
-  | Iintop_imm(Imul, _) -> 5
-  | Iintop(Idiv | Imod) -> 36
+  | Iintop(_, (Imul | Imulh)) -> 9
+  | Iintop_imm(_, Imul, _) -> 5
+  | Iintop(_, (Idiv | Imod)) -> 36
   | Iaddf | Isubf -> 4
   | Imulf -> 5
   | Idivf -> 33
@@ -49,9 +50,9 @@ method oper_issue_cycles = function
   | Iload(_, Ibased(_, _)) -> 2
   | Istore(_, Ibased(_, _), _) -> 2
   | Ialloc _ -> 4
-  | Iintop(Imod) -> 40 (* assuming full stall *)
-  | Iintop(Icomp _) -> 4
-  | Iintop_imm(Icomp _, _) -> 4
+  | Iintop(_, Imod) -> 40 (* assuming full stall *)
+  | Iintop(_, Icomp _) -> 4
+  | Iintop_imm(_, Icomp _, _) -> 4
   | Ifloatofint -> 9
   | Iintoffloat -> 4
   | _ -> 1

@@ -662,40 +662,44 @@ let emit_instr fallthrough i =
         def_label label;
         I.lea (mem32 NONE 4 RAX) (reg i.res.(0))
       end
-  | Lop(Iintop(Icomp cmp)) ->
+  | Lop(Iintop (A64, _)) | Lop(Iintop_imm (A64, _, _)) ->
+      Misc.fatal_error "Emit_i386: 64-bit arithmetic on 32-bit platform"
+  | Lop(Iintop((A32|Atarget), Icomp cmp)) ->
       I.cmp (reg i.arg.(1)) (reg i.arg.(0));
       I.set (cond cmp) al;
       I.movzx al (reg i.res.(0));
-  | Lop(Iintop_imm(Icomp cmp, n)) ->
+  | Lop(Iintop_imm((A32|Atarget), Icomp cmp, n)) ->
       I.cmp (int n) (reg i.arg.(0));
       I.set (cond cmp) al;
       I.movzx al (reg i.res.(0))
-  | Lop(Iintop (Icheckbound { label_after_error; } )) ->
+  | Lop(Iintop (sz, Icheckbound { label_after_error; } )) ->
+      assert (sz = Atarget);
       let lbl = bound_error_label ?label:label_after_error i.dbg in
       I.cmp (reg i.arg.(1)) (reg i.arg.(0));
       I.jbe (label lbl)
-  | Lop(Iintop_imm(Icheckbound { label_after_error; }, n)) ->
+  | Lop(Iintop_imm(sz, Icheckbound { label_after_error; }, n)) ->
+      assert (sz = Atarget);
       let lbl = bound_error_label ?label:label_after_error i.dbg in
       I.cmp (int n) (reg i.arg.(0));
       I.jbe (label lbl)
-  | Lop(Iintop(Idiv | Imod)) ->
+  | Lop(Iintop((A32|Atarget), (Idiv | Imod))) ->
       I.cdq ();
       I.idiv (reg i.arg.(1))
-  | Lop(Iintop(Ilsl | Ilsr | Iasr as op)) ->
+  | Lop(Iintop((A32|Atarget), ((Ilsl | Ilsr | Iasr) as op))) ->
       (* We have i.arg.(0) = i.res.(0) and i.arg.(1) = %ecx *)
       instr_for_intop op cl (reg i.res.(0))
-  | Lop(Iintop Imulh) ->
+  | Lop(Iintop ((A32|Atarget), Imulh)) ->
       I.imul (reg i.arg.(1)) None
-  | Lop(Iintop op) ->
+  | Lop(Iintop ((A32|Atarget), op)) ->
       (* We have i.arg.(0) = i.res.(0) *)
       instr_for_intop op (reg i.arg.(1)) (reg i.res.(0))
-  | Lop(Iintop_imm(Iadd, n)) when i.arg.(0).loc <> i.res.(0).loc ->
+  | Lop(Iintop_imm((A32|Atarget), Iadd, n)) when i.arg.(0).loc <> i.res.(0).loc ->
       I.lea (mem32 NONE n (reg32 i.arg.(0))) (reg i.res.(0))
-  | Lop(Iintop_imm(Iadd, 1) | Iintop_imm(Isub, -1)) ->
+  | Lop(Iintop_imm((A32|Atarget), Iadd, 1) | Iintop_imm((A32|Atarget), Isub, -1)) ->
       I.inc (reg i.res.(0))
-  | Lop(Iintop_imm(Iadd, -1) | Iintop_imm(Isub, 1)) ->
+  | Lop(Iintop_imm((A32|Atarget), Iadd, -1) | Iintop_imm((A32|Atarget), Isub, 1)) ->
       I.dec (reg i.res.(0))
-  | Lop(Iintop_imm(op, n)) ->
+  | Lop(Iintop_imm((A32|Atarget), op, n)) ->
       (* We have i.arg.(0) = i.res.(0) *)
       instr_for_intop op (int n) (reg i.res.(0))
   | Lop(Inegf | Iabsf as floatop) ->

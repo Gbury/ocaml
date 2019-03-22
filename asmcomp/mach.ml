@@ -21,6 +21,11 @@ type integer_comparison =
     Isigned of Cmm.integer_comparison
   | Iunsigned of Cmm.integer_comparison
 
+type size_arith = Cmm.size_arith =
+    A32
+  | A64
+  | Atarget
+
 type integer_operation =
     Iadd | Isub | Imul | Imulh | Idiv | Imod
   | Iand | Ior | Ixor | Ilsl | Ilsr | Iasr
@@ -56,8 +61,8 @@ type operation =
   | Istore of Cmm.memory_chunk * Arch.addressing_mode * bool
   | Ialloc of { bytes : int; label_after_call_gc : label option;
         spacetime_index : int; }
-  | Iintop of integer_operation
-  | Iintop_imm of integer_operation * int
+  | Iintop of size_arith * integer_operation
+  | Iintop_imm of size_arith * integer_operation * int
   | Inegf | Iabsf | Iaddf | Isubf | Imulf | Idivf
   | Ifloatofint | Iintoffloat
   | Ispecific of Arch.specific_operation
@@ -177,7 +182,7 @@ let spacetime_node_hole_pointer_is_live_before insn =
          we use the node hole pointer for these, and we do not need to say
          that it is live at such points. *)
       false
-    | Iintop op | Iintop_imm (op, _) ->
+    | Iintop (_, op) | Iintop_imm (_, op, _) ->
       begin match op with
       | Icheckbound _
         (* [Icheckbound] doesn't need to return [true] for the same reason as
@@ -200,6 +205,6 @@ let spacetime_node_hole_pointer_is_live_before insn =
 let operation_can_raise op =
   match op with
   | Icall_ind _ | Icall_imm _ | Iextcall _
-  | Iintop (Icheckbound _) | Iintop_imm (Icheckbound _, _)
+  | Iintop (_, Icheckbound _) | Iintop_imm (_, Icheckbound _, _)
   | Ialloc _ -> true
   | _ -> false

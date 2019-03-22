@@ -230,10 +230,10 @@ method class_of_operation op =
   | Iload(_,_) -> Op_load
   | Istore(_,_,asg) -> Op_store asg
   | Ialloc _ -> assert false                   (* treated specially *)
-  | Iintop(Icheckbound _) -> Op_checkbound
+  | Iintop(_, Icheckbound _) -> Op_checkbound
   | Iintop _ -> Op_pure
-  | Iintop_imm(Icheckbound _, _) -> Op_checkbound
-  | Iintop_imm(_, _) -> Op_pure
+  | Iintop_imm(_, Icheckbound _, _) -> Op_checkbound
+  | Iintop_imm(_, _, _) -> Op_pure
   | Inegf | Iabsf | Iaddf | Isubf | Imulf | Idivf
   | Ifloatofint | Iintoffloat -> Op_pure
   | Ispecific _ -> Op_other

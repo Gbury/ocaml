@@ -34,7 +34,7 @@ method oper_latency = function
   | Ifloatofint       (* mcr/mrc count as memory access *)
   | Iintoffloat -> 2
   (* Multiplys have a latency of two cycles *)
-  | Iintop (Imul | Imulh)
+  | Iintop (_, (Imul | Imulh))
   | Ispecific(Imuladd | Imulsub | Imulhadd) -> 2
   (* VFP instructions *)
   | Iaddf
@@ -55,13 +55,13 @@ method! is_checkbound = function
 
 method oper_issue_cycles = function
     Ialloc _ -> 4
-  | Iintop(Ilsl | Ilsr | Iasr) -> 2
-  | Iintop(Icomp _)
-  | Iintop_imm(Icomp _, _) -> 3
-  | Iintop(Icheckbound _)
-  | Iintop_imm(Icheckbound _, _) -> 2
+  | Iintop(_, (Ilsl | Ilsr | Iasr)) -> 2
+  | Iintop(_, Icomp _)
+  | Iintop_imm(_, Icomp _, _) -> 3
+  | Iintop(_, Icheckbound _)
+  | Iintop_imm(_, Icheckbound _, _) -> 2
   | Ispecific(Ishiftcheckbound _) -> 3
-  | Iintop(Imul | Imulh)
+  | Iintop(_, (Imul | Imulh))
   | Ispecific(Imuladd | Imulsub | Imulhadd) -> 2
   (* VFP instructions *)
   | Iaddf

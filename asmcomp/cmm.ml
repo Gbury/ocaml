@@ -39,6 +39,11 @@ let size_component = function
   | Int_reg _ -> Arch.size_addr
   | Float_reg -> Arch.size_float
 
+type size_arith =
+  | A32
+  | A64
+  | Atarget
+
 (* [gc_actions] are partially ordered as follows:
 
             Cannot_be_live_at_gc
@@ -190,7 +195,7 @@ type operation =
   | Cload of memory_chunk * Asttypes.mutable_flag
   | Calloc
   | Cstore of memory_chunk * Lambda.initialization_or_assignment
-  | Cadd of gc_action
+  | Cadd of size_arith * gc_action
   | Csub of gc_action
   | Cmul of gc_action
   | Cmulh of gc_action

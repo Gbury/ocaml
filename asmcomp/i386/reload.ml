@@ -40,27 +40,27 @@ method! makereg r =
 
 method! reload_operation op arg res =
   match op with
-    Iintop(Iadd|Isub|Iand|Ior|Ixor|Icomp _|Icheckbound _) ->
+    Iintop(_, (Iadd|Isub|Iand|Ior|Ixor|Icomp _|Icheckbound _)) ->
       (* One of the two arguments can reside in the stack *)
       if stackp arg.(0) && stackp arg.(1)
       then ([|arg.(0); self#makereg arg.(1)|], res)
       else (arg, res)
-  | Iintop(Imul) ->
+  | Iintop(_, Imul) ->
       (* First argument (and destination) must be in register,
          second arg can reside in stack *)
       if stackp arg.(0)
       then let r = self#makereg arg.(0) in ([|r; arg.(1)|], [|r|])
       else (arg, res)
-  | Iintop_imm(Iadd, _) when arg.(0).loc <> res.(0).loc ->
+  | Iintop_imm(_, Iadd, _) when arg.(0).loc <> res.(0).loc ->
       (* This add will be turned into a lea; args and results must be
          in registers *)
       super#reload_operation op arg res
-  | Iintop_imm(Imul, _) ->
+  | Iintop_imm(_, Imul, _) ->
       (* First argument and destination must be in register *)
       if stackp arg.(0)
       then let r = self#makereg arg.(0) in ([|r|], [|r|])
       else (arg, res)
-  | Iintop(Imulh | Ilsl | Ilsr | Iasr) | Iintop_imm(_, _)
+  | Iintop(_, (Imulh | Ilsl | Ilsr | Iasr)) | Iintop_imm(_, _, _)
   | Ifloatofint | Iintoffloat | Ispecific(Ipush) ->
       (* The argument(s) can be either in register or on stack *)
       (* Note: Imulh: arg(0 and res(0) already forced in regs

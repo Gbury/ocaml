@@ -77,7 +77,7 @@ module Make(I:I) = struct
     let dbg = Debuginfo.none in
     let cell =
       Cop(Cload (Word Can_scan, Asttypes.Mutable),
-        [Cop(Cadd Cannot_be_live_at_gc,[str;Cconst_int(Arch.size_int*ind)],
+        [Cop(Cadd (Atarget, Cannot_be_live_at_gc),[str;Cconst_int(Arch.size_int*ind)],
            dbg)],
         dbg) in
     Clet(id, cell, body)

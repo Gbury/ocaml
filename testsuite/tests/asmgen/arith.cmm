@@ -224,4 +224,6 @@ arguments = "mainarith.c"
       (floataset d 38 (absf f))
 
       (addraset r 116 (mulh x y))
+
+      (addraset r 117 (+32 x 1))
 )))))))

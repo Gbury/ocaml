@@ -203,9 +203,9 @@ let destroyed_at_oper = function
     Iop(Icall_ind _ | Icall_imm _ | Iextcall { alloc = true; _}) ->
     all_phys_regs
   | Iop(Iextcall { alloc = false; }) -> destroyed_at_c_call
-  | Iop(Iintop(Idiv | Imod)) -> [| eax; edx |]
-  | Iop(Ialloc _ | Iintop Imulh) -> [| eax |]
-  | Iop(Iintop(Icomp _) | Iintop_imm(Icomp _, _)) -> [| eax |]
+  | Iop(Iintop(_, (Idiv | Imod))) -> [| eax; edx |]
+  | Iop(Ialloc _ | Iintop (_, Imulh)) -> [| eax |]
+  | Iop(Iintop(_, Icomp _) | Iintop_imm(_, Icomp _, _)) -> [| eax |]
   | Iop(Iintoffloat) -> [| eax |]
   | Iifthenelse(Ifloattest _, _, _) -> [| eax |]
   | _ -> [||]
@@ -220,8 +220,8 @@ let safe_register_pressure _op = 4
 
 let max_register_pressure = function
     Iextcall _ -> [| 4; max_int |]
-  | Iintop(Idiv | Imod) -> [| 5; max_int |]
-  | Ialloc _ | Iintop(Icomp _) | Iintop_imm(Icomp _, _) |
+  | Iintop(_, (Idiv | Imod)) -> [| 5; max_int |]
+  | Ialloc _ | Iintop(_, Icomp _) | Iintop_imm(_, Icomp _, _) |
     Iintoffloat -> [| 6; max_int |]
   | _ -> [|7; max_int |]
 
@@ -231,7 +231,7 @@ let max_register_pressure = function
 let op_is_pure = function
   | Icall_ind _ | Icall_imm _ | Itailcall_ind _ | Itailcall_imm _
   | Iextcall _ | Istackoffset _ | Istore _ | Ialloc _
-  | Iintop(Icheckbound _) | Iintop_imm(Icheckbound _, _) -> false
+  | Iintop(_, Icheckbound _) | Iintop_imm(_, Icheckbound _, _) -> false
   | Ispecific(Ilea _) -> true
   | Ispecific _ -> false
   | _ -> true

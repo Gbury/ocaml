@@ -41,9 +41,9 @@ let access_array base numelt size =
   match numelt with
     Cconst_int 0 -> base
   | Cconst_int n ->
-    Cop(Cadd Cannot_be_live_at_gc, [base; Cconst_int(n * size)],
+    Cop(Cadd (Atarget, Cannot_be_live_at_gc), [base; Cconst_int(n * size)],
       Debuginfo.none)
-  | _ -> Cop(Cadd Cannot_be_live_at_gc, [base;
+  | _ -> Cop(Cadd (Atarget, Cannot_be_live_at_gc), [base;
                      Cop(Clsl Cannot_scan, [numelt; Cconst_int(Misc.log2 size)],
                          Debuginfo.none)],
              Debuginfo.none)
@@ -52,10 +52,14 @@ let access_array base numelt size =
 
 %token ABSF
 %token ADDA
+%token ADD32A
 %token ADDF
 %token ADDI
+%token ADD32I
 %token ADDV
+%token ADD32V
 %token ADDX
+%token ADD32X
 %token ADDR
 %token ALIGN
 %token ALLOC
@@ -299,10 +303,14 @@ unaryop:
 ;
 binaryop:
     STORE chunk                 { Cstore ($2, Assignment) }
-  | ADDA                        { Cadd Cannot_be_live_at_gc }
-  | ADDI                        { Cadd Cannot_scan }
-  | ADDV                        { Cadd Must_scan }
-  | ADDX                        { Cadd Can_scan }
+  | ADDA                        { Cadd (Atarget, Cannot_be_live_at_gc) }
+  | ADDI                        { Cadd (Atarget, Cannot_scan) }
+  | ADDV                        { Cadd (Atarget, Must_scan) }
+  | ADDX                        { Cadd (Atarget, Can_scan) }
+  | ADD32A                      { Cadd (A32, Cannot_be_live_at_gc) }
+  | ADD32I                      { Cadd (A32, Cannot_scan) }
+  | ADD32V                      { Cadd (A32, Must_scan) }
+  | ADD32X                      { Cadd (A32, Can_scan) }
   | SUBI                        { Csub Cannot_scan }
   | SUBX                        { Csub Can_scan }
   | STAR                        { Cmul Cannot_scan }

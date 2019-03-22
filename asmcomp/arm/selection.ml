@@ -59,14 +59,14 @@ let pseudoregs_for_operation op arg res =
   (* For mul rd,rm,rs and mla rd,rm,rs,ra (pre-ARMv6) the registers rm
      and rd must be different. We deal with this by pretending that rm
      is also a result of the mul / mla operation. *)
-    Iintop Imul | Ispecific Imuladd when !arch < ARMv6 ->
+    Iintop (_, Imul) | Ispecific Imuladd when !arch < ARMv6 ->
       (arg, [| res.(0); arg.(0) |])
   (* For smull rdlo,rdhi,rn,rm (pre-ARMv6) the registers rdlo, rdhi and rn
      must be different.  Also, rdlo (whose contents we discard) is always
      forced to be r12 in proc.ml, which means that neither rdhi and rn can
      be r12.  To keep things simple, we force both of those two to specific
      hard regs: rdhi in r6 and rn in r7. *)
-  | Iintop Imulh when !arch < ARMv6 ->
+  | Iintop (_, Imulh) when !arch < ARMv6 ->
       ([| r7; arg.(1) |], [| r6 |])
   (* Soft-float Iabsf and Inegf: arg.(0) and res.(0) must be the same *)
   | Iabsf | Inegf when !fpu = Soft ->
@@ -132,12 +132,12 @@ method! effects_of e =
   | e -> super#effects_of e
 
 method select_addressing chunk = function
-  | Cop(Cadd (Must_scan | Cannot_be_live_at_gc), [arg; Cconst_int n], _)
+  | Cop(Cadd (_, (Must_scan | Cannot_be_live_at_gc)), [arg; Cconst_int n], _)
     when is_offset chunk n ->
       (Iindexed n, arg)
-  | Cop(Cadd (Must_scan | Cannot_be_live_at_gc) as op,
-        [arg1; Cop(Cadd (Must_scan | Cannot_be_live_at_gc), [arg2; Cconst_int n], _)], dbg)
-    when is_offset chunk n ->
+  | Cop(Cadd (sz, (Must_scan | Cannot_be_live_at_gc)) as op,
+        [arg1; Cop(Cadd (sz', (Must_scan | Cannot_be_live_at_gc)), [arg2; Cconst_int n], _)], dbg)
+    when sz = sz' && is_offset chunk n ->
       (Iindexed n, Cop(op, [arg1; arg2], dbg))
   | arg ->
       (Iindexed 0, arg)
@@ -153,27 +153,27 @@ method select_shift_arith op dbg arithop arithrevop args =
   | args ->
       begin match super#select_operation op args dbg with
       (* Recognize multiply high and add *)
-        (Iintop Iadd, [Cop(Cmulh _, args, _); arg3])
-      | (Iintop Iadd, [arg3; Cop(Cmulh _, args, _)]) as op_args
+        (Iintop (_, Iadd), [Cop(Cmulh _, args, _); arg3])
+      | (Iintop (_, Iadd), [arg3; Cop(Cmulh _, args, _)]) as op_args
         when !arch >= ARMv6 ->
           begin match self#select_operation (Cmulh Cannot_scan) args dbg with
-            (Iintop Imulh, [arg1; arg2]) ->
+            (Iintop (_, Imulh), [arg1; arg2]) ->
               (Ispecific Imulhadd, [arg1; arg2; arg3])
           | _ -> op_args
           end
       (* Recognize multiply and add *)
-      | (Iintop Iadd, [Cop(Cmul _, args, _); arg3])
-      | (Iintop Iadd, [arg3; Cop(Cmul _, args, _)]) as op_args ->
+      | (Iintop (_, Iadd), [Cop(Cmul _, args, _); arg3])
+      | (Iintop (_, Iadd), [arg3; Cop(Cmul _, args, _)]) as op_args ->
           begin match self#select_operation (Cmul Cannot_scan) args dbg with
-            (Iintop Imul, [arg1; arg2]) ->
+            (Iintop (_, Imul), [arg1; arg2]) ->
               (Ispecific Imuladd, [arg1; arg2; arg3])
           | _ -> op_args
           end
       (* Recognize multiply and subtract *)
-      | (Iintop Isub, [arg3; Cop(Cmul _, args, _)]) as op_args
+      | (Iintop (_, Isub), [arg3; Cop(Cmul _, args, _)]) as op_args
         when !arch > ARMv6 ->
           begin match self#select_operation (Cmul Cannot_scan) args dbg with
-            (Iintop Imul, [arg1; arg2]) ->
+            (Iintop (_, Imul), [arg1; arg2]) ->
               (Ispecific Imulsub, [arg1; arg2; arg3])
           | _ -> op_args
           end
@@ -186,14 +186,14 @@ method private iextcall (func, alloc) =
 method! select_operation op args dbg =
   match (op, args) with
   (* Recognize special shift arithmetic *)
-    (Cadd _, [arg; Cconst_int n])
+    (Cadd (sz, _), [arg; Cconst_int n])
     when n < 0 && self#is_immediate (-n) ->
-      (Iintop_imm(Isub, -n), [arg])
+      (Iintop_imm(sz, Isub, -n), [arg])
   | ((Cadd _ as op), args) ->
       self#select_shift_arith op dbg Ishiftadd Ishiftadd args
-  | (Csub _, [arg; Cconst_int n])
+  | (Csub _, [arg; Cconst_int n]) (* TODO: use sz when csub gets size info *)
     when n < 0 && self#is_immediate (-n) ->
-      (Iintop_imm(Iadd, -n), [arg])
+      (Iintop_imm(Atarget, Iadd, -n), [arg])
   | (Csub _, [Cconst_int n; arg])
     when self#is_immediate n ->
       (Ispecific(Irevsubimm n), [arg])
@@ -211,9 +211,9 @@ method! select_operation op args dbg =
       (Ispecific(Ishiftcheckbound(select_shiftop op, n)), [arg1; arg2])
   (* ARM does not support immediate operands for multiplication *)
   | (Cmul _, args) ->
-      (Iintop Imul, args)
+      (Iintop (Atarget, Imul), args)
   | (Cmulh _, args) ->
-      (Iintop Imulh, args)
+      (Iintop (Atarget, Imulh), args)
   (* Turn integer division/modulus into runtime ABI calls *)
   | (Cdiv _, args) ->
       (self#iextcall("__aeabi_idiv", false), args)
@@ -255,7 +255,7 @@ method private select_operation_softfp op args dbg =
         | CFge -> Cne, "__aeabi_dcmpge"
         | CFnge -> Ceq, "__aeabi_dcmpge"
       in
-      (Iintop_imm(Icomp(Iunsigned comp), 0),
+      (Iintop_imm(Atarget, Icomp(Iunsigned comp), 0),
        [Cop(Cextcall(func, typ_int, false, None), args, dbg)])
   (* Add coercions around loads and stores of 32-bit floats *)
   | (Cload (Single, mut), args) ->
@@ -297,8 +297,8 @@ method! select_condition = function
   (* Turn floating-point comparisons into runtime ABI calls *)
     Cop(Ccmpf _ as op, args, dbg) when !fpu = Soft ->
       begin match self#select_operation_softfp op args dbg with
-        (Iintop_imm(Icomp(Iunsigned Ceq), 0), [arg]) -> (Ifalsetest, arg)
-      | (Iintop_imm(Icomp(Iunsigned Cne), 0), [arg]) -> (Itruetest, arg)
+        (Iintop_imm(_, Icomp(Iunsigned Ceq), 0), [arg]) -> (Ifalsetest, arg)
+      | (Iintop_imm(_, Icomp(Iunsigned Cne), 0), [arg]) -> (Itruetest, arg)
       | _ -> assert false
       end
   | expr ->

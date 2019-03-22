@@ -41,7 +41,7 @@ let rec with_afl_logging b =
     let cur_pos = V.create_local "pos" in
     let afl_area = V.create_local "shared_mem" in
     let op oper args = Cop (oper, args, Debuginfo.none) in
-    let cadda = Cadd Cannot_be_live_at_gc in
+    let cadda = Cadd (Atarget, Cannot_be_live_at_gc) in
     Clet(VP.create afl_area,
       op (Cload (Word Can_scan, Asttypes.Mutable)) [afl_area_ptr],
       Clet(VP.create cur_pos,

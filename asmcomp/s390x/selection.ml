@@ -49,12 +49,12 @@ let rec select_addr = function
 let pseudoregs_for_operation op arg res =
   match op with
   (* Two-address binary operations: arg.(0) and res.(0) must be the same *)
-  | Iintop(Iadd|Isub|Imul|Iand|Ior|Ixor)  | Iaddf|Isubf|Imulf|Idivf ->
+  | Iintop(_, (Iadd|Isub|Imul|Iand|Ior|Ixor)) | Iaddf|Isubf|Imulf|Idivf ->
       ([|res.(0); arg.(1)|], res)
   | Ispecific _ ->
     ( [| arg.(0); arg.(1); res.(0) |], [| res.(0) |])
   (* One-address unary operations: arg.(0) and res.(0) must be the same *)
-  |  Iintop_imm((Imul|Iand|Ior|Ixor), _) -> (res, res)
+  |  Iintop_imm(_, (Imul|Iand|Ior|Ixor), _) -> (res, res)
   (* Other instructions are regular *)
   | _ -> raise Use_default
 
@@ -79,13 +79,13 @@ method select_addressing _chunk exp =
 method! select_operation op args dbg =
   match (op, args) with
   (* Z does not support immediate operands for multiply high *)
-    (Cmulh _, _) -> (Iintop Imulh, args)
+    (Cmulh _, _) -> (Iintop (Atarget, Imulh), args) (* TODO: adapt size *)
   (* The and, or and xor instructions have a different range of immediate
      operands than the other instructions *)
-  | (Cand _, _) ->
-      self#select_logical Iand (-1 lsl 32 (*0x1_0000_0000*)) (-1) args
-  | (Cor _, _) -> self#select_logical Ior 0 (1 lsl 32 - 1 (*0xFFFF_FFFF*)) args
-  | (Cxor _, _) -> self#select_logical Ixor  0 (1 lsl 32 - 1 (*0xFFFF_FFFF*)) args
+  | (Cand _, _) -> (* TODO: adapt size *)
+      self#select_logical Atarget Iand (-1 lsl 32 (*0x1_0000_0000*)) (-1) args
+  | (Cor _, _) -> self#select_logical Atarget Ior 0 (1 lsl 32 - 1 (*0xFFFF_FFFF*)) args
+  | (Cxor _, _) -> self#select_logical Atarget Ixor  0 (1 lsl 32 - 1 (*0xFFFF_FFFF*)) args
   (* Recognize mult-add and mult-sub instructions *)
   | (Caddf, [Cop(Cmulf, [arg1; arg2], _); arg3]) ->
       (Ispecific Imultaddf, [arg1; arg2; arg3])
@@ -96,13 +96,13 @@ method! select_operation op args dbg =
   | _ ->
       super#select_operation op args dbg
 
-method select_logical op lo hi = function
+method select_logical sz op lo hi = function
     [arg; Cconst_int n] when n >= lo && n <= hi ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(sz, op, n), [arg])
   | [Cconst_int n; arg] when n >= lo && n <= hi ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(sz, op, n), [arg])
   | args ->
-      (Iintop op, args)
+      (Iintop (sz, op), args)
 
 
 method! insert_op_debug op dbg rs rd =

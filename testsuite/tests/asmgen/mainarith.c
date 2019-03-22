@@ -40,6 +40,14 @@ double F, G;
              "result %"FMT"d, expected %"FMT"d\n",                    \
              #arg, #res, X, Y, arg, result); \
   }
+#define INT32TEST(arg,res) \
+  { int32_t result = (res); \
+    int32_t value = (arg) & 0xFFFFFFFF; \
+    if (value != result) \
+      printf("Failed test \"%s == %s\" for X=%"FMT"d and Y=%"FMT"d: " \
+             "result %"FMT"d, expected %"FMT"d\n",                    \
+             #arg, #res, X, Y, (intnat) value, (intnat) result); \
+  }
 #define INTFLOATTEST(arg,res) \
   { intnat result = (res); \
     if (arg != result) \
@@ -69,6 +77,7 @@ static intnat mulhs(intnat x, intnat y);
 void do_test(void)
 {
       call_gen_code(testarith);
+      int32_t X32 = X & 0xFFFFFFFF;
 
       INTTEST(R[0], 0);
       INTTEST(R[1], 1);
@@ -258,6 +267,8 @@ void do_test(void)
       FLOATTEST(D[38], fabs(F));
 
       INTTEST(R[116], mulhs(X, Y));
+
+      INT32TEST(R[117], X32 + 1);
 }
 
 /* Multiply-high signed.  Hacker's Delight section 8.2 */

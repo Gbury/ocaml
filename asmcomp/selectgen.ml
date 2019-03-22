@@ -69,7 +69,7 @@ let oper_result_type = function
       end
   | Calloc -> typ_val
   | Cstore (_c, _) -> typ_void
-  | Cadd gc_action | Csub gc_action | Cmul gc_action
+  | Cadd (_, gc_action) | Csub gc_action | Cmul gc_action
   | Cmulh gc_action | Cdiv gc_action | Cmod gc_action
   | Cand gc_action | Cor gc_action | Cxor gc_action
   | Clsl gc_action | Clsr gc_action | Casr gc_action -> [| Int_reg gc_action |]
@@ -392,7 +392,7 @@ method mark_instr = function
       self#mark_tailcall
   | Iop (Ialloc _) ->
       self#mark_call (* caml_alloc*, caml_garbage_collection *)
-  | Iop (Iintop (Icheckbound _) | Iintop_imm(Icheckbound _, _)) ->
+  | Iop (Iintop (_, Icheckbound _) | Iintop_imm(_, Icheckbound _, _)) ->
       self#mark_c_tailcall (* caml_ml_array_bound_error *)
   | Iraise raise_kind ->
     begin match raise_kind with
@@ -452,20 +452,20 @@ method select_operation op args _dbg =
         (* Inversion addr/datum in Istore *)
       end
   | (Calloc, _) -> (self#select_allocation 0), args
-  | (Cadd _, _) -> self#select_arith_comm Iadd args
-  | (Csub _, _) -> self#select_arith Isub args
-  | (Cmul _, _) -> self#select_arith_comm Imul args
-  | (Cmulh _, _) -> self#select_arith_comm Imulh args
-  | (Cdiv _, _) -> (Iintop Idiv, args)
-  | (Cmod _, _) -> (Iintop Imod, args)
-  | (Cand _, _) -> self#select_arith_comm Iand args
-  | (Cor _, _) -> self#select_arith_comm Ior args
-  | (Cxor _, _) -> self#select_arith_comm Ixor args
-  | (Clsl _, _) -> self#select_shift Ilsl args
-  | (Clsr _, _) -> self#select_shift Ilsr args
-  | (Casr _, _) -> self#select_shift Iasr args
-  | (Ccmps comp, _) -> self#select_arith_comp (Isigned comp) args
-  | (Ccmpu comp, _) -> self#select_arith_comp (Iunsigned comp) args
+  | (Cadd (sz, _), _) -> self#select_arith_comm sz Iadd args
+  | (Csub _, _) -> self#select_arith Atarget Isub args
+  | (Cmul _, _) -> self#select_arith_comm Atarget Imul args
+  | (Cmulh _, _) -> self#select_arith_comm Atarget Imulh args
+  | (Cdiv _, _) -> (Iintop (Atarget, Idiv), args)
+  | (Cmod _, _) -> (Iintop (Atarget, Imod), args)
+  | (Cand _, _) -> self#select_arith_comm Atarget Iand args
+  | (Cor _, _) -> self#select_arith_comm Atarget Ior args
+  | (Cxor _, _) -> self#select_arith_comm Atarget Ixor args
+  | (Clsl _, _) -> self#select_shift Atarget Ilsl args
+  | (Clsr _, _) -> self#select_shift Atarget Ilsr args
+  | (Casr _, _) -> self#select_shift Atarget Iasr args
+  | (Ccmps comp, _) -> self#select_arith_comp Atarget (Isigned comp) args
+  | (Ccmpu comp, _) -> self#select_arith_comp Atarget (Iunsigned comp) args
   | (Cnegf, _) -> (Inegf, args)
   | (Cabsf, _) -> (Iabsf, args)
   | (Caddf, _) -> (Iaddf, args)
@@ -477,46 +477,46 @@ method select_operation op args _dbg =
   | (Ccheckbound, _) ->
     let extra_args = self#select_checkbound_extra_args () in
     let op = self#select_checkbound () in
-    self#select_arith op (args @ extra_args)
+    self#select_arith Atarget op (args @ extra_args)
   | _ -> Misc.fatal_error "Selection.select_oper"
 
-method private select_arith_comm op = function
+method private select_arith_comm size op = function
     [arg; Cconst_int n] when self#is_immediate n ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(size, op, n), [arg])
   | [arg; Cconst_pointer n] when self#is_immediate n ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(size, op, n), [arg])
   | [Cconst_int n; arg] when self#is_immediate n ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(size, op, n), [arg])
   | [Cconst_pointer n; arg] when self#is_immediate n ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(size, op, n), [arg])
   | args ->
-      (Iintop op, args)
+      (Iintop (size, op), args)
 
-method private select_arith op = function
+method private select_arith size op = function
     [arg; Cconst_int n] when self#is_immediate n ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(size, op, n), [arg])
   | [arg; Cconst_pointer n] when self#is_immediate n ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(size, op, n), [arg])
   | args ->
-      (Iintop op, args)
+      (Iintop (size, op), args)
 
-method private select_shift op = function
+method private select_shift size op = function
     [arg; Cconst_int n] when n >= 0 && n < Arch.size_int * 8 ->
-      (Iintop_imm(op, n), [arg])
+      (Iintop_imm(size, op, n), [arg])
   | args ->
-      (Iintop op, args)
+      (Iintop (size, op), args)
 
-method private select_arith_comp cmp = function
+method private select_arith_comp size cmp = function
     [arg; Cconst_int n] when self#is_immediate n ->
-      (Iintop_imm(Icomp cmp, n), [arg])
+      (Iintop_imm(size, Icomp cmp, n), [arg])
   | [arg; Cconst_pointer n] when self#is_immediate n ->
-      (Iintop_imm(Icomp cmp, n), [arg])
+      (Iintop_imm(size, Icomp cmp, n), [arg])
   | [Cconst_int n; arg] when self#is_immediate n ->
-      (Iintop_imm(Icomp(swap_intcomp cmp), n), [arg])
+      (Iintop_imm(size, Icomp(swap_intcomp cmp), n), [arg])
   | [Cconst_pointer n; arg] when self#is_immediate n ->
-      (Iintop_imm(Icomp(swap_intcomp cmp), n), [arg])
+      (Iintop_imm(size, Icomp(swap_intcomp cmp), n), [arg])
   | args ->
-      (Iintop(Icomp cmp), args)
+      (Iintop(size, Icomp cmp), args)
 
 (* Instruction selection for conditionals *)
 

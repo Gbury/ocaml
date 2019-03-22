@@ -29,7 +29,7 @@ inherit Reloadgen.reload_generic as super
 method! reload_operation op arg res =
   match op with
   (* Two-address binary operations: arg.(0) and res.(0) must be the same *)
-  | Iintop(Iadd|Isub|Imul|Iand|Ior|Ixor)  | Iaddf|Isubf|Imulf|Idivf ->
+  | Iintop(_, (Iadd|Isub|Imul|Iand|Ior|Ixor)) | Iaddf|Isubf|Imulf|Idivf ->
       let res = self#makereg res.(0) in
       ([|res; self#makereg arg.(1)|], [|res|])
   (* Three-address ternary operations: arg.(2) and res.(0) must be the same *)
@@ -37,7 +37,7 @@ method! reload_operation op arg res =
       let res = self#makereg res.(0) in
       ([|self#makereg arg.(0); self#makereg arg.(1); res|], [|res|])
   (* One-address unary operations: arg.(0) and res.(0) must be the same *)
-  |  Iintop_imm((Imul|Iand|Ior|Ixor), _) ->
+  |  Iintop_imm(_, (Imul|Iand|Ior|Ixor), _) ->
       let res = self#makereg res.(0) in
       ([|res|], [|res|])
   (* Other instructions are regular *)
