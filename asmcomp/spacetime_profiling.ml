@@ -89,14 +89,14 @@ let code_for_function_prologue ~function_name ~node_hole =
     | _ ->
       Clet (VP.create new_node_encoded,
         (* Cf. [Encode_tail_caller_node] in the runtime. *)
-        Cop (Cor Can_scan, [Cvar new_node; Cconst_int 1], dbg),
+        Cop (Cor (Atarget, Can_scan), [Cvar new_node; Cconst_int 1], dbg),
         body)
   in
   let pc = V.create_local "pc" in
   Clet (VP.create node,
     Cop (Cload (Word Cannot_scan, Asttypes.Mutable), [Cvar node_hole], dbg),
       Clet (VP.create must_allocate_node,
-        Cop (Cand Cannot_scan, [Cvar node; Cconst_int 1], dbg),
+        Cop (Cand (Atarget, Cannot_scan), [Cvar node; Cconst_int 1], dbg),
         Cifthenelse (
           Cop (Ccmps Cne, [Cvar must_allocate_node; Cconst_int 1], dbg),
           Cvar node,
@@ -190,7 +190,7 @@ let code_for_blockheader ~value's_header ~node ~dbg =
                     (* The following is the [Infix_offset_val], in words. *)
                     (Nativeint.of_int (index_within_node + 1)) 10))
             in
-            Cop (Cxor Cannot_scan,
+            Cop (Cxor (Atarget, Cannot_scan),
                  [Cvar profinfo; Cconst_natint value's_header], dbg))))))
 
 type callee =

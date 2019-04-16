@@ -131,17 +131,17 @@ let operation d = function
     Printf.sprintf "store %s%s" (chunk c) init
   (* CR-someday Gbury: use better names for operations *)
   | Cadd (size, gc_action) -> operation_arith ~size "+" gc_action
-  | Csub gc_action -> operation_arith "-" gc_action
-  | Cmul gc_action -> operation_arith "*" gc_action
-  | Cmulh gc_action -> operation_arith "*h" gc_action
-  | Cdiv gc_action -> operation_arith "/" gc_action
-  | Cmod gc_action -> operation_arith "mod" gc_action
-  | Cand gc_action -> operation_arith "and" gc_action
-  | Cor gc_action -> operation_arith "or" gc_action
-  | Cxor gc_action -> operation_arith "xor" gc_action
-  | Clsl gc_action -> operation_arith "<<" gc_action
-  | Clsr gc_action -> operation_arith ">>u" gc_action
-  | Casr gc_action -> operation_arith ">>s" gc_action
+  | Csub (size, gc_action) -> operation_arith ~size "-" gc_action
+  | Cmul (size, gc_action) -> operation_arith ~size "*" gc_action
+  | Cmulh (size, gc_action) -> operation_arith ~size "*h" gc_action
+  | Cdiv (size, gc_action) -> operation_arith ~size "/" gc_action
+  | Cmod (size, gc_action) -> operation_arith ~size"mod" gc_action
+  | Cand (size, gc_action) -> operation_arith ~size "and" gc_action
+  | Cor (size, gc_action) -> operation_arith ~size "or" gc_action
+  | Cxor (size, gc_action) -> operation_arith ~size "xor" gc_action
+  | Clsl (size, gc_action) -> operation_arith ~size "<<" gc_action
+  | Clsr (size, gc_action) -> operation_arith ~size ">>u" gc_action
+  | Casr (size, gc_action) -> operation_arith ~size ">>s" gc_action
   | Ccmps c -> integer_comparison c
   | Ccmpu c -> Printf.sprintf "%sa" (integer_comparison c)
   | Cnegf -> "~f"

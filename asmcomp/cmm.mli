@@ -188,17 +188,17 @@ type operation =
   | Calloc
   | Cstore of memory_chunk * Lambda.initialization_or_assignment
   | Cadd of size_arith * gc_action  (* the [gc_action] gives the type of the result *)
-  | Csub of gc_action
-  | Cmul of gc_action
-  | Cmulh of gc_action
-  | Cdiv of gc_action
-  | Cmod of gc_action
-  | Cand of gc_action
-  | Cor of gc_action
-  | Cxor of gc_action
-  | Clsl of gc_action
-  | Clsr of gc_action
-  | Casr of gc_action
+  | Csub of size_arith * gc_action
+  | Cmul of size_arith * gc_action
+  | Cmulh of size_arith * gc_action
+  | Cdiv of size_arith * gc_action
+  | Cmod of size_arith * gc_action
+  | Cand of size_arith * gc_action
+  | Cor of size_arith * gc_action
+  | Cxor of size_arith * gc_action
+  | Clsl of size_arith * gc_action
+  | Clsr of size_arith * gc_action
+  | Casr of size_arith * gc_action
   | Ccmps of integer_comparison  (* signed integer comparison *)
   | Ccmpu of integer_comparison  (* unsigned integer comparison *)
   | Cnegf | Cabsf

@@ -69,10 +69,11 @@ let oper_result_type = function
       end
   | Calloc -> typ_val
   | Cstore (_c, _) -> typ_void
-  | Cadd (_, gc_action) | Csub gc_action | Cmul gc_action
-  | Cmulh gc_action | Cdiv gc_action | Cmod gc_action
-  | Cand gc_action | Cor gc_action | Cxor gc_action
-  | Clsl gc_action | Clsr gc_action | Casr gc_action -> [| Int_reg gc_action |]
+  (* TODO: adapt size calculation for int64 on 32-bit architecture ? *)
+  | Cadd (_, gc_action) | Csub (_, gc_action) | Cmul (_, gc_action)
+  | Cmulh (_, gc_action) | Cdiv (_, gc_action) | Cmod (_, gc_action)
+  | Cand (_, gc_action) | Cor (_, gc_action) | Cxor (_, gc_action)
+  | Clsl (_, gc_action) | Clsr (_, gc_action) | Casr (_, gc_action) -> [| Int_reg gc_action |]
   | Ccmps _ | Ccmpu _ | Ccmpf _ -> typ_int
   | Cnegf | Cabsf | Caddf | Csubf | Cmulf | Cdivf -> typ_float
   | Cfloatofint -> typ_float
@@ -453,17 +454,17 @@ method select_operation op args _dbg =
       end
   | (Calloc, _) -> (self#select_allocation 0), args
   | (Cadd (sz, _), _) -> self#select_arith_comm sz Iadd args
-  | (Csub _, _) -> self#select_arith Atarget Isub args
-  | (Cmul _, _) -> self#select_arith_comm Atarget Imul args
-  | (Cmulh _, _) -> self#select_arith_comm Atarget Imulh args
-  | (Cdiv _, _) -> (Iintop (Atarget, Idiv), args)
-  | (Cmod _, _) -> (Iintop (Atarget, Imod), args)
-  | (Cand _, _) -> self#select_arith_comm Atarget Iand args
-  | (Cor _, _) -> self#select_arith_comm Atarget Ior args
-  | (Cxor _, _) -> self#select_arith_comm Atarget Ixor args
-  | (Clsl _, _) -> self#select_shift Atarget Ilsl args
-  | (Clsr _, _) -> self#select_shift Atarget Ilsr args
-  | (Casr _, _) -> self#select_shift Atarget Iasr args
+  | (Csub (sz, _), _) -> self#select_arith sz Isub args
+  | (Cmul (sz, _), _) -> self#select_arith_comm sz Imul args
+  | (Cmulh (sz, _), _) -> self#select_arith_comm sz Imulh args
+  | (Cdiv (sz, _), _) -> (Iintop (sz, Idiv), args)
+  | (Cmod (sz, _), _) -> (Iintop (sz, Imod), args)
+  | (Cand (sz, _), _) -> self#select_arith_comm sz Iand args
+  | (Cor (sz, _), _) -> self#select_arith_comm sz Ior args
+  | (Cxor (sz, _), _) -> self#select_arith_comm sz Ixor args
+  | (Clsl (sz, _), _) -> self#select_shift sz Ilsl args
+  | (Clsr (sz, _), _) -> self#select_shift sz Ilsr args
+  | (Casr (sz, _), _) -> self#select_shift sz Iasr args
   | (Ccmps comp, _) -> self#select_arith_comp Atarget (Isigned comp) args
   | (Ccmpu comp, _) -> self#select_arith_comp Atarget (Iunsigned comp) args
   | (Cnegf, _) -> (Inegf, args)

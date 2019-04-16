@@ -44,7 +44,7 @@ let access_array base numelt size =
     Cop(Cadd (Atarget, Cannot_be_live_at_gc), [base; Cconst_int(n * size)],
       Debuginfo.none)
   | _ -> Cop(Cadd (Atarget, Cannot_be_live_at_gc), [base;
-                     Cop(Clsl Cannot_scan, [numelt; Cconst_int(Misc.log2 size)],
+                     Cop(Clsl (Atarget, Cannot_scan), [numelt; Cconst_int(Misc.log2 size)],
                          Debuginfo.none)],
              Debuginfo.none)
 
@@ -311,17 +311,17 @@ binaryop:
   | ADD32I                      { Cadd (A32, Cannot_scan) }
   | ADD32V                      { Cadd (A32, Must_scan) }
   | ADD32X                      { Cadd (A32, Can_scan) }
-  | SUBI                        { Csub Cannot_scan }
-  | SUBX                        { Csub Can_scan }
-  | STAR                        { Cmul Cannot_scan }
-  | DIVI                        { Cdiv Cannot_scan }
-  | MODI                        { Cmod Cannot_scan }
-  | AND                         { Cand Cannot_scan }
-  | OR                          { Cor Cannot_scan }
-  | XOR                         { Cxor Cannot_scan }
-  | LSL                         { Clsl Cannot_scan }
-  | LSR                         { Clsr Cannot_scan }
-  | ASR                         { Casr Cannot_scan }
+  | SUBI                        { Csub (Atarget, Cannot_scan) }
+  | SUBX                        { Csub (Atarget, Can_scan) }
+  | STAR                        { Cmul (Atarget, Cannot_scan) }
+  | DIVI                        { Cdiv (Atarget, Cannot_scan) }
+  | MODI                        { Cmod (Atarget, Cannot_scan) }
+  | AND                         { Cand (Atarget, Cannot_scan) }
+  | OR                          { Cor (Atarget, Cannot_scan) }
+  | XOR                         { Cxor (Atarget, Cannot_scan) }
+  | LSL                         { Clsl (Atarget, Cannot_scan) }
+  | LSR                         { Clsr (Atarget, Cannot_scan) }
+  | ASR                         { Casr (Atarget, Cannot_scan) }
   | EQI                         { Ccmps Ceq }
   | NEI                         { Ccmps Cne }
   | LTI                         { Ccmps Clt }
@@ -348,7 +348,7 @@ binaryop:
   | GEF                         { Ccmpf CFge }
   | NGEF                        { Ccmpf CFnge }
   | CHECKBOUND                  { Ccheckbound }
-  | MULH                        { (Cmulh Can_scan) }
+  | MULH                        { (Cmulh (Atarget, Cannot_scan)) }
 ;
 sequence:
     expr sequence               { Csequence($1, $2) }

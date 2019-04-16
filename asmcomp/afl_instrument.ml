@@ -45,7 +45,7 @@ let rec with_afl_logging b =
     Clet(VP.create afl_area,
       op (Cload (Word Can_scan, Asttypes.Mutable)) [afl_area_ptr],
       Clet(VP.create cur_pos,
-        op (Cxor Cannot_scan) [op (Cload (Word Can_scan, Asttypes.Mutable))
+        op (Cxor (Atarget, Cannot_scan)) [op (Cload (Word Can_scan, Asttypes.Mutable))
         [afl_prev_loc]; Cconst_int cur_location],
       Csequence(
         op (Cstore(Byte_unsigned, Assignment))
