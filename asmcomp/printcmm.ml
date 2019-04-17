@@ -142,8 +142,8 @@ let operation d = function
   | Clsl (size, gc_action) -> operation_arith ~size "<<" gc_action
   | Clsr (size, gc_action) -> operation_arith ~size ">>u" gc_action
   | Casr (size, gc_action) -> operation_arith ~size ">>s" gc_action
-  | Ccmps c -> integer_comparison c
-  | Ccmpu c -> Printf.sprintf "%sa" (integer_comparison c)
+  | Ccmps (size, c) -> integer_comparison c ^ (size_suffix (Some size))
+  | Ccmpu (size, c) -> Printf.sprintf "%s%sa" (integer_comparison c) (size_suffix (Some size))
   | Cnegf -> "~f"
   | Cabsf -> "absf"
   | Caddf -> "+f"

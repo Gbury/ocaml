@@ -322,18 +322,18 @@ binaryop:
   | LSL                         { Clsl (Atarget, Cannot_scan) }
   | LSR                         { Clsr (Atarget, Cannot_scan) }
   | ASR                         { Casr (Atarget, Cannot_scan) }
-  | EQI                         { Ccmps Ceq }
-  | NEI                         { Ccmps Cne }
-  | LTI                         { Ccmps Clt }
-  | LEI                         { Ccmps Cle }
-  | GTI                         { Ccmps Cgt }
-  | GEI                         { Ccmps Cge }
-  | EQA                         { Ccmpu Ceq }
-  | NEA                         { Ccmpu Cne }
-  | LTA                         { Ccmpu Clt }
-  | LEA                         { Ccmpu Cle }
-  | GTA                         { Ccmpu Cgt }
-  | GEA                         { Ccmpu Cge }
+  | EQI                         { Ccmps (Atarget, Ceq) }
+  | NEI                         { Ccmps (Atarget, Cne) }
+  | LTI                         { Ccmps (Atarget, Clt) }
+  | LEI                         { Ccmps (Atarget, Cle) }
+  | GTI                         { Ccmps (Atarget, Cgt) }
+  | GEI                         { Ccmps (Atarget, Cge) }
+  | EQA                         { Ccmpu (Atarget, Ceq) }
+  | NEA                         { Ccmpu (Atarget, Cne) }
+  | LTA                         { Ccmpu (Atarget, Clt) }
+  | LEA                         { Ccmpu (Atarget, Cle) }
+  | GTA                         { Ccmpu (Atarget, Cgt) }
+  | GEA                         { Ccmpu (Atarget, Cge) }
   | ADDF                        { Caddf }
   | MULF                        { Cmulf }
   | DIVF                        { Cdivf }

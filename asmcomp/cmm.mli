@@ -199,8 +199,8 @@ type operation =
   | Clsl of size_arith * gc_action
   | Clsr of size_arith * gc_action
   | Casr of size_arith * gc_action
-  | Ccmps of integer_comparison  (* signed integer comparison *)
-  | Ccmpu of integer_comparison  (* unsigned integer comparison *)
+  | Ccmps of size_arith * integer_comparison  (* signed integer comparison *)
+  | Ccmpu of size_arith * integer_comparison  (* unsigned integer comparison *)
   | Cnegf | Cabsf
   | Caddf | Csubf | Cmulf | Cdivf
   | Cfloatofint | Cintoffloat

@@ -98,7 +98,7 @@ let code_for_function_prologue ~function_name ~node_hole =
       Clet (VP.create must_allocate_node,
         Cop (Cand (Atarget, Cannot_scan), [Cvar node; Cconst_int 1], dbg),
         Cifthenelse (
-          Cop (Ccmps Cne, [Cvar must_allocate_node; Cconst_int 1], dbg),
+          Cop (Ccmps (Atarget, Cne), [Cvar must_allocate_node; Cconst_int 1], dbg),
           Cvar node,
           Clet (VP.create is_new_node,
             Clet (VP.create pc, Cconst_symbol (function_name, Function),
@@ -115,7 +115,7 @@ let code_for_function_prologue ~function_name ~node_hole =
                 if no_tail_calls then Cvar new_node
                 else
                   Cifthenelse (
-                    Cop (Ccmps Ceq, [Cvar is_new_node; Cconst_int 0], dbg),
+                    Cop (Ccmps (Atarget, Ceq), [Cvar is_new_node; Cconst_int 0], dbg),
                     Cvar new_node,
                     initialize_direct_tail_call_points_and_return_node))))))
 
@@ -159,7 +159,7 @@ let code_for_blockheader ~value's_header ~node ~dbg =
                [Cvar address_of_profinfo], dbg),
       Clet (VP.create profinfo,
         Cifthenelse (
-          Cop (Ccmps Cne, [Cvar existing_profinfo; Cconst_int 1 (* () *)], dbg),
+          Cop (Ccmps (Atarget, Cne), [Cvar existing_profinfo; Cconst_int 1 (* () *)], dbg),
           Cvar existing_profinfo,
           generate_new_profinfo),
         Clet (VP.create existing_count,

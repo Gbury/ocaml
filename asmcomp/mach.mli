@@ -45,8 +45,8 @@ type float_comparison = Cmm.float_comparison
 type test =
     Itruetest
   | Ifalsetest
-  | Iinttest of integer_comparison
-  | Iinttest_imm of integer_comparison * int
+  | Iinttest of size_arith * integer_comparison
+  | Iinttest_imm of size_arith * integer_comparison * int
   | Ifloattest of float_comparison
   | Ioddtest
   | Ieventest

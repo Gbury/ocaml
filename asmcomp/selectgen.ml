@@ -465,8 +465,8 @@ method select_operation op args _dbg =
   | (Clsl (sz, _), _) -> self#select_shift sz Ilsl args
   | (Clsr (sz, _), _) -> self#select_shift sz Ilsr args
   | (Casr (sz, _), _) -> self#select_shift sz Iasr args
-  | (Ccmps comp, _) -> self#select_arith_comp Atarget (Isigned comp) args
-  | (Ccmpu comp, _) -> self#select_arith_comp Atarget (Iunsigned comp) args
+  | (Ccmps (sz, comp), _) -> self#select_arith_comp sz (Isigned comp) args
+  | (Ccmpu (sz, comp), _) -> self#select_arith_comp sz (Iunsigned comp) args
   | (Cnegf, _) -> (Inegf, args)
   | (Cabsf, _) -> (Iabsf, args)
   | (Caddf, _) -> (Iaddf, args)
@@ -522,26 +522,26 @@ method private select_arith_comp size cmp = function
 (* Instruction selection for conditionals *)
 
 method select_condition = function
-    Cop(Ccmps cmp, [arg1; Cconst_int n], _) when self#is_immediate n ->
-      (Iinttest_imm(Isigned cmp, n), arg1)
-  | Cop(Ccmps cmp, [Cconst_int n; arg2], _) when self#is_immediate n ->
-      (Iinttest_imm(Isigned(swap_integer_comparison cmp), n), arg2)
-  | Cop(Ccmps cmp, [arg1; Cconst_pointer n], _) when self#is_immediate n ->
-      (Iinttest_imm(Isigned cmp, n), arg1)
-  | Cop(Ccmps cmp, [Cconst_pointer n; arg2], _) when self#is_immediate n ->
-      (Iinttest_imm(Isigned(swap_integer_comparison cmp), n), arg2)
-  | Cop(Ccmps cmp, args, _) ->
-      (Iinttest(Isigned cmp), Ctuple args)
-  | Cop(Ccmpu cmp, [arg1; Cconst_pointer n], _) when self#is_immediate n ->
-      (Iinttest_imm(Iunsigned cmp, n), arg1)
-  | Cop(Ccmpu cmp, [arg1; Cconst_int n], _) when self#is_immediate n ->
-      (Iinttest_imm(Iunsigned cmp, n), arg1)
-  | Cop(Ccmpu cmp, [Cconst_pointer n; arg2], _) when self#is_immediate n ->
-      (Iinttest_imm(Iunsigned(swap_integer_comparison cmp), n), arg2)
-  | Cop(Ccmpu cmp, [Cconst_int n; arg2], _) when self#is_immediate n ->
-      (Iinttest_imm(Iunsigned(swap_integer_comparison cmp), n), arg2)
-  | Cop(Ccmpu cmp, args, _) ->
-      (Iinttest(Iunsigned cmp), Ctuple args)
+    Cop(Ccmps (sz, cmp), [arg1; Cconst_int n], _) when self#is_immediate n ->
+      (Iinttest_imm(sz, Isigned cmp, n), arg1)
+  | Cop(Ccmps (sz, cmp), [Cconst_int n; arg2], _) when self#is_immediate n ->
+      (Iinttest_imm(sz, Isigned(swap_integer_comparison cmp), n), arg2)
+  | Cop(Ccmps (sz, cmp), [arg1; Cconst_pointer n], _) when self#is_immediate n ->
+      (Iinttest_imm(sz, Isigned cmp, n), arg1)
+  | Cop(Ccmps (sz, cmp), [Cconst_pointer n; arg2], _) when self#is_immediate n ->
+      (Iinttest_imm(sz, Isigned(swap_integer_comparison cmp), n), arg2)
+  | Cop(Ccmps (sz, cmp), args, _) ->
+      (Iinttest(sz, Isigned cmp), Ctuple args)
+  | Cop(Ccmpu (sz, cmp), [arg1; Cconst_pointer n], _) when self#is_immediate n ->
+      (Iinttest_imm(sz, Iunsigned cmp, n), arg1)
+  | Cop(Ccmpu (sz, cmp), [arg1; Cconst_int n], _) when self#is_immediate n ->
+      (Iinttest_imm(sz, Iunsigned cmp, n), arg1)
+  | Cop(Ccmpu (sz, cmp), [Cconst_pointer n; arg2], _) when self#is_immediate n ->
+      (Iinttest_imm(sz, Iunsigned(swap_integer_comparison cmp), n), arg2)
+  | Cop(Ccmpu (sz, cmp), [Cconst_int n; arg2], _) when self#is_immediate n ->
+      (Iinttest_imm(sz, Iunsigned(swap_integer_comparison cmp), n), arg2)
+  | Cop(Ccmpu (sz, cmp), args, _) ->
+      (Iinttest(sz, Iunsigned cmp), Ctuple args)
   | Cop(Ccmpf cmp, args, _) ->
       (Ifloattest cmp, Ctuple args)
   | Cop(Cand _, [arg; Cconst_int 1], _) ->

@@ -344,12 +344,12 @@ let mk_not dbg cmm =
   | Cop(Cadd (_, Can_scan),
         [Cop(Clsl (Atarget, _), [c; Cconst_int 1], _); Cconst_int 1], dbg') ->
       begin match c with
-      | Cop(Ccmps cmp, [c1; c2], dbg'') ->
+      | Cop(Ccmps (sz, cmp), [c1; c2], dbg'') ->
           tag_int
-            (Cop(Ccmps (negate_integer_comparison cmp), [c1; c2], dbg'')) dbg'
-      | Cop(Ccmpu cmp, [c1; c2], dbg'') ->
+            (Cop(Ccmps (sz, negate_integer_comparison cmp), [c1; c2], dbg'')) dbg'
+      | Cop(Ccmpu (sz, cmp), [c1; c2], dbg'') ->
           tag_int
-            (Cop(Ccmpu (negate_integer_comparison cmp), [c1; c2], dbg'')) dbg'
+            (Cop(Ccmpu (sz, negate_integer_comparison cmp), [c1; c2], dbg'')) dbg'
       | Cop(Ccmpf cmp, [c1; c2], dbg'') ->
           tag_int
             (Cop(Ccmpf (negate_float_comparison cmp), [c1; c2], dbg'')) dbg'
@@ -572,7 +572,7 @@ let safe_divmod_bi mkop is_safe mkm1 c1 c2 bi dbg =
     if Arch.division_crashes_on_overflow
     && (size_int = 4 || bi <> Pint32)
     && not (is_different_from (-1) c2)
-    then Cifthenelse(Cop(Ccmps Cne, [c2; Cconst_int(-1)], dbg), c, mkm1 c1 dbg)
+    then Cifthenelse(Cop(Ccmps (Atarget, Cne), [c2; Cconst_int(-1)], dbg), c, mkm1 c1 dbg)
     else c))
 
 let safe_div_bi is_safe =
@@ -593,7 +593,7 @@ let test_bool dbg cmm =
         Cconst_int 0
       else
         Cconst_int 1
-  | c -> Cop(Ccmps Cne, [c; Cconst_int 1], dbg)
+  | c -> Cop(Ccmps (Atarget, Cne), [c; Cconst_int 1], dbg)
 
 (* Float *)
 
@@ -727,12 +727,12 @@ let wordsize_shift = 9
 let numfloat_shift = 9 + log2_size_float - log2_size_addr
 
 let is_addr_array_hdr hdr dbg =
-  Cop(Ccmps Cne,
+  Cop(Ccmps (Atarget, Cne),
       [Cop(Cand (Atarget, Cannot_scan), [hdr; Cconst_int 255], dbg);
        floatarray_tag], dbg)
 
 let is_addr_array_ptr ptr dbg =
-  Cop(Ccmps Cne, [get_tag ptr dbg; floatarray_tag], dbg)
+  Cop(Ccmps (Atarget, Cne), [get_tag ptr dbg; floatarray_tag], dbg)
 
 let addr_array_length hdr dbg =
   Cop(Clsr (Atarget, Cannot_scan), [hdr; Cconst_int wordsize_shift], dbg)
@@ -999,6 +999,11 @@ let add_cmm_constant c =
 
 (* Boxed integers *)
 
+let arith_size_of_bi = function
+    Pnativeint -> Atarget
+  | Pint32 -> A32
+  | Pint64 -> A64
+
 let box_int_constant bi n =
   match bi with
     Pnativeint -> Uconst_nativeint n
@@ -1056,19 +1061,20 @@ let alloc_matches_boxed_int bi ~hdr ~ops =
         && String.equal sym caml_int64_ops
   | (Pnativeint | Pint32 | Pint64), _, _ -> false
 
-let rec unbox_int bi arg dbg =
+let rec unbox_int ?(extend=true) bi arg dbg =
   match arg with
     Cop(Calloc, [hdr; ops; Cop(Clsl (Atarget, _), [contents; Cconst_int 32], dbg')], _dbg)
     when bi = Pint32 && size_int = 8 && big_endian
-      && alloc_matches_boxed_int bi ~hdr ~ops ->
-      (* Force sign-extension of low 32 bits *)
-      Cop(Casr (Atarget, Cannot_scan),
-          [Cop(Clsl (Atarget, Cannot_scan), [contents; Cconst_int 32], dbg');
-           Cconst_int 32],
-        dbg)
+         && alloc_matches_boxed_int bi ~hdr ~ops ->
+      if not extend then contents
+      else (* Force sign-extension of low 32 bits *)
+        Cop(Casr (Atarget, Cannot_scan),
+            [Cop(Clsl (Atarget, Cannot_scan), [contents; Cconst_int 32], dbg');
+             Cconst_int 32],
+            dbg)
   | Cop(Calloc, [hdr; ops; contents], _dbg)
-    when bi = Pint32 && size_int = 8 && not big_endian
-      && alloc_matches_boxed_int bi ~hdr ~ops ->
+    when extend && bi = Pint32 && size_int = 8 && not big_endian
+         && alloc_matches_boxed_int bi ~hdr ~ops ->
       (* Force sign-extension of low 32 bits *)
       Cop(Casr (Atarget, Cannot_scan),
           [Cop(Clsl (Atarget, Cannot_scan), [contents; Cconst_int 32], dbg);
@@ -1497,7 +1503,7 @@ let unaligned_set_64 ?(typ=Cannot_be_live_at_gc) ptr idx newval dbg =
 let max_or_zero a dbg =
   bind "size" a (fun a ->
       (* equivalent to
-         Cifthenelse(Cop(Ccmps Cle, [a; Cconst_int 0]), Cconst_int 0, a)
+         Cifthenelse(Cop(Ccmps (Atarget, Cle), [a; Cconst_int 0]), Cconst_int 0, a)
 
          if a is positive, sign is 0 hence sign_negation is full of 1
                          so sign_negation&a = a
@@ -1620,7 +1626,7 @@ let simplif_primitive p =
 
 (* Build switchers both for constants and blocks *)
 
-let transl_isout h arg dbg = tag_int (Cop(Ccmpu Clt, [h ; arg], dbg)) dbg
+let transl_isout h arg dbg = tag_int (Cop(Ccmpu (Atarget, Clt), [h ; arg], dbg)) dbg
 
 (* Build an actual switch (ie jump table) *)
 
@@ -1655,12 +1661,12 @@ module SArgBlocks =
 struct
   type primitive = operation
 
-  let eqint = Ccmps Ceq
-  let neint = Ccmps Cne
-  let leint = Ccmps Cle
-  let ltint = Ccmps Clt
-  let geint = Ccmps Cge
-  let gtint = Ccmps Cgt
+  let eqint = Ccmps (Atarget, Ceq)
+  let neint = Ccmps (Atarget, Cne)
+  let leint = Ccmps (Atarget, Cle)
+  let ltint = Ccmps (Atarget, Clt)
+  let geint = Ccmps (Atarget, Cge)
+  let gtint = Ccmps (Atarget, Cgt)
 
   type act = expression
 
@@ -1669,8 +1675,8 @@ struct
   let make_prim p args = Cop (p,args, Debuginfo.none)
   let make_offset arg n =
     add_const ~typ:Cannot_be_live_at_gc arg n Debuginfo.none
-  let make_isout h arg = Cop (Ccmpu Clt, [h ; arg], Debuginfo.none)
-  let make_isin h arg = Cop (Ccmpu Cge, [h ; arg], Debuginfo.none)
+  let make_isout h arg = Cop (Ccmpu (Atarget, Clt), [h ; arg], Debuginfo.none)
+  let make_isin h arg = Cop (Ccmpu (Atarget, Cge), [h ; arg], Debuginfo.none)
   let make_if cond ifso ifnot = Cifthenelse (cond, ifso, ifnot)
   let make_switch loc arg cases actions =
     make_switch arg cases actions (Debuginfo.from_location loc)
@@ -2213,7 +2219,7 @@ let rec transl env e =
               ccatch
                 (raise_num, [],
                  Cifthenelse
-                   (Cop(Ccmps tst, [Cvar (VP.var id); high], dbg),
+                   (Cop(Ccmps (Atarget, tst), [Cvar (VP.var id); high], dbg),
                     Cexit (raise_num, []),
                     create_loop
                       (Csequence
@@ -2224,7 +2230,7 @@ let rec transl env e =
                                Cop(inc, [Cvar (VP.var id); Cconst_int 2],
                                  dbg)),
                              Cifthenelse
-                               (Cop(Ccmps Ceq, [Cvar (VP.var id_prev); high],
+                               (Cop(Ccmps (Atarget, Ceq), [Cvar (VP.var id_prev); high],
                                   dbg),
                                 Cexit (raise_num,[]), Ctuple [])))))),
                  Ctuple []))))
@@ -2380,8 +2386,8 @@ and transl_prim_1 env p arg dbg =
       box_int dbg bi2 (transl_unbox_int dbg env bi1 arg)
   | Pnegbint bi ->
       box_int dbg bi
-        (Cop(Csub (Atarget, Cannot_scan),
-             [Cconst_int 0; transl_unbox_int dbg env bi arg], dbg))
+        (Cop(Csub (arith_size_of_bi bi, Cannot_scan),
+             [Cconst_int 0; transl_unbox_int ~extend:false dbg env bi arg], dbg))
   | Pbbswap bi ->
       let prim = match bi with
         | Pnativeint -> "nativeint"
@@ -2508,7 +2514,7 @@ and transl_prim_2 env p arg1 arg2 dbg =
           [asr_int (transl env arg1) (untag_int(transl env arg2) dbg) dbg;
            Cconst_int 1], dbg)
   | Pintcomp cmp ->
-      tag_int(Cop(Ccmps(transl_int_comparison cmp),
+      tag_int(Cop(Ccmps(Atarget, transl_int_comparison cmp),
                   [transl env arg1; transl env arg2], dbg)) dbg
   | Pisout ->
       transl_isout (transl env arg1) (transl env arg2) dbg
@@ -2633,17 +2639,17 @@ and transl_prim_2 env p arg1 arg2 dbg =
 
   (* Boxed integers *)
   | Paddbint bi ->
-      box_int dbg bi (Cop(Cadd (Atarget, Cannot_scan),
-                      [transl_unbox_int dbg env bi arg1;
-                       transl_unbox_int dbg env bi arg2], dbg))
+      box_int dbg bi (Cop(Cadd (arith_size_of_bi bi, Cannot_scan),
+                      [transl_unbox_int ~extend:false dbg env bi arg1;
+                       transl_unbox_int ~extend:false dbg env bi arg2], dbg))
   | Psubbint bi ->
-      box_int dbg bi (Cop(Csub (Atarget, Cannot_scan),
-                      [transl_unbox_int dbg env bi arg1;
-                       transl_unbox_int dbg env bi arg2], dbg))
+      box_int dbg bi (Cop(Csub (arith_size_of_bi bi, Cannot_scan),
+                      [transl_unbox_int ~extend:false dbg env bi arg1;
+                       transl_unbox_int ~extend:false dbg env bi arg2], dbg))
   | Pmulbint bi ->
-      box_int dbg bi (Cop(Cmul (Atarget, Cannot_scan),
-                      [transl_unbox_int dbg env bi arg1;
-                       transl_unbox_int dbg env bi arg2], dbg))
+      box_int dbg bi (Cop(Cmul (arith_size_of_bi bi, Cannot_scan),
+                      [transl_unbox_int ~extend:false dbg env bi arg1;
+                       transl_unbox_int ~extend:false dbg env bi arg2], dbg))
   | Pdivbint { size = bi; is_safe } ->
       box_int dbg bi (safe_div_bi is_safe
                       (transl_unbox_int dbg env bi arg1)
@@ -2655,34 +2661,34 @@ and transl_prim_2 env p arg1 arg2 dbg =
                       (transl_unbox_int dbg env bi arg2)
                       bi dbg)
   | Pandbint bi ->
-      box_int dbg bi (Cop(Cand (Atarget, Cannot_scan),
-                     [transl_unbox_int dbg env bi arg1;
-                      transl_unbox_int dbg env bi arg2], dbg))
+      box_int dbg bi (Cop(Cand (arith_size_of_bi bi, Cannot_scan),
+                     [transl_unbox_int ~extend:false dbg env bi arg1;
+                      transl_unbox_int ~extend:false dbg env bi arg2], dbg))
   | Porbint bi ->
-      box_int dbg bi (Cop(Cor (Atarget, Cannot_scan),
-                     [transl_unbox_int dbg env bi arg1;
-                      transl_unbox_int dbg env bi arg2], dbg))
+      box_int dbg bi (Cop(Cor (arith_size_of_bi bi, Cannot_scan),
+                     [transl_unbox_int ~extend:false dbg env bi arg1;
+                      transl_unbox_int ~extend:false dbg env bi arg2], dbg))
   | Pxorbint bi ->
-      box_int dbg bi (Cop(Cxor (Atarget, Cannot_scan),
-                     [transl_unbox_int dbg env bi arg1;
-                      transl_unbox_int dbg env bi arg2], dbg))
+      box_int dbg bi (Cop(Cxor (arith_size_of_bi bi, Cannot_scan),
+                     [transl_unbox_int ~extend:false dbg env bi arg1;
+                      transl_unbox_int ~extend:false dbg env bi arg2], dbg))
   | Plslbint bi ->
-      box_int dbg bi (Cop(Clsl (Atarget, Cannot_scan),
-                     [transl_unbox_int dbg env bi arg1;
+      box_int dbg bi (Cop(Clsl (arith_size_of_bi bi, Cannot_scan),
+                     [transl_unbox_int ~extend:false dbg env bi arg1;
                       untag_int(transl env arg2) dbg], dbg))
   | Plsrbint bi ->
-      box_int dbg bi (Cop(Clsr (Atarget, Cannot_scan),
-                     [make_unsigned_int bi (transl_unbox_int dbg env bi arg1)
+      box_int dbg bi (Cop(Clsr (arith_size_of_bi bi, Cannot_scan),
+                     [make_unsigned_int bi (transl_unbox_int ~extend:false dbg env bi arg1)
                                         dbg;
                       untag_int(transl env arg2) dbg], dbg))
   | Pasrbint bi ->
-      box_int dbg bi (Cop(Casr (Atarget, Cannot_scan),
-                     [transl_unbox_int dbg env bi arg1;
+      box_int dbg bi (Cop(Casr (arith_size_of_bi bi, Cannot_scan),
+                     [transl_unbox_int ~extend:false dbg env bi arg1;
                       untag_int(transl env arg2) dbg], dbg))
   | Pbintcomp(bi, cmp) ->
-      tag_int (Cop(Ccmps(transl_int_comparison cmp),
-                     [transl_unbox_int dbg env bi arg1;
-                      transl_unbox_int dbg env bi arg2], dbg)) dbg
+      tag_int (Cop(Ccmps(arith_size_of_bi bi, transl_int_comparison cmp),
+                     [transl_unbox_int ~extend:false dbg env bi arg1;
+                      transl_unbox_int ~extend:false dbg env bi arg2], dbg)) dbg
   | Pnot | Pnegint | Pintoffloat | Pfloatofint | Pnegfloat
   | Pabsfloat | Pstringlength | Pbyteslength | Pbytessetu | Pbytessets
   | Pisint | Pbswap16 | Pint_as_pointer | Popaque | Pread_symbol _
@@ -2841,7 +2847,7 @@ and transl_unbox_float dbg env = function
     Uconst(Uconst_ref(_, Some (Uconst_float f))) -> Cconst_float f
   | exp -> unbox_float dbg (transl env exp)
 
-and transl_unbox_int dbg env bi = function
+and transl_unbox_int ?(extend=(not Arch.clear_high_32bits)) dbg env bi = function
     Uconst(Uconst_ref(_, Some (Uconst_int32 n))) ->
       Cconst_natint (Nativeint.of_int32 n)
   | Uconst(Uconst_ref(_, Some (Uconst_nativeint n))) ->
@@ -2857,7 +2863,7 @@ and transl_unbox_int dbg env bi = function
       end
   | Uprim(Pbintofint bi',[Uconst(Uconst_int i)],_) when bi = bi' ->
       Cconst_int i
-  | exp -> unbox_int bi (transl env exp) dbg
+  | exp -> unbox_int ~extend bi (transl env exp) dbg
 
 and transl_unbox_number dbg env bn arg =
   match bn with
@@ -3389,7 +3395,7 @@ let cache_public_method meths tag cache dbg =
             dbg),
         Csequence(
         Cifthenelse
-          (Cop (Ccmps Clt,
+          (Cop (Ccmps (Atarget, Clt),
                 [tag;
                  Cop(Cload (word_int, Mutable),
                      [Cop(cadda,
@@ -3399,7 +3405,7 @@ let cache_public_method meths tag cache dbg =
            Cassign(hi, Cop(Csub (Atarget, Can_scan), [Cvar mi; Cconst_int 2], dbg)),
            Cassign(li, Cvar mi)),
         Cifthenelse
-          (Cop(Ccmps Cge, [Cvar li; Cvar hi], dbg), Cexit (raise_num, []),
+          (Cop(Ccmps (Atarget, Cge), [Cvar li; Cvar hi], dbg), Cexit (raise_num, []),
            Ctuple [])))),
      Ctuple []),
   Clet (
@@ -3445,7 +3451,7 @@ let apply_function_body arity =
   (args, clos,
    if arity = 1 then app_fun clos 0 else
    Cifthenelse(
-   Cop(Ccmps Ceq, [get_int_field env (Cvar clos) 1 dbg; int_const arity], dbg),
+   Cop(Ccmps (Atarget, Ceq), [get_int_field env (Cvar clos) 1 dbg; int_const arity], dbg),
    Cop(Capply typ_val,
        get_code_pointer env (Cvar clos) 2 dbg
          :: List.map (fun s -> Cvar s) all_args,
@@ -3476,7 +3482,7 @@ let send_function arity =
           [Cop(Cload (word_int, Mutable), [cache], dbg); mask], dbg),
     Clet (
     VP.create real,
-    Cifthenelse(Cop(Ccmpu Cne, [tag'; tag], dbg),
+    Cifthenelse(Cop(Ccmpu (Atarget, Cne), [tag'; tag], dbg),
                 cache_public_method (Cvar meths) tag cache dbg,
                 cached_pos),
     Cop(Cload (word_val, Mutable),

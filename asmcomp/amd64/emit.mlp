@@ -388,10 +388,10 @@ let cond = function
 
 (* Output an = 0 or <> 0 test. *)
 
-let output_test_zero arg =
-  match arg.loc with
-  | Reg.Reg _ -> I.test (reg arg) (reg arg)
-  | _  -> I.cmp (int 0) (reg arg)
+let output_test_zero sz i n =
+  match i.arg.(n).loc with
+  | Reg.Reg _ -> I.test (arg_sz sz i n) (arg_sz sz i n)
+  | _  -> I.cmp (int 0) (arg_sz sz i n)
 
 (* Output a floating-point compare and branch *)
 
@@ -818,20 +818,20 @@ let emit_instr fallthrough i =
       let lbl = label lbl in
       begin match tst with
       | Itruetest ->
-          output_test_zero i.arg.(0);
+          output_test_zero Atarget i 0;
           I.jne lbl
       | Ifalsetest ->
-          output_test_zero i.arg.(0);
+          output_test_zero Atarget i 0;
           I.je lbl
-      | Iinttest cmp ->
-          I.cmp (arg i 1) (arg i 0);
+      | Iinttest (sz, cmp) ->
+          I.cmp (arg_sz sz i 1) (arg_sz sz i 0);
           I.j (cond cmp) lbl
-      | Iinttest_imm((Isigned Ceq | Isigned Cne |
-                      Iunsigned Ceq | Iunsigned Cne) as cmp, 0) ->
-          output_test_zero i.arg.(0);
+      | Iinttest_imm(sz, ((Isigned Ceq | Isigned Cne |
+                           Iunsigned Ceq | Iunsigned Cne) as cmp), 0) ->
+          output_test_zero sz i 0;
           I.j (cond cmp) lbl
-      | Iinttest_imm(cmp, n) ->
-          I.cmp (int n) (arg i 0);
+      | Iinttest_imm(sz, cmp, n) ->
+          I.cmp (int n) (arg_sz sz i 0);
           I.j (cond cmp) lbl
       | Ifloattest cmp ->
           emit_float_test cmp i lbl

@@ -115,8 +115,10 @@ let test tst ppf arg =
   match tst with
   | Itruetest -> reg ppf arg.(0)
   | Ifalsetest -> fprintf ppf "not %a" reg arg.(0)
-  | Iinttest cmp -> fprintf ppf "%a %s %a" reg arg.(0) (intcomp cmp) reg arg.(1)
-  | Iinttest_imm(cmp, n) -> fprintf ppf "%a %s %i" reg arg.(0) (intcomp cmp) n
+  | Iinttest (sz, cmp) ->
+      fprintf ppf "%a %s%s %a" reg arg.(0) (intcomp cmp) (size_arith sz) reg arg.(1)
+  | Iinttest_imm(sz, cmp, n) ->
+      fprintf ppf "%a %s%s %i" reg arg.(0) (intcomp cmp) (size_arith sz) n
   | Ifloattest cmp ->
       fprintf ppf "%a%s%a"
        reg arg.(0) (floatcomp cmp) reg arg.(1)
