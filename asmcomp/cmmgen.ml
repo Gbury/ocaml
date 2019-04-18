@@ -1084,7 +1084,7 @@ let rec unbox_int bi arg dbg =
         split_int64_for_32bit_target arg dbg
       else
         Cop(
-          Cload((if bi = Pint32 then Thirtytwo_signed else word_int), Mutable),
+          Cload((if bi = Pint32 then Thirtytwo_signed else (Word Cannot_scan)), Mutable),
           [Cop(cadda, [arg; Cconst_int size_addr], dbg)], dbg)
 
 let make_unsigned_int bi arg dbg =
@@ -1198,9 +1198,9 @@ let bigarray_word_kind = function
   | Pbigarray_sint16 -> Sixteen_signed
   | Pbigarray_uint16 -> Sixteen_unsigned
   | Pbigarray_int32 -> Thirtytwo_signed
-  | Pbigarray_int64 -> word_int
+  | Pbigarray_int64 -> Word Cannot_scan
   | Pbigarray_caml_int -> word_int
-  | Pbigarray_native_int -> word_int
+  | Pbigarray_native_int -> Word Cannot_scan
   | Pbigarray_complex32 -> Single
   | Pbigarray_complex64 -> Double
 
@@ -2232,7 +2232,7 @@ let rec transl env e =
       end
   | Uunreachable ->
       let dbg = Debuginfo.none in
-      Cop(Cload (word_int, Mutable), [Cconst_int 0], dbg)
+      Cop(Cload (Word Cannot_be_live_at_gc, Mutable), [Cconst_int 0], dbg)
 
 and transl_make_array dbg env kind args =
   match kind with
@@ -3366,7 +3366,7 @@ let cache_public_method meths tag cache dbg =
   Clet (
   VP.create li, Cconst_int 3,
   Clet (
-  VP.create hi, Cop(Cload (word_int, Mutable), [meths], dbg),
+  VP.create hi, Cop(Cload (Word Cannot_scan, Mutable), [meths], dbg),
   Csequence(
   ccatch
     (raise_num, [],
@@ -3384,7 +3384,7 @@ let cache_public_method meths tag cache dbg =
         Cifthenelse
           (Cop (Ccmps Clt,
                 [tag;
-                 Cop(Cload (word_int, Mutable),
+                 Cop(Cload (Word Cannot_scan, Mutable),
                      [Cop(cadda,
                           [meths; lsl_const (Cvar mi) log2_size_addr dbg],
                           dbg)],
@@ -3399,7 +3399,7 @@ let cache_public_method meths tag cache dbg =
     VP.create tagged,
       Cop(cadda, [lsl_const (Cvar li) log2_size_addr dbg;
         Cconst_int(1 - 3 * size_addr)], dbg),
-    Csequence(Cop (Cstore (word_int, Assignment), [cache; Cvar tagged], dbg),
+    Csequence(Cop (Cstore (Word Cannot_scan, Assignment), [cache; Cvar tagged], dbg),
               Cvar tagged)))))
 
 (* Generate an application function:
@@ -3460,13 +3460,13 @@ let send_function arity =
     let cached_pos = Cvar cached in
     let tag_pos = Cop(cadda, [Cop (cadda, [cached_pos; Cvar meths], dbg);
                               Cconst_int(3*size_addr-1)], dbg) in
-    let tag' = Cop(Cload (word_int, Mutable), [tag_pos], dbg) in
+    let tag' = Cop(Cload (Word Cannot_scan, Mutable), [tag_pos], dbg) in
     Clet (
     VP.create meths, Cop(Cload (word_val, Mutable), [obj], dbg),
     Clet (
     VP.create cached,
-      Cop(Cand Can_scan,
-          [Cop(Cload (word_int, Mutable), [cache], dbg); mask], dbg),
+      Cop(Cand Cannot_scan,
+          [Cop(Cload (Word Cannot_scan, Mutable), [cache], dbg); mask], dbg),
     Clet (
     VP.create real,
     Cifthenelse(Cop(Ccmpu Cne, [tag'; tag], dbg),
