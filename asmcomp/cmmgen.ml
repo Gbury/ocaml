@@ -264,23 +264,23 @@ let ignore_low_bit_int = function
   | Cop(Cor (Atarget, _), [c; Cconst_int 1], _) -> c
   | c -> c
 
-let lsr_int ?(typ=Cannot_scan) c1 c2 dbg =
+let lsr_int ?(typ=Cannot_scan) ?(size=Atarget) c1 c2 dbg =
   match c2 with
     Cconst_int 0 ->
       c1
   | Cconst_int n when n > 0 ->
-      Cop(Clsr (Atarget, typ), [ignore_low_bit_int c1; c2], dbg)
+      Cop(Clsr (size, typ), [ignore_low_bit_int c1; c2], dbg)
   | _ ->
-      Cop(Clsr (Atarget, typ), [c1; c2], dbg)
+      Cop(Clsr (size, typ), [c1; c2], dbg)
 
-let asr_int ?(typ=Cannot_scan) c1 c2 dbg =
+let asr_int ?(typ=Cannot_scan) ?(size=Atarget) c1 c2 dbg =
   match c2 with
     Cconst_int 0 ->
       c1
   | Cconst_int n when n > 0 ->
-      Cop(Casr (Atarget, typ), [ignore_low_bit_int c1; c2], dbg)
+      Cop(Casr (size, typ), [ignore_low_bit_int c1; c2], dbg)
   | _ ->
-      Cop(Casr (Atarget, typ), [c1; c2], dbg)
+      Cop(Casr (size, typ), [c1; c2], dbg)
 
 let tag_int i dbg =
   match i with
@@ -372,46 +372,75 @@ let create_loop body =
   let body = Csequence (body, call_cont) in
   Ccatch (Recursive, [cont, [], body], call_cont)
 
-(* Turning integer divisions into multiply-high then shift.
-   The [division_parameters] function is used in module Emit for
-   those target platforms that support this optimization. *)
+(* Turning integer divisions into multiply-high then shift. *)
 
-(* Unsigned comparison between native integers. *)
+module type Number = sig
+  type t
+  val size : int
+  val zero : t
+  val one : t
+  val min_int : t
+  val pred : t -> t
+  val succ : t -> t
+  val add : t -> t -> t
+  val sub : t -> t -> t
+  val mul : t -> t -> t
+  val div : t -> t -> t
+  val compare : t -> t -> int
+  val shift_left : t -> int -> t
+  val shift_right_logical : t -> int -> t
+end
 
-let ucompare x y = Nativeint.(compare (add x min_int) (add y min_int))
+module Magic(M : Number) = struct
 
-(* Unsigned division and modulus at type nativeint.
-   Algorithm: Hacker's Delight section 9.3 *)
+  (* Unsigned comparison between native integers. *)
 
-let udivmod n d = Nativeint.(
-  if d < 0n then
-    if ucompare n d < 0 then (0n, n) else (1n, sub n d)
-  else begin
-    let q = shift_left (div (shift_right_logical n 1) d) 1 in
-    let r = sub n (mul q d) in
-    if ucompare r d >= 0 then (succ q, sub r d) else (q, r)
-  end)
+  let ucompare x y = M.(compare (add x min_int) (add y min_int))
 
-(* Compute division parameters.
-   Algorithm: Hacker's Delight chapter 10, fig 10-1. *)
+  (* Unsigned division and modulus at type nativeint.
+     Algorithm: Hacker's Delight section 9.3 *)
 
-let divimm_parameters d = Nativeint.(
-  assert (d > 0n);
-  let twopsm1 = min_int in (* 2^31 for 32-bit archs, 2^63 for 64-bit archs *)
-  let nc = sub (pred twopsm1) (snd (udivmod twopsm1 d)) in
-  let rec loop p (q1, r1) (q2, r2) =
-    let p = p + 1 in
-    let q1 = shift_left q1 1 and r1 = shift_left r1 1 in
-    let (q1, r1) =
-      if ucompare r1 nc >= 0 then (succ q1, sub r1 nc) else (q1, r1) in
-    let q2 = shift_left q2 1 and r2 = shift_left r2 1 in
-    let (q2, r2) =
-      if ucompare r2 d >= 0 then (succ q2, sub r2 d) else (q2, r2) in
-    let delta = sub d r2 in
-    if ucompare q1 delta < 0 || (q1 = delta && r1 = 0n)
-    then loop p (q1, r1) (q2, r2)
-    else (succ q2, p - size)
-  in loop (size - 1) (udivmod twopsm1 nc) (udivmod twopsm1 d))
+  let udivmod n d = M.(
+      if d < zero then
+        if ucompare n d < 0 then (zero, n) else (one, sub n d)
+      else begin
+        let q = shift_left (div (shift_right_logical n 1) d) 1 in
+        let r = sub n (mul q d) in
+        if ucompare r d >= 0 then (succ q, sub r d) else (q, r)
+      end)
+
+  (* Compute division parameters.
+     Algorithm: Hacker's Delight chapter 10, fig 10-1. *)
+
+  let divimm_parameters d = M.(
+      assert (d > zero);
+      let twopsm1 = min_int in (* 2^31 for 32-bit archs, 2^63 for 64-bit archs *)
+      let nc = sub (pred twopsm1) (snd (udivmod twopsm1 d)) in
+      let rec loop p (q1, r1) (q2, r2) =
+        let p = p + 1 in
+        let q1 = shift_left q1 1 and r1 = shift_left r1 1 in
+        let (q1, r1) =
+          if ucompare r1 nc >= 0 then (succ q1, sub r1 nc) else (q1, r1) in
+        let q2 = shift_left q2 1 and r2 = shift_left r2 1 in
+        let (q2, r2) =
+          if ucompare r2 d >= 0 then (succ q2, sub r2 d) else (q2, r2) in
+        let delta = sub d r2 in
+        if ucompare q1 delta < 0 || (q1 = delta && r1 = zero)
+        then loop p (q1, r1) (q2, r2)
+        else (succ q2, p - size)
+      in loop (size - 1) (udivmod twopsm1 nc) (udivmod twopsm1 d))
+
+end
+
+let divimm_parameters sz d =
+  match sz with
+  | A32 when size_int = 8 ->
+      let module M = Magic(struct include Int32 let size = 32 end) in
+      let (m, p) = M.divimm_parameters (Int32.of_int d) in
+      Nativeint.of_int32 m, p
+  | A32 | A64 | Atarget ->
+      let module M = Magic(Nativeint) in
+      M.divimm_parameters (Nativeint.of_int d)
 
 (* The result [(m, p)] of [divimm_parameters d] satisfies the following
    inequality:
@@ -471,7 +500,7 @@ let raise_regular dbg exc =
 let raise_symbol dbg symb =
   raise_regular dbg (Cconst_symbol (symb, Value))
 
-let rec div_int ?(typ=Cannot_scan) c1 c2 is_safe dbg =
+let rec div_int ?(typ=Cannot_scan) size c1 c2 is_safe dbg =
   match (c1, c2) with
     (c1, Cconst_int 0) ->
       Csequence(c1, raise_symbol dbg "caml_exn_Division_by_zero")
@@ -489,15 +518,16 @@ let rec div_int ?(typ=Cannot_scan) c1 c2 is_safe dbg =
               res = shift-right-signed(c1 + t, l)
         *)
         Cop(Casr (Atarget, typ), [bind "dividend" c1 (fun c1 ->
-            let t = asr_int c1 (Cconst_int (l - 1)) dbg in
-            let t = lsr_int t (Cconst_int (Nativeint.size - l)) dbg in
-            add_int c1 t dbg);
+            let t = asr_int ~size c1 (Cconst_int (l - 1)) dbg in
+            let t = lsr_int ~size t (Cconst_int (Nativeint.size - l)) dbg in
+            Cop(Cadd (size, Cannot_scan), [c1; t], dbg));
            Cconst_int l], dbg)
       else if n < 0 then
-        sub_int ~typ (Cconst_int 0)
-          (div_int c1 (Cconst_int (-n)) is_safe dbg) dbg
+        Cop(Csub (size, typ),
+            [Cconst_int 0;
+             (div_int size c1 (Cconst_int (-n)) is_safe dbg)], dbg)
       else begin
-        let (m, p) = divimm_parameters (Nativeint.of_int n) in
+        let (m, p) = divimm_parameters size n in
         (* Algorithm:
               t = multiply-high-signed(c1, m)
               if m < 0, t = t + c1
@@ -505,22 +535,23 @@ let rec div_int ?(typ=Cannot_scan) c1 c2 is_safe dbg =
               res = t + sign-bit(c1)
         *)
         bind "dividend" c1 (fun c1 ->
-          let t = Cop(Cmulh (Atarget, Cannot_scan), [c1; Cconst_natint m], dbg) in
-          let t = if m < 0n then Cop(Cadd (Atarget, Cannot_scan), [t; c1], dbg) else t in
-          let t = if p > 0 then Cop(Casr (Atarget, Cannot_scan),
+          let t = Cop(Cmulh (size, Cannot_scan), [c1; Cconst_natint m], dbg) in
+          let t = if m < 0n then Cop(Cadd (size, Cannot_scan), [t; c1], dbg) else t in
+          let t = if p > 0 then Cop(Casr (size, Cannot_scan),
                                     [t; Cconst_int p], dbg) else t in
-          add_int ~typ t (lsr_int c1 (Cconst_int (Nativeint.size - 1)) dbg) dbg)
+          Cop (Cadd (size, typ),
+               [t; lsr_int ~size c1 (Cconst_int (Nativeint.size - 1)) dbg], dbg))
       end
   | (c1, c2) when !Clflags.unsafe || is_safe = Lambda.Unsafe ->
-      Cop(Cdiv (Atarget, typ), [c1; c2], dbg)
+      Cop(Cdiv (size, typ), [c1; c2], dbg)
   | (c1, c2) ->
       bind "divisor" c2 (fun c2 ->
         bind "dividend" c1 (fun c1 ->
           Cifthenelse(c2,
-                      Cop(Cdiv (Atarget, typ), [c1; c2], dbg),
+                      Cop(Cdiv (size, typ), [c1; c2], dbg),
                       raise_symbol dbg "caml_exn_Division_by_zero")))
 
-let mod_int ?(typ=Cannot_scan) c1 c2 is_safe dbg =
+let mod_int ?(typ=Cannot_scan) size c1 c2 is_safe dbg =
   match (c1, c2) with
     (c1, Cconst_int 0) ->
       Csequence(c1, raise_symbol dbg "caml_exn_Division_by_zero")
@@ -539,22 +570,22 @@ let mod_int ?(typ=Cannot_scan) c1 c2 is_safe dbg =
               res = c1 - t
          *)
         bind "dividend" c1 (fun c1 ->
-          let t = asr_int c1 (Cconst_int (l - 1)) dbg in
-          let t = lsr_int t (Cconst_int (Nativeint.size - l)) dbg in
-          let t = add_int c1 t dbg in
-          let t = Cop(Cand (Atarget, Cannot_scan), [t; Cconst_int (-n)], dbg) in
-          sub_int ~typ c1 t dbg)
+          let t = asr_int ~size c1 (Cconst_int (l - 1)) dbg in
+          let t = lsr_int ~size t (Cconst_int (Nativeint.size - l)) dbg in
+          let t = Cop(Cadd (size, typ), [c1; t], dbg) in
+          let t = Cop(Cand (size, Cannot_scan), [t; Cconst_int (-n)], dbg) in
+          Cop(Csub(size, typ), [c1; t], dbg))
       else
         bind "dividend" c1 (fun c1 ->
-          sub_int ~typ c1 (mul_int (div_int c1 c2 is_safe dbg) c2 dbg) dbg)
+            Cop(Csub(size, typ), [c1; mul_int (div_int size c1 c2 is_safe dbg) c2 dbg], dbg))
   | (c1, c2) when !Clflags.unsafe || is_safe = Lambda.Unsafe ->
       (* Flambda already generates that test *)
-      Cop(Cmod (Atarget, typ), [c1; c2], dbg)
+      Cop(Cmod (size, typ), [c1; c2], dbg)
   | (c1, c2) ->
       bind "divisor" c2 (fun c2 ->
         bind "dividend" c1 (fun c1 ->
           Cifthenelse(c2,
-                      Cop(Cmod (Atarget, typ), [c1; c2], dbg),
+                      Cop(Cmod (size, typ), [c1; c2], dbg),
                       raise_symbol dbg "caml_exn_Division_by_zero")))
 
 (* Division or modulo on boxed integers.  The overflow case min_int / -1
@@ -565,22 +596,21 @@ let is_different_from x = function
   | Cconst_natint n -> n <> Nativeint.of_int x
   | _ -> false
 
-let safe_divmod_bi mkop is_safe mkm1 c1 c2 bi dbg =
+let safe_divmod_bi mkop is_safe mkm1 c1 c2 dbg =
   bind "dividend" c1 (fun c1 ->
   bind "divisor" c2 (fun c2 ->
     let c = mkop c1 c2 is_safe dbg in
     if Arch.division_crashes_on_overflow
-    && (size_int = 4 || bi <> Pint32)
     && not (is_different_from (-1) c2)
     then Cifthenelse(Cop(Ccmps (Atarget, Cne), [c2; Cconst_int(-1)], dbg), c, mkm1 c1 dbg)
     else c))
 
-let safe_div_bi is_safe =
-  safe_divmod_bi div_int is_safe
+let safe_div_bi size is_safe =
+  safe_divmod_bi (div_int size) is_safe
     (fun c1 dbg -> Cop(Csub (Atarget, Cannot_scan), [Cconst_int 0; c1], dbg))
 
-let safe_mod_bi is_safe =
-  safe_divmod_bi mod_int is_safe (fun _ _ -> Cconst_int 0)
+let safe_mod_bi size is_safe =
+  safe_divmod_bi (mod_int size) is_safe (fun _ _ -> Cconst_int 0)
 
 (* Bool *)
 
@@ -2487,10 +2517,10 @@ and transl_prim_2 env p arg1 arg2 dbg =
                (mul_int (decr_int c1 dbg) (untag_int c2 dbg) dbg) dbg
      end
   | Pdivint is_safe ->
-      tag_int(div_int (untag_int(transl env arg1) dbg)
+      tag_int(div_int Atarget (untag_int(transl env arg1) dbg)
         (untag_int(transl env arg2) dbg) is_safe dbg) dbg
   | Pmodint is_safe ->
-      tag_int(mod_int (untag_int(transl env arg1) dbg)
+      tag_int(mod_int Atarget (untag_int(transl env arg1) dbg)
         (untag_int(transl env arg2) dbg) is_safe dbg) dbg
   | Pandint ->
       Cop(Cand (Atarget, Can_scan), [transl env arg1; transl env arg2], dbg)
@@ -2651,15 +2681,15 @@ and transl_prim_2 env p arg1 arg2 dbg =
                       [transl_unbox_int ~extend:false dbg env bi arg1;
                        transl_unbox_int ~extend:false dbg env bi arg2], dbg))
   | Pdivbint { size = bi; is_safe } ->
-      box_int dbg bi (safe_div_bi is_safe
-                      (transl_unbox_int dbg env bi arg1)
-                      (transl_unbox_int dbg env bi arg2)
-                      bi dbg)
+      box_int dbg bi (safe_div_bi (arith_size_of_bi bi) is_safe
+                      (transl_unbox_int ~extend:false dbg env bi arg1)
+                      (transl_unbox_int ~extend:false dbg env bi arg2)
+                      dbg)
   | Pmodbint { size = bi; is_safe } ->
-      box_int dbg bi (safe_mod_bi is_safe
-                      (transl_unbox_int dbg env bi arg1)
-                      (transl_unbox_int dbg env bi arg2)
-                      bi dbg)
+      box_int dbg bi (safe_mod_bi (arith_size_of_bi bi) is_safe
+                      (transl_unbox_int ~extend:false dbg env bi arg1)
+                      (transl_unbox_int ~extend:false dbg env bi arg2)
+                      dbg)
   | Pandbint bi ->
       box_int dbg bi (Cop(Cand (arith_size_of_bi bi, Cannot_scan),
                      [transl_unbox_int ~extend:false dbg env bi arg1;
