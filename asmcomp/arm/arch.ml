@@ -153,6 +153,10 @@ let size_float = 8
 
 let allow_unaligned_access = false
 
+(* Does 32-bit operations clear higher-order bits (irrelevant on 32-bit arch) *)
+
+let clear_high_32bits = true
+
 (* Behavior of division *)
 
 let division_crashes_on_overflow = false
