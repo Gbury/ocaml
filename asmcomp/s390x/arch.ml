@@ -53,10 +53,6 @@ let size_float = 8
 
 let allow_unaligned_access = false
 
-(* Does 32-bit operations clear higher-order bits *)
-
-let clear_high_32bits = false
-
 (* Behavior of division *)
 
 let division_crashes_on_overflow = true

@@ -1091,7 +1091,7 @@ let alloc_matches_boxed_int bi ~hdr ~ops =
         && String.equal sym caml_int64_ops
   | (Pnativeint | Pint32 | Pint64), _, _ -> false
 
-let rec unbox_int ?(extend=true) bi arg dbg =
+let rec unbox_int ~extend bi arg dbg =
   match arg with
     Cop(Calloc, [hdr; ops; Cop(Clsl (Atarget, _), [contents; Cconst_int 32], dbg')], _dbg)
     when bi = Pint32 && size_int = 8 && big_endian
@@ -1112,16 +1112,16 @@ let rec unbox_int ?(extend=true) bi arg dbg =
   | Cop(Calloc, [hdr; ops; contents], _dbg)
     when alloc_matches_boxed_int bi ~hdr ~ops ->
       contents
-  | Clet(id, exp, body) -> Clet(id, exp, unbox_int bi body dbg)
+  | Clet(id, exp, body) -> Clet(id, exp, unbox_int ~extend bi body dbg)
   | Cifthenelse(cond, e1, e2) ->
-      Cifthenelse(cond, unbox_int bi e1 dbg, unbox_int bi e2 dbg)
-  | Csequence(e1, e2) -> Csequence(e1, unbox_int bi e2 dbg)
+      Cifthenelse(cond, unbox_int ~extend bi e1 dbg, unbox_int ~extend bi e2 dbg)
+  | Csequence(e1, e2) -> Csequence(e1, unbox_int ~extend bi e2 dbg)
   | Cswitch(e, tbl, el, dbg') ->
-      Cswitch(e, tbl, Array.map (fun e -> unbox_int bi e dbg) el, dbg')
+      Cswitch(e, tbl, Array.map (fun e -> unbox_int ~extend bi e dbg) el, dbg')
   | Ccatch(rec_flag, handlers, body) ->
-      map_ccatch (fun e -> unbox_int bi e dbg) rec_flag handlers body
+      map_ccatch (fun e -> unbox_int ~extend bi e dbg) rec_flag handlers body
   | Ctrywith(e1, id, e2) ->
-      Ctrywith(unbox_int bi e1 dbg, id, unbox_int bi e2 dbg)
+      Ctrywith(unbox_int ~extend bi e1 dbg, id, unbox_int ~extend bi e2 dbg)
   | _ ->
       if size_int = 4 && bi = Pint64 then
         split_int64_for_32bit_target arg dbg
@@ -2133,10 +2133,10 @@ let rec transl env e =
               Pbigarray_float32 | Pbigarray_float64 ->
                 transl_unbox_float dbg env argnewval
             | Pbigarray_complex32 | Pbigarray_complex64 -> transl env argnewval
-            | Pbigarray_int32 -> transl_unbox_int dbg env Pint32 argnewval
-            | Pbigarray_int64 -> transl_unbox_int dbg env Pint64 argnewval
+            | Pbigarray_int32 -> transl_unbox_int ~extend:false dbg env Pint32 argnewval
+            | Pbigarray_int64 -> transl_unbox_int ~extend:false dbg env Pint64 argnewval
             | Pbigarray_native_int ->
-                transl_unbox_int dbg env Pnativeint argnewval
+                transl_unbox_int ~extend:false dbg env Pnativeint argnewval
             | _ -> untag_int (transl env argnewval) dbg)
             dbg)
       | (Pbigarraydim(n), [b]) ->
@@ -2293,7 +2293,7 @@ and transl_ccall env prim args dbg =
     match native_repr with
     | Same_as_ocaml_repr -> transl env arg
     | Unboxed_float -> transl_unbox_float dbg env arg
-    | Unboxed_integer bi -> transl_unbox_int dbg env bi arg
+    | Unboxed_integer bi -> transl_unbox_int ~extend:true dbg env bi arg
     | Untagged_int -> untag_int (transl env arg) dbg
   in
   let rec transl_args native_repr_args args =
@@ -2411,9 +2411,9 @@ and transl_prim_1 env p arg dbg =
   | Pbintofint bi ->
       box_int dbg bi (untag_int (transl env arg) dbg)
   | Pintofbint bi ->
-      force_tag_int (transl_unbox_int dbg env bi arg) dbg
+      force_tag_int (transl_unbox_int ~extend:true dbg env bi arg) dbg
   | Pcvtbint(bi1, bi2) ->
-      box_int dbg bi2 (transl_unbox_int dbg env bi1 arg)
+      box_int dbg bi2 (transl_unbox_int ~extend:true dbg env bi1 arg)
   | Pnegbint bi ->
       box_int dbg bi
         (Cop(Csub (arith_size_of_bi bi, Cannot_scan),
@@ -2425,7 +2425,7 @@ and transl_prim_1 env p arg dbg =
         | Pint64 -> "int64" in
       box_int dbg bi (Cop(Cextcall(Printf.sprintf "caml_%s_direct_bswap" prim,
                                typ_int, false, None),
-                      [transl_unbox_int dbg env bi arg],
+                      [transl_unbox_int ~extend:true dbg env bi arg],
                       dbg))
   | Pbswap16 ->
       tag_int (Cop(Cextcall("caml_bswap16_direct", typ_int, false, None),
@@ -2877,7 +2877,7 @@ and transl_unbox_float dbg env = function
     Uconst(Uconst_ref(_, Some (Uconst_float f))) -> Cconst_float f
   | exp -> unbox_float dbg (transl env exp)
 
-and transl_unbox_int ?(extend=(not Arch.clear_high_32bits)) dbg env bi = function
+and transl_unbox_int ~extend dbg env bi = function
     Uconst(Uconst_ref(_, Some (Uconst_int32 n))) ->
       Cconst_natint (Nativeint.of_int32 n)
   | Uconst(Uconst_ref(_, Some (Uconst_nativeint n))) ->
@@ -2898,13 +2898,13 @@ and transl_unbox_int ?(extend=(not Arch.clear_high_32bits)) dbg env bi = functio
 and transl_unbox_number dbg env bn arg =
   match bn with
   | Boxed_float _ -> transl_unbox_float dbg env arg
-  | Boxed_integer (bi, _) -> transl_unbox_int dbg env bi arg
+  | Boxed_integer (bi, _) -> transl_unbox_int ~extend:false dbg env bi arg
 
 and transl_unbox_sized size dbg env exp =
   match size with
   | Sixteen -> untag_int (transl env exp) dbg
-  | Thirty_two -> transl_unbox_int dbg env Pint32 exp
-  | Sixty_four -> transl_unbox_int dbg env Pint64 exp
+  | Thirty_two -> transl_unbox_int ~extend:false dbg env Pint32 exp
+  | Sixty_four -> transl_unbox_int ~extend:false dbg env Pint64 exp
 
 and transl_let env str kind id exp body =
   let dbg = Debuginfo.none in
