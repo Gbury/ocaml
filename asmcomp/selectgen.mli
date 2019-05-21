@@ -26,7 +26,7 @@ val env_add
 
 val env_find : Backend_var.t -> environment -> Reg.t array
 
-val size_expr : environment -> Cmm.expression -> int
+(* val size_expr : environment -> Cmm.expression -> int *)
 
 module Effect : sig
   type t =
@@ -100,7 +100,7 @@ class virtual selector_generic : object
     environment -> Cmm.expression list -> Reg.t array * int
     (* Can be overridden to deal with stack-based calling conventions *)
   method emit_stores :
-    environment -> Cmm.expression list -> Reg.t array -> unit
+    environment -> Cmm.machtype -> Cmm.expression list * Cmm.expression list -> Reg.t array -> unit
     (* Fill a freshly allocated block.  Can be overridden for architectures
        that do not provide Arch.offset_addressing. *)
 
