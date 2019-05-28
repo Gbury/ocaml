@@ -131,6 +131,11 @@ let print_specific_operation printreg op ppf arg =
   | Isextend32 ->
       fprintf ppf "sextend32 %a" printreg arg.(0)
 
+(* Register typing on specific operations *)
+
+let infer_specific _arg _res = function
+  | _ -> []
+
 let win64 =
   match Config.system with
   | "win64" | "mingw64" | "cygwin" -> true

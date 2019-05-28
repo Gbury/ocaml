@@ -29,13 +29,13 @@ let typ_float = [|Float|]
 
 (** [machtype_component]s are partially ordered as follows:
 
-      Addr     Float
+      Addr
        ^
        |
       Val
        ^
        |
-      Int
+      Int    Float
 
   In particular, [Addr] must be above [Val], to ensure that if there is
   a join point between a code path yielding [Addr] and one yielding [Val]

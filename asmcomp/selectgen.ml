@@ -728,7 +728,7 @@ method emit_expr (env:environment) exp =
           let rd = self#regs_for typ_val in
           let alloc_args = self#select_allocation_args env in
           self#insert_debug env (Iop op) dbg alloc_args rd;
-          self#emit_stores env ty (args, simple_args) rd;
+          self#emit_stores env ty simple_args rd;
           Some rd
       end
   | Cop(op, args, dbg) ->
@@ -1018,7 +1018,7 @@ method emit_extcall_args env args =
   self#insert_move_args env args arg_hard_regs stack_ofs;
   arg_hard_regs, stack_ofs
 
-method emit_stores env ty (args, data) regs_addr =
+method emit_stores env ty data regs_addr =
   let j = ref 0 in
   let a =
     ref (Arch.offset_addressing Arch.identity_addressing (-Arch.size_int)) in
