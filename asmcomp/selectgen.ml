@@ -157,22 +157,10 @@ let join env opt_r1 seq1 opt_r2 seq2 =
       assert (l1 = Array.length r2);
       let r = Array.make l1 Reg.dummy in
       for i = 0 to l1-1 do
-        if Reg.anonymous r1.(i)
-          && Cmm.ge_component r1.(i).typ r2.(i).typ
-        then begin
-          r.(i) <- r1.(i);
-          seq2#insert_move env r2.(i) r1.(i)
-        end else if Reg.anonymous r2.(i)
-          && Cmm.ge_component r2.(i).typ r1.(i).typ
-        then begin
-          r.(i) <- r2.(i);
-          seq1#insert_move env r1.(i) r2.(i)
-        end else begin
-          let typ = Cmm.lub_component r1.(i).typ r2.(i).typ in
-          r.(i) <- Reg.create typ;
-          seq1#insert_move env r1.(i) r.(i);
-          seq2#insert_move env r2.(i) r.(i)
-        end
+        let typ = Cmm.lub_component r1.(i).typ r2.(i).typ in
+        r.(i) <- Reg.create typ;
+        seq1#insert_move env r1.(i) r.(i);
+        seq2#insert_move env r2.(i) r.(i)
       done;
       Some r
 
@@ -591,24 +579,6 @@ method insert_moves env src dst =
     self#insert_move env src.(i) dst.(i)
   done
 
-(* Adjust the types of destination pseudoregs for a [Cassign] assignment.
-   The type inferred at [let] binding might be [Int] while we assign
-   something of type [Val] (PR#6501). *)
-
-method adjust_type src dst =
-  let ts = src.typ and td = dst.typ in
-  if ts <> td then
-    match ts, td with
-    | Val, Int -> dst.typ <- Val
-    | Int, Val -> ()
-    | _, _ -> Misc.fatal_error("Selection.adjust_type: bad assignment to "
-                               ^ Reg.name dst)
-
-method adjust_types src dst =
-  for i = 0 to min (Array.length src) (Array.length dst) - 1 do
-    self#adjust_type src.(i) dst.(i)
-  done
-
 (* Insert moves and stack offsets for function arguments and results *)
 
 method insert_move_args env arg loc stacksize =
@@ -694,8 +664,7 @@ method emit_expr (env:environment) exp =
           Misc.fatal_error ("Selection.emit_expr: unbound var " ^ V.name v) in
       begin match self#emit_expr env e1 with
         None -> None
-      | Some r1 ->
-          self#adjust_types r1 rv; self#insert_moves env r1 rv; Some [||]
+      | Some r1 -> self#insert_moves env r1 rv; Some [||]
       end
   | Ctuple [] ->
       Some [||]
