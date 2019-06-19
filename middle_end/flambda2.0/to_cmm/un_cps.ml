@@ -38,11 +38,19 @@ let typ_float = Cmm.typ_float
 let typ_int64 =
   if arch32 then [| Cmm.Int; Cmm.Int |] else [| Cmm.Int |]
 
+(* Continuation use. A continuation can be translated one of two ways:
+   - by a static jump (Cmm jump, using a unique integer)
+   - by inlining the continuation's body at the call site. *)
+
+type cont =
+  | Jump of int
+  | Inline of Backend_var.With_provenance.t list * Cmm.expression
+
 (* Translation environment *)
 
 module Env = struct
   type t = {
-    cont  : Continuation.t;
+    k     : Continuation.t;
     (* The continuation of the current context
        (used to determine which calls are tail-calls) *)
     exn   : Continuation.t;
@@ -50,7 +58,11 @@ module Env = struct
        (used to determine where to insert try-with blocks) *)
     vars  : Backend_var.t Variable.Map.t;
     (* Map from flambda2 variables to backend_variables *)
+    conts : cont Continuation.Map.t;
+    (* Map from continuations to handlers (i.e variables bound by the
+       continuationn and expression of the continuation handler). *)
   }
+
 
   (* Variables *)
 
@@ -59,11 +71,43 @@ module Env = struct
     let name = Variable.unique_name v in
     let v' = Backend_var.create_local name in
     let vars = Variable.Map.add v v' env.vars in
-    { env with vars }, v'
+    let v'' = Backend_var.with_provenance.create v' in
+    { env with vars }, v''
+
+  let create_variables env l =
+    let env, l' =
+      List.fold_left (fun (env, l) v ->
+          let env', v' = create_variable env v in
+          env', v' :: l) (env, []) l
+    in
+    env, List.rev l'
 
   let get_variable env v =
     try Variable.Map.find v env.vars
     with Not_found -> assert false
+
+
+  (* Continuations *)
+
+  let get_jump_id env k =
+    match Continuation.Map.find k env.conts with
+    | Jump id -> id
+    | Inline _
+    | exception Not_found -> assert false
+
+  let new_jump_id =
+    let i = ref 0 in
+    (fun () -> incr i; !i)
+
+  let add_jump_cont env k =
+    let id = new_jump_id () in
+    let conts = Continuation.Map.add k (Jump id) env.conts in
+    id, { env with conts }
+
+  let add_inline_cont env k vars e =
+    let conts = Continuation.Map.add k (Inline (vars, e)) env.conts in
+    { env with conts }
+
 
 end
 
@@ -364,6 +408,19 @@ module C = struct
         let layout = lambda_ba_layout layout in
         bigarray_set true kind layout ba indexes value dbg
     | _ -> assert false
+
+
+  (* Static jumps *)
+
+  let handler ?(dbg=Debuginfo.none) id vars body =
+    (id, vars, body, dbg)
+
+  let cexit id args =
+    Cmm.Cexit (id, args)
+
+  let ccatch ~rec_flag ~handlers ~body =
+    let rec_flag = if rec_flag then Cmm.Recursive else Cmm.Nonrecursive in
+    Cmm.Ccatch (rec_flag, handlers, body)
 
 end
 
@@ -723,6 +780,9 @@ let prim env dbg = function
   | Flambda_primitive.Variadic (f, l) ->
       variadic_primitive env dbg f (List.map (simple env) l)
 
+let machtype_of_kinded_parameter k =
+  todo()
+
 
 (* Expressions *)
 
@@ -747,8 +807,62 @@ and let_expr env t =
       C.letin v' (named env' e) (expr env' body)
     )
 
-and let_cont env e =
-  todo()
+and let_cont env = function
+  (* Single_use continuation, inlined at call site to avoid a needless jump *)
+  | Let_cont.Non_recursive { handler; num_free_occurrences; } ->
+      Non_recursive_let_cont_handler.pattern_match handler (fun k ~body ->
+          let h = Non_recursive_let_cont_handler.handler handler in
+          if Continuation_handler.stub h || num_free_occurrences = 1 then begin
+            assert (not (Continuation_handler.is_exn_handler h));
+            let_cont_inline env k h body
+          end else
+            let_cont_jump env k h body
+        )
+  | Let_cont.Recursive handlers ->
+      Recursive_let_cont_handlers.pattern_match handlers (fun ~body conts ->
+          assert (not (Continuations_handlers.contains_exn_handler conts));
+          let_cont_rec env handlers body
+        )
+
+and let_cont_inline env k h body =
+  let vars, handle = continuation_handler env h in
+  let vars = List.map fst vars in
+  let env = Env.add_inline_cont env k vars handle in
+  expr env body
+
+and let_cont_jump env k h body =
+  let vars, handle = continuation_handler env h in
+  let id, env = Env.add_jump_cont env k in
+  C.ccatch
+    ~rec_flag:false
+    ~body:(expr env body)
+    ~handlers:[C.handler id vars handle]
+
+and let_cont_rec env conts body =
+  let s = Continuation_handlers.domain conts env in
+  let env = Continuation.Set.fold
+      (fun k acc -> snd (Env.add_jump_cont acc k)) s env in
+  let map = Continuation_handlers.to_map conts in
+  let map = Continuation.Map.map (continuation_handler env) map in
+  let handlers = Continuation.Map.fold (fun k (vars, handle) acc ->
+      let id = Env.get_jump_id env k in
+      C.handler id vars handle
+    ) map [] in
+  C.ccatch
+    ~rec_flag:true
+    ~body:(expr env body)
+    ~handlers
+
+and continuation_handler env h =
+  let h = Continuation_handler.params_and_handler h in
+  Continuation_params_and_handler.pattern_match h (fun args ~handler ->
+      let flambda_vars = List.map Kinded_parameter.var args in
+      let env, cmm_vars = Env.create_variables env flambda_vars in
+      let vars = List.map2 (fun v v' ->
+          (v, machtype_of_kinded_parameter v')
+        ) cmm_vars flambda_vars in
+      vars, expr env handler
+    )
 
 and apply_expr env e =
   todo()
