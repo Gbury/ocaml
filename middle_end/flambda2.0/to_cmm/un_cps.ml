@@ -967,7 +967,12 @@ and wrap_exn env res e =
   end
 
 and apply_cont env e =
-  todo()
+  let k = Apply_cont_expr.continuation e in
+  let args = List.map (simple env) (Apply_cont_expr.args e) in
+  match Env.get_k env k with
+  | Jump id -> C.cexit id args
+  | Inline (vars, body) ->
+      List.fold_left2 (fun acc v e -> C.letin v e acc) body vars args
 
 and switch env e =
   todo()
