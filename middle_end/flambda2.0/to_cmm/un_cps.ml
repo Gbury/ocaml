@@ -95,6 +95,11 @@ module Env = struct
     | Inline _
     | exception Not_found -> assert false
 
+  let get_k env k =
+    match Continuation.Map.find k env.conts with
+    | exception Not_found -> assert false
+    | res -> res
+
   let new_jump_id =
     let i = ref 0 in
     (fun () -> incr i; !i)
@@ -409,6 +414,11 @@ module C = struct
         bigarray_set true kind layout ba indexes value dbg
     | _ -> assert false
 
+  (* try-with blocks *)
+
+  let trywith ?(dbg=Debuginfo.none) ~body ~exn_var ~handler =
+    Cmm.Ctrywith (body, exn_var, handler, dbg)
+
 
   (* Static jumps *)
 
@@ -421,6 +431,21 @@ module C = struct
   let ccatch ~rec_flag ~handlers ~body =
     let rec_flag = if rec_flag then Cmm.Recursive else Cmm.Nonrecursive in
     Cmm.Ccatch (rec_flag, handlers, body)
+
+
+  (* Function calls *)
+
+  let direct_call ?(dbg=Debuginfo.none) ty f args =
+    Cmm.Cop (Cmm.Capply ty, f :: args, dbg)
+
+  let indirect_call ?(dbg=Debuginfo.none) ty f args =
+    let arity = List.length args in
+    let l = symbol (apply_function_sym arity) :: args @ [f] in
+    Cmm.Cop (Cmm.Capply ty, l, dbg)
+
+  let extract_symbol_name = function
+    | Cmm.Cconst_symbol (name, _) -> name
+    | _ -> assert false
 
 end
 
@@ -649,7 +674,7 @@ let binary_int_comp_primitive env dbg kind signed cmp x y =
   | Naked_int64, Signed, Ge when arch32 ->
       C.extcall ~alloc:true "caml_greaterequal" typ_int
         [C.box_int64 ~dbg x; C.box_int64 ~dbg y]
-  | Naked_int64, Unsigned, (Lt | Le | Gt | Ge) ->
+  | Naked_int64, Unsigned, (Lt | Le | Gt | Ge) when arch32 ->
       todo() (* There are no runtime C functions to do that afaict *)
   (* Tagged integers *)
   | Tagged_immediate, Signed, Lt -> C.tag_int (C.lt ~dbg x y) dbg
@@ -660,7 +685,7 @@ let binary_int_comp_primitive env dbg kind signed cmp x y =
   | Tagged_immediate, Unsigned, Le -> C.tag_int (C.ule ~dbg x y) dbg
   | Tagged_immediate, Unsigned, Gt -> C.tag_int (C.ugt ~dbg x y) dbg
   | Tagged_immediate, Unsigned, Ge -> C.tag_int (C.uge ~dbg x y) dbg
-(* Naked integers *)
+(* Naked integers TODO: tag intgers here also *)
   | (Naked_int32|Naked_int64|Naked_nativeint), Signed, Lt -> C.lt ~dbg x y
   | (Naked_int32|Naked_int64|Naked_nativeint), Signed, Le -> C.le ~dbg x y
   | (Naked_int32|Naked_int64|Naked_nativeint), Signed, Gt -> C.gt ~dbg x y
@@ -780,8 +805,29 @@ let prim env dbg = function
   | Flambda_primitive.Variadic (f, l) ->
       variadic_primitive env dbg f (List.map (simple env) l)
 
-let machtype_of_kinded_parameter k =
-  todo()
+(* Kinds and types *)
+
+let machtype_of_kind = function
+  | Flambda_kind.Value -> typ_val
+  | Flambda_kind.Fabricated -> typ_val (* TODO: correct ? *)
+  | Flambda_kind.Naked_number
+      Flambda_kind.Naked_number_kind.Naked_float -> typ_float
+  | Flambda_kind.Naked_number
+      Flambda_kind.Naked_number_kind.Naked_int64 -> typ_int64
+  | Flambda_kind.Naked_number
+      Flambda_kind.Naled_number_kind.(
+        Naked_immediate | Naked_int32 | Naked_nativeint
+      ) ->
+      typ_int
+
+let machtype_of_kinded_parameter p =
+  machtype_of_kind (Kinded_parameter.kind p)
+
+let machtype_of_return_arity = function
+  | [k] -> machtype_of_kind k
+  | _ -> assert false
+
+(* Function calls and continuations *)
 
 
 (* Expressions *)
@@ -865,7 +911,60 @@ and continuation_handler env h =
     )
 
 and apply_expr env e =
-  todo()
+  let res = apply_call env e in
+  let continued = wrap_cont env res e in
+  wrap_exn env continued e
+
+and apply_call env e =
+  let f = simple env (Apply_expr.callee e) in
+  let args = List.map (simple env) (Apply_expr.args e) in
+  let dbg = Apply_expr.dbg e in
+  match Apply_expr.call_kind e with
+  | Call_kind.Function
+      Call_kind.Function_call.Direct { return_arity; _ } ->
+      let ty = machtype_of_return_arity return_arity in
+      C.direct_call dbg ty f args
+  | Call_kind.Function
+      Call_kind.Function_call.Indirect_unknown_arity ->
+      C.indirect_call dbg typ_val f args
+  | Call_kind.Function
+      Call_kind.Function_call.Indirect_known_arity { return_arity; _ } ->
+      let ty = machtype_of_return_arity return_arity in
+      C.indirect_call dbg ty f args
+  | Call_kind.C_call { alloc; return_arity; _ } ->
+      let ty = machtype_of_return_arity return_arity in
+      C.extcall ~dbg ~alloc (C.extract_symbol_name f) ty args
+  | Call_kind.Method _ ->
+      todo()
+
+and wrap_cont env res e =
+  let k = Apply_expr.continuation e in
+  if Continuation.equal env.k k then
+    res
+  else begin
+    match Env.get_k env k with
+    | Jump id -> C.cexit id [res]
+    | Inline ([v], body) -> C.letin v res body
+    | Inline _ -> assert false
+  end
+
+and wrap_exn env res e =
+  let k_exn = Apply_expr.exn_continuation e in
+  if Continuation.equal env.k_exn k_exn then
+    res
+  else begin
+    match Env.get_k env k_exn with
+    | Jump id ->
+        let v = Backend_var.create_local "exn_var" in
+        let exn_var = Backend_var.With_provenance.create v in
+        C.trywith
+          ~body:res ~exn_var
+          ~handler:(C.cexit id [C.var exn_var])
+    | Inline ([exn_var], handler) ->
+        C.trywith ~body:res ~exn_var ~handler
+    | Inline _ ->
+        assert false
+  end
 
 and apply_cont env e =
   todo()
