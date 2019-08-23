@@ -1063,7 +1063,14 @@ and fill_static_slot symbs decls elts env acc offset updates slot =
       let fields, updates =
         match simple_static env (Var_within_closure.Map.find v elts) with
         | `Data fields -> fields, updates
-        | `Var _v -> todo ()
+        | `Var v ->
+            (* Since whole sets of closures no longer have a dedicated symbol,
+               there should not be updates to them. If really necessary, it *could*
+               be possible to use the symbol of the first closure instead (which has
+               a defined symbol), but this seems like an unneeded hack. *)
+            Misc.fatal_errorf
+              "Invalid variable '%a' in static set of closures."
+              Variable.print v
       in
       List.rev fields @ acc, offset + 1, updates
   | Closure c ->
@@ -1110,13 +1117,7 @@ let static_structure_item (type a) env r (symb, st) =
   | Singleton _, Fabricated_block _ ->
       todo()
   | Set_of_closures s, Set_of_closures set ->
-      let data, updates =
-        (* CR mshinwell: Which symbol should be chosen instead of
-           the set of closures symbol, which now doesn't exist? *)
-        (* CR vlaviron: The symbol is only needed if we need to update some
-           fields after allocation. For now, I'll assume it never happens. *)
-        static_set_of_closures env s.closure_symbols set
-      in
+      let data, updates = static_set_of_closures env s.closure_symbols set in
       R.wrap_init (C.sequence updates) (R.add_data data r)
   | Singleton s, Boxed_float v ->
       let default = Numbers.Float_by_bit_pattern.zero in
