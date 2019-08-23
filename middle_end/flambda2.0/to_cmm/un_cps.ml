@@ -863,8 +863,18 @@ and apply_cont env e =
         expr env body
   end
 
+and switch_scrutinee env sort s =
+  let e, env = simple env s in
+  let e =
+    match (sort : Switch.Sort.t) with
+    | Int -> C.untag_int e Debuginfo.none
+    | Tag _ -> e (* get_tag already returns untagged integers *)
+    | Is_int -> e (* Is_int already returns untagged integers *)
+  in
+  e, env
+
 and switch env s =
-  let e, env = simple env (Switch.scrutinee s) in
+  let e, env = switch_scrutinee env (Switch.sort s) (Switch.scrutinee s) in
   let wrap, env = Env.flush_delayed_lets env in
   let ints, exprs =
     Discriminant.Map.fold (fun d k (ints, exprs) ->
