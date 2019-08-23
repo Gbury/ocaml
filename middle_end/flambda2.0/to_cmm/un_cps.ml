@@ -14,10 +14,6 @@
 
 [@@@ocaml.warning "+a-4-30-40-41-42"]
 
-(* XXX Remove this once the file has been updated to cope with the
-   change in type of Let patterns *)
-[@@@ocaml.warning "-32"]
-
 open! Flambda.Import
 
 module Env = Un_cps_env
