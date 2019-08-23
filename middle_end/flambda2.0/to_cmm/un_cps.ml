@@ -613,10 +613,10 @@ and let_expr env t =
           let soc_var = Variable.create "*set_of_closures*" in
           let effs = Effects_and_coeffects.all in
           let env = Env.bind_variable env soc_var effs false csoc in
-          (* Then get from the env the cmm variable that was create and bound
+          (* Then get from the env the cmm variable that was created and bound
              to the compiled set of closures. *)
           let soc_cmm_var, env = Env.inline_variable env soc_var in
-          (* Add to the env bindingsd for all the closure variables. *)
+          (* Add env bindings for all the closure variables. *)
           let effs = Effects_and_coeffects.pure in
           let env =
             Closure_id.Map.fold (fun cid v acc ->
@@ -1115,6 +1115,7 @@ let static_structure_item (type a) env r (symb, st) =
       let e = static_block_updates (C.symbol name) env [] 0 fields in
       R.wrap_init (C.sequence e) (R.add_data block r)
   | Singleton _, Fabricated_block _ ->
+      (* CR Gbury: What are those ? *)
       todo()
   | Set_of_closures s, Set_of_closures set ->
       let data, updates = static_set_of_closures env s.closure_symbols set in
