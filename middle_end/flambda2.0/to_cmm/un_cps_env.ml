@@ -190,11 +190,11 @@ let bind_variable env var effs inline cmm_expr =
 let inline_variable env v =
   let skip_inlining b =
     let v = Backend_var.With_provenance.var b.cmm_var in
-    Un_cps_helper.var v, env
+    Un_cps_helper.var v, env, Effects_and_coeffects.pure
   in
   let rec commute b new_stack = function
     | [] ->
-        b.cmm_expr, { env with bindings = new_stack }
+        b.cmm_expr, { env with bindings = new_stack }, b.effs
     | b' :: r ->
         if Effects_and_coeffects.commute b.effs b'.effs then
           commute b (b' :: new_stack) r
@@ -216,7 +216,7 @@ let inline_variable env v =
   in
   match Variable.Map.find v env.vars with
   | e ->
-      e, env
+      e, env, Effects_and_coeffects.pure
   | exception Not_found ->
       find v [] env.bindings
 
