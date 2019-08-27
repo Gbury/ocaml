@@ -48,6 +48,11 @@ val has_commuting_effects : t -> bool
     Rather, does it have some effects with regards to whether it can
     commute with other expressions. *)
 
+val has_commuting_coeffects : t -> bool
+(** Does the given effects and coeffects has observable coeffects ?
+    Rather, does it have some coeffects with regards to whether it can
+    commute with other expressions. *)
+
 val join : t -> t -> t
 (** Join two effects and coeffects. *)
 
