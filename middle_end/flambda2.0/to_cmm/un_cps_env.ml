@@ -34,17 +34,21 @@ type cont =
 
    Let-bound variables can be one of three kinds: pure, coeffect and effect
    (effectful variables can also have coeffects).
-   Pure let-bound variables are simply added to the environment usual map.
-   Effectful and coeffectful variables are organised into stages:
-   a stage is either:
-   - a serie of consecutive bindings with only coeffects
-   - a single effectful binding
-   Whenever a new binding that doesn't match the current stage is added,
-   the current stage is archived, and replaced by a new stage.
-   Only bindings in the current stage are candidates to inlining.
-   When inlined, a binding is removed from its stage (as only linear
-   bindings are supposed to be inlined), and if the current stage becomes
-   empty, the last archived stage is "un-archived".
+   Pure let-bound variables that are inlined are simply added to the
+   environment usual map.
+   Other variables are organised into stages, which is a map from variables
+   to bindings, such that all bindings in the map can be commuted.
+   There is three kind of stages:
+   - Pure: only pure, non-inlined variables are in this stage
+   - Coeffect : only pure and coeffectful variables are in this stage
+   - Effectful : only pure and (exactly one) effectful variable are in this stage
+
+   When a new binding is added, we try and add it to the current stage,
+   potentially "upgrading" a Pure stage to a Coeffect or Effect stage.
+   If the binding cannot be added to the stage, the current stage is archived,
+   and the binding is added to a new empty stage.
+   An archived stage can be "un-archived" if the last variable of a stage is
+   inlined (and thus removed from the stage).
 *)
 
 type kind =
@@ -273,6 +277,21 @@ let remove_binding env v =
   if Variable.Map.is_empty map then
     pop_stage env
   else
+    (* In this case, it might be interesting to re-compute the kind
+       of the stage (e.g. if the only effectful variable is removed
+       from an Effect stage), however, it should not matter because
+       the expression in which the removed variable has been inlined
+       either:
+       - is let-bound, in which case its effects and coeffects will
+         be a superset of the removed variable, and a new binding with
+         these new effects added. For Coeffect stage, this does not matter.
+         For an Effect stage, it will unecessarily create a fresh stage,
+         however, since the only inlinable binding is the effectful one,
+         this does not prevent any inlining.
+       - not let-bound (function application, continuation application,
+         switch scrutinee), in which case all bindings will be flushed and
+         used to wrap the expression, so the kind of the stage does not
+         matter. *)
     { env with current = { env.current with map } }
 
 let inline_variable env v =

@@ -912,8 +912,8 @@ and switch env s =
         let c = Array.length exprs in
         let cases = Array.append exprs [| C.unreachable |] in
         (* The transl_switch_clambda expects an index array such that
-           index.(i) is the index in [cases] of the expression to
-           execute when [e] matches [i]. *)
+           [cases.(index.(i))] is the expression to execute when [e]
+           matches [i]. *)
         let d, _ = Discriminant.Map.max_binding (Switch.arms s) in
         let n = Targetint.OCaml.to_int (Discriminant.to_int d) in
         let index = Array.make (n + 2) c in
