@@ -46,65 +46,7 @@ let typ_float = Cmm.typ_float
 let typ_int64 = C.typ_int64
 
 
-(* Result for translating a program,
-   named R instead of Result to avoid shadowing *)
-
-module R = struct
-
-  type t = {
-    init : Cmm.expression;
-    current_data : Cmm.data_item list;
-    other_data : Cmm.data_item list list;
-  }
-
-  let empty = {
-    init = C.void;
-    current_data = [];
-    other_data = [];
-  }
-
-  let add_if_not_empty x l =
-    match x with
-    | [] -> l
-    | _ :: _ -> x :: l
-
-  let combine r t = {
-    init = C.sequence r.init t.init;
-    current_data = [];
-    other_data =
-      add_if_not_empty r.current_data (
-        add_if_not_empty t.current_data (
-          (r.other_data @ t.other_data)));
-  }
-
-  let wrap_init f r =
-    { r with init = f r.init; }
-
-  let add_data d r =
-    { r with current_data = d @ r.current_data; }
-
-  let update_data f r =
-    { r with current_data = f r.current_data; }
-
-  let to_cmm r =
-    let entry =
-      let dbg = Debuginfo.none in
-      let fun_name = Compilenv.make_symbol (Some "entry") in
-      let fun_codegen =
-        if Config.flambda then
-          [ Cmm.Reduce_code_size;
-            Cmm.No_CSE ]
-        else
-          [ Cmm.Reduce_code_size ]
-      in
-      let init = C.sequence r.init (C.unit ~dbg) in
-      C.cfunction (C.fundecl fun_name [] init fun_codegen dbg)
-    in
-    let data_list = add_if_not_empty r.current_data r.other_data in
-    let data = List.map C.cdata data_list in
-    data, entry
-
-end
+module R = Un_cps_return
 
 (* CR gbury: this conversion is potentially unsafe when cross-compiling
              for a 64-bit machine on a 32-bit host *)
@@ -550,6 +492,11 @@ let meth_kind k =
 
 (* Function calls and continuations *)
 
+let fvar_list l =
+  List.map (fun p ->
+      Kinded_parameter.var p, machtype_of_kinded_parameter p
+    ) l
+
 let var_list env l =
   let flambda_vars = List.map Kinded_parameter.var l in
   let env, cmm_vars = Env.create_variables env flambda_vars in
@@ -683,32 +630,52 @@ and let_cont_inline env k h body =
   expr env body
 
 and let_cont_jump env k h body =
-  let vars, handle = continuation_handler env h in
-  let id, env = Env.add_jump_cont env (List.map snd vars) k in
-  C.ccatch
-    ~rec_flag:false
-    ~body:(expr env body)
-    ~handlers:[C.handler id vars handle]
+  let args, handler = continuation_handler_split h in
+  let vars, handle, exn_flow = continuation_handler_aux env (args, handler) in
+  let id, env = Env.add_jump_cont env (fvar_list args) exn_flow k in
+  let cmm_body, body_flow = expr env body in
+  let res = C.ccatch
+      ~rec_flag:false
+      ~body:cmm_body
+      ~handlers:[C.handler id vars handle]
+  in
+  res, body_flow
 
 and let_cont_rec env conts body =
   let wrap, env = Env.flush_delayed_lets env in
-  (* Compute the environment for jump ids *)
   let map = Continuation_handlers.to_map conts in
-  let env = Continuation.Map.fold (fun k h acc ->
-      snd (Env.add_jump_cont acc (continuation_arg_tys h) k)
+  let map = Continuation.Map.map continuation_handler_split map in
+  (* Compute the environment for jump ids and flows *)
+  let env = Continuation.Map.fold (fun k (vars, _) acc ->
+      let vars = fvar_list vars in
+      snd (Env.add_jump_cont acc vars Un_cps_flow.empty k)
     ) map env in
   (* Translate each continuation handler *)
-  let map = Continuation.Map.map (continuation_handler env) map in
+  let map = Continuation.Map.map (continuation_handler_aux env) map in
+  (* Join the flows *)
+  let rec_flow, map = let_cont_rec_flow env map in
+  assert (Un_cps_flow.is_empty rec_flow);
   (* Setup the cmm handlers for the static catch *)
   let handlers = Continuation.Map.fold (fun k (vars, handle) acc ->
       let id = Env.get_jump_id env k in
       C.handler id vars handle :: acc
     ) map [] in
-  wrap (C.ccatch
-          ~rec_flag:true
-          ~body:(expr env body)
-          ~handlers
-       )
+  let cmm, flow = expr env body in
+  wrap flow (C.ccatch
+               ~rec_flag:true
+               ~body:cmm
+               ~handlers
+            )
+
+and let_cont_rec_flow env map =
+  let res_flow = Continuation.Map.fold (fun _ (_, _, flow) acc ->
+      Un_cps_flow.inter flow acc) map Un_cps_flow.top in
+  let map = Continuation.Map.map (fun (vars, e, flow) ->
+      let cont_res_flow = Un_cps_flow.sub flow res_flow in
+      let cmm = Un_cps_flow.flush cont_res_flow (Env.get_variable env) e in
+      (vars, cmm)
+    ) map in
+  res_flow, map
 
 and continuation_handler_split h =
   let h = Continuation_handler.params_and_handler h in
@@ -716,19 +683,32 @@ and continuation_handler_split h =
       args, handler
     )
 
-and continuation_arg_tys h =
-  let args, _ = continuation_handler_split h in
-  List.map machtype_of_kinded_parameter args
+and continuation_handler_aux env (args, e) =
+  let env, vars = var_list env args in
+  let res, flow = expr env e in
+  vars, res, flow
 
 and continuation_handler env h =
   let args, handler = continuation_handler_split h in
-  let env, vars = var_list env args in
-  vars, expr env handler
+  continuation_handler_aux env (args, handler)
 
 and apply_expr env e =
+  (* Tanslate the function call itself *)
   let call, env, effs = apply_call env e in
+  (* Prepare the env for delayed let-bindings *)
   let wrap, env = Env.flush_delayed_lets env in
-  wrap (wrap_cont env effs (wrap_exn env call e) e)
+  (* Compute flow intersection *)
+  let k = Apply_expr.continuation e in
+  let k_flow = 
+  let k_exn = Apply_expr.exn_continuation e in
+  let k_exn = Exn_continuation.exn_handler k_exn in
+
+  (* Wrap the function call with the exn handler of the call
+     and then the continuation for after the call *)
+  let tmp = wrap_exn env call e in
+  let cmm, flow = wrap_cont env effs tmp k (assert false) in
+  let res = wrap flow cmm in
+  res, flow
 
 and apply_call env e =
   let f = Apply_expr.callee e in
@@ -771,18 +751,17 @@ and apply_call env e =
       let args, env, _ = arg_list env (Apply_expr.args e) in
       C.send kind meth obj args dbg, env, effs
 
-and wrap_cont env effs res e =
-  let k = Apply_expr.continuation e in
+and wrap_cont env effs res k k_res_flow =
   if Continuation.equal (Env.return_cont env) k then
-    res
+    res, Env.return_flow env
   else begin
     match Env.get_k env k with
-    | Jump ([], id) ->
+    | Jump { id; vars = []; flow; } ->
         let wrap, _ = Env.flush_delayed_lets env in
-        wrap (C.sequence res (C.cexit id []))
-    | Jump ([_], id) ->
+        wrap flow (C.sequence res (C.cexit id []))
+    | Jump { id; vars = [_]; flow; } ->
         let wrap, _ = Env.flush_delayed_lets env in
-        wrap (C.cexit id [res])
+        wrap flow (C.cexit id [res])
     | Inline ([], body) ->
         let var = Variable.create "*apply_res*" in
         let env = let_expr_bind body env var res effs in
@@ -799,8 +778,6 @@ and wrap_cont env effs res e =
   end
 
 and wrap_exn env res e =
-  let k_exn = Apply_expr.exn_continuation e in
-  let k_exn = Exn_continuation.exn_handler k_exn in
   if Continuation.equal (Env.exn_cont env) k_exn then
     res
   else begin
@@ -1254,7 +1231,9 @@ let function_decl offsets fun_name _ d =
 let rec program_body offsets acc body =
   match Flambda_static.Program_body.descr body with
   | Flambda_static.Program_body.Root sym ->
-      sym, List.fold_left (fun acc r -> R.combine r acc) R.empty acc
+      sym, List.fold_left (fun acc r ->
+          R.Definition.combine r acc
+        ) R.Definition.empty acc
   | Flambda_static.Program_body.Define_symbol (def, rest) ->
       let r = definition offsets def in
       program_body offsets (r :: acc) rest
@@ -1273,7 +1252,7 @@ let program (p : Flambda_static.Program.t) =
   let offsets = Un_cps_closure.compute_offsets p in
   let functions = program_functions offsets p in
   let sym, res = program_body offsets [] p.body in
-  let data, entry = R.to_cmm res in
+  let data, entry = R.Definition.to_cmm res in
   let cmm_data = C.flush_cmmgen_state () in
   (C.gc_root_table [symbol sym]) :: data @ cmm_data @ functions @ [entry]
 

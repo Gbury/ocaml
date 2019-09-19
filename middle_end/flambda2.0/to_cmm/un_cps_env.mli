@@ -20,10 +20,11 @@
 type t
 (** Environment for flambda2 to cmm translation *)
 
-val mk : Un_cps_closure.env -> Continuation.t -> Continuation.t -> t
-(** [mk offsets k k_exn] creates a local environment for translating
-    a flambda2 expression, with return continuation [k] and exception
-    continuation [k_exn]. *)
+val mk :
+  Un_cps_closure.env -> Continuation.t -> Un_cps_flow.t ->Continuation.t -> t
+(** [mk offsets k k_flow k_exn] creates a local environment for translating
+    a flambda2 expression, with return continuation [k] (and associated flow
+    [k_flow]), and exception continuation [k_exn]. *)
 
 val dummy : Un_cps_closure.env -> t
 (** Create an environment with dummy return adn exception continuations. *)
@@ -33,6 +34,9 @@ val dummy : Un_cps_closure.env -> t
 
 val return_cont : t -> Continuation.t
 (** Returns the return continuation of the environment. *)
+
+val return_flow : t -> Un_cps_flow.t
+(** Returns the flow of the return_continuation. *)
 
 val exn_cont : t -> Continuation.t
 (** Returns the exception continuation of the environment. *)
@@ -58,7 +62,8 @@ val get_variable : t -> Variable.t -> Cmm.expression
 val inline_variable : t -> Variable.t -> Cmm.expression * t * Effects_and_coeffects.t
 (** Try and inline an flambda2 variable using the delayed let-bindings. *)
 
-val flush_delayed_lets : t -> (Cmm.expression -> Cmm.expression) * t
+val flush_delayed_lets : t ->
+  (Un_cps_flow.t -> Cmm.expression -> Cmm.expression * Un_cps_flow.t) * t
 (** Wrap the given cmm expression with all the delayed let bindings accumulated
     in the environment. *)
 
@@ -66,7 +71,11 @@ val flush_delayed_lets : t -> (Cmm.expression -> Cmm.expression) * t
 (** {2 Continuation bindings} *)
 
 type cont =
-  | Jump of Cmm.machtype list * int
+  | Jump of {
+      id : int;
+      vars : (Variable.t * Cmm.machtype) list;
+      flow : Un_cps_flow.t;
+    }
   (** Static jump, with the given id. The list of machtypes represent
       the types of arguments expected by the catch handler. *)
   | Inline of Kinded_parameter.t list * Flambda.Expr.t
@@ -74,7 +83,8 @@ type cont =
 (** Translation information for continuations. A continuation may either
     be translated as a static jump, or inlined at its call site. *)
 
-val add_jump_cont : t -> Cmm.machtype list -> Continuation.t -> int * t
+val add_jump_cont :
+  t -> (Variable.t * Cmm.machtype) list -> Un_cps_flow.t -> Continuation.t -> int * t
 (** Bind the given continuation to a jump, creating a fresh jump id for it. *)
 
 val add_inline_cont :

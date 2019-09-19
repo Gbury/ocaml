@@ -19,7 +19,11 @@
    - by inlining the continuation's body at the call site. *)
 
 type cont =
-  | Jump of Cmm.machtype list * int
+  | Jump of {
+      id : int;
+      vars : (Variable.t * Cmm.machtype) list;
+      flow : Un_cps_flow.t;
+    }
   | Inline of Kinded_parameter.t list * Flambda.Expr.t
 
 (* Delayed let-bindings. Let bindings are delayed in stages in order
@@ -76,6 +80,8 @@ type t = {
   k     : Continuation.t;
   (* The continuation of the current context
        (used to determine which calls are tail-calls) *)
+  k_flow : Un_cps_flow.t;
+  (** The flow of the return continuation. *)
   k_exn : Continuation.t;
   (* The exception continuation of the current context
      (used to determine where to insert try-with blocks) *)
@@ -96,8 +102,8 @@ type t = {
 let empty_stage =
   { kind = Pure; order = 0; map = Variable.Map.empty; }
 
-let mk offsets k k_exn = {
-  k; k_exn; offsets;
+let mk offsets k k_flow k_exn = {
+  k; k_flow; k_exn; offsets;
   archived = [];
   current = empty_stage;
   vars = Variable.Map.empty;
@@ -108,10 +114,12 @@ let dummy offsets =
   mk
     offsets
     (Continuation.create ())
+    Un_cps_flow.top
     (Continuation.create ())
 
-let return_cont env = env.k
 let exn_cont env = env.k_exn
+let return_cont env = env.k
+let return_flow env = env.k_flow
 
 (* Variables *)
 
@@ -150,7 +158,7 @@ let get_variable env v =
 
 let get_jump_id env k =
   match Continuation.Map.find k env.conts with
-  | Jump (_, id) -> id
+  | Jump { id;  _ } -> id
   | Inline _ ->
       Misc.fatal_errorf "Expected continuation %a to be bound to a jump"
         Continuation.print k
@@ -170,9 +178,9 @@ let new_jump_id =
   let i = ref 0 in
   (fun () -> incr i; !i)
 
-let add_jump_cont env tys k =
+let add_jump_cont env vars flow k =
   let id = new_jump_id () in
-  let conts = Continuation.Map.add k (Jump (tys, id)) env.conts in
+  let conts = Continuation.Map.add k (Jump {id; vars; flow}) env.conts in
   id, { env with conts }
 
 let add_inline_cont env k vars e =
@@ -319,16 +327,30 @@ module M = Map.Make(struct
   end)
 
 let flush_delayed_lets env =
-  (* generate a wrapper function to introduce the delayed let-bindings. *)
-  let wrap_aux acc stage =
-    let order_map = Variable.Map.fold (fun _ (b: binding) acc ->
-        M.add b.order b acc
-      ) stage.map M.empty in
-    M.fold (fun _ b acc ->
-        Un_cps_helper.letin b.cmm_var b.cmm_expr acc
-      ) order_map acc
+  (* wrapper to insert updates from flow analysis *)
+  let wrap_flow flow v b e =
+    match Un_cps_flow.pop flow v with
+    | None -> flow, e
+    | Some (s, flow) ->
+        let res =
+          Un_cps_field_initialize.Set.fold (fun up acc ->
+              let tmp = Un_cps_field_initialize.to_cmm up b.cmm_expr in
+              Un_cps_helper.sequence tmp acc
+            ) s e
+        in
+        flow, res
   in
-  let wrap e = List.fold_left wrap_aux e (env.current :: env.archived) in
+  (* generate a wrapper function to introduce the delayed let-bindings. *)
+  let wrap_aux (acc, flow) stage =
+    let order_map = Variable.Map.fold (fun v (b: binding) acc ->
+        M.add b.order (v, b) acc
+      ) stage.map M.empty in
+    M.fold (fun _ (v, b) (acc, flow) ->
+        let flow, acc = wrap_flow flow v b acc in
+        Un_cps_helper.letin b.cmm_var b.cmm_expr acc, flow
+      ) order_map (acc, flow)
+  in
   (* Return a wrapper and a cleared env *)
+  let wrap flow e = List.fold_left wrap_aux (e, flow) (env.current :: env.archived) in
   wrap, { env with current = empty_stage; archived = []; }
 
