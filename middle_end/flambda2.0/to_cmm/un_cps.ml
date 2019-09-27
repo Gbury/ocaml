@@ -631,51 +631,36 @@ and let_cont_inline env k h body =
 
 and let_cont_jump env k h body =
   let args, handler = continuation_handler_split h in
-  let vars, handle, exn_flow = continuation_handler_aux env (args, handler) in
-  let id, env = Env.add_jump_cont env (fvar_list args) exn_flow k in
-  let cmm_body, body_flow = expr env body in
-  let res = C.ccatch
+  let vars, handle = continuation_handler_aux env (args, handler) in
+  let id, env = Env.add_jump_cont env (fvar_list args) k in
+  let cmm_body = expr env body in
+  C.ccatch
       ~rec_flag:false
       ~body:cmm_body
       ~handlers:[C.handler id vars handle]
-  in
-  res, body_flow
 
 and let_cont_rec env conts body =
   let wrap, env = Env.flush_delayed_lets env in
   let map = Continuation_handlers.to_map conts in
   let map = Continuation.Map.map continuation_handler_split map in
-  (* Compute the environment for jump ids and flows *)
+  (* Compute the environment for jump ids *)
   let env = Continuation.Map.fold (fun k (vars, _) acc ->
       let vars = fvar_list vars in
-      snd (Env.add_jump_cont acc vars Un_cps_flow.empty k)
+      snd (Env.add_jump_cont acc vars k)
     ) map env in
   (* Translate each continuation handler *)
   let map = Continuation.Map.map (continuation_handler_aux env) map in
-  (* Join the flows *)
-  let rec_flow, map = let_cont_rec_flow env map in
-  assert (Un_cps_flow.is_empty rec_flow);
   (* Setup the cmm handlers for the static catch *)
   let handlers = Continuation.Map.fold (fun k (vars, handle) acc ->
       let id = Env.get_jump_id env k in
       C.handler id vars handle :: acc
     ) map [] in
-  let cmm, flow = expr env body in
-  wrap flow (C.ccatch
-               ~rec_flag:true
-               ~body:cmm
-               ~handlers
-            )
-
-and let_cont_rec_flow env map =
-  let res_flow = Continuation.Map.fold (fun _ (_, _, flow) acc ->
-      Un_cps_flow.inter flow acc) map Un_cps_flow.top in
-  let map = Continuation.Map.map (fun (vars, e, flow) ->
-      let cont_res_flow = Un_cps_flow.sub flow res_flow in
-      let cmm = Un_cps_flow.flush cont_res_flow (Env.get_variable env) e in
-      (vars, cmm)
-    ) map in
-  res_flow, map
+  let cmm = expr env body in
+  wrap (C.ccatch
+          ~rec_flag:true
+          ~body:cmm
+          ~handlers
+       )
 
 and continuation_handler_split h =
   let h = Continuation_handler.params_and_handler h in
@@ -685,8 +670,8 @@ and continuation_handler_split h =
 
 and continuation_handler_aux env (args, e) =
   let env, vars = var_list env args in
-  let res, flow = expr env e in
-  vars, res, flow
+  let res = expr env e in
+  vars, res
 
 and continuation_handler env h =
   let args, handler = continuation_handler_split h in
@@ -697,18 +682,12 @@ and apply_expr env e =
   let call, env, effs = apply_call env e in
   (* Prepare the env for delayed let-bindings *)
   let wrap, env = Env.flush_delayed_lets env in
-  (* Compute flow intersection *)
-  let k = Apply_expr.continuation e in
-  let k_flow = 
-  let k_exn = Apply_expr.exn_continuation e in
-  let k_exn = Exn_continuation.exn_handler k_exn in
-
   (* Wrap the function call with the exn handler of the call
      and then the continuation for after the call *)
-  let tmp = wrap_exn env call e in
-  let cmm, flow = wrap_cont env effs tmp k (assert false) in
-  let res = wrap flow cmm in
-  res, flow
+  let k = Apply_expr.continuation e in
+  let k_exn = Apply_expr.exn_continuation e in
+  let tmp = wrap_exn env call k_exn in
+  wrap (wrap_cont env effs tmp k)
 
 and apply_call env e =
   let f = Apply_expr.callee e in
@@ -751,17 +730,17 @@ and apply_call env e =
       let args, env, _ = arg_list env (Apply_expr.args e) in
       C.send kind meth obj args dbg, env, effs
 
-and wrap_cont env effs res k k_res_flow =
+and wrap_cont env effs res k =
   if Continuation.equal (Env.return_cont env) k then
-    res, Env.return_flow env
+    res
   else begin
     match Env.get_k env k with
-    | Jump { id; vars = []; flow; } ->
+    | Jump { id; vars = []; } ->
         let wrap, _ = Env.flush_delayed_lets env in
-        wrap flow (C.sequence res (C.cexit id []))
-    | Jump { id; vars = [_]; flow; } ->
+        wrap (C.sequence res (C.cexit id []))
+    | Jump { id; vars = [_]; } ->
         let wrap, _ = Env.flush_delayed_lets env in
-        wrap flow (C.cexit id [res])
+        wrap (C.cexit id [res])
     | Inline ([], body) ->
         let var = Variable.create "*apply_res*" in
         let env = let_expr_bind body env var res effs in
@@ -777,12 +756,13 @@ and wrap_cont env effs res k k_res_flow =
           "Multi-arguments continuation across function calls are not yet supported"
   end
 
-and wrap_exn env res e =
+and wrap_exn env res k_exn =
+  let k_exn = Exn_continuation.exn_handler k_exn in
   if Continuation.equal (Env.exn_cont env) k_exn then
     res
   else begin
     match Env.get_k env k_exn with
-    | Jump ([_], id) ->
+    | Jump { vars= [_]; id } ->
         let v = Backend_var.create_local "exn_var" in
         let exn_var = Backend_var.With_provenance.create v in
         C.trywith
@@ -825,8 +805,9 @@ and apply_cont env e =
           "Multi-arguments continuation across function calls are not yet supported"
   end else begin
     match Env.get_k env k with
-    | Jump (tys, id) ->
+    | Jump { vars; id } ->
         (* The provided args should match the types in tys *)
+        let tys = List.map snd vars in
         assert (List.compare_lengths tys args = 0);
         let args, env, _ = arg_list env args in
         let wrap, _ = Env.flush_delayed_lets env in
@@ -853,13 +834,15 @@ and switch_scrutinee env sort s =
   e, env
 
 and switch env s =
+  (* CR Gbury: have a more efficient way of generating the branches for the
+     if_then_else match and before the call to transl_switch_clambda *)
   let e, env = switch_scrutinee env (Switch.sort s) (Switch.scrutinee s) in
   let wrap, env = Env.flush_delayed_lets env in
   let ints, exprs =
     Discriminant.Map.fold (fun d k (ints, exprs) ->
       let i = Targetint.OCaml.to_int (Discriminant.to_int d) in
       let e = match Env.get_k env k with
-        | Jump ([], id) -> C.cexit id []
+        | Jump { vars = []; id } -> C.cexit id []
         | Inline ([], body) -> expr env body
         | Jump _
         | Inline _ ->
