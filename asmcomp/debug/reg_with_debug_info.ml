@@ -106,8 +106,9 @@ let location t = t.reg.loc
 
 let holds_pointer t =
   match t.reg.typ with
-  | Addr | Val -> true
-  | Int | Float -> false
+  | Int_reg (Must_scan | Cannot_be_live_at_gc) -> true
+  | Int_reg (Can_scan | Cannot_scan)
+  | Float_reg -> false
 
 let holds_non_pointer t = not (holds_pointer t)
 

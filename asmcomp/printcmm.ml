@@ -26,10 +26,11 @@ let rec_flag ppf = function
   | Recursive -> fprintf ppf " rec"
 
 let machtype_component ppf = function
-  | Val -> fprintf ppf "val"
-  | Addr -> fprintf ppf "addr"
-  | Int -> fprintf ppf "int"
-  | Float -> fprintf ppf "float"
+  | Int_reg Must_scan -> fprintf ppf "val"
+  | Int_reg Can_scan -> fprintf ppf "int"
+  | Int_reg Cannot_scan -> fprintf ppf "cannot_scan"
+  | Int_reg Cannot_be_live_at_gc -> fprintf ppf "addr"
+  | Float_reg -> fprintf ppf "float"
 
 let machtype ppf mty =
   match Array.length mty with
@@ -66,8 +67,10 @@ let chunk = function
   | Sixteen_signed -> "signed int16"
   | Thirtytwo_unsigned -> "unsigned int32"
   | Thirtytwo_signed -> "signed int32"
-  | Word_int -> "int"
-  | Word_val -> "val"
+  | Word Must_scan -> "val"
+  | Word Can_scan -> "int"
+  | Word Cannot_scan -> "cannot_scan"
+  | Word Cannot_be_live_at_gc -> "addr"
   | Single -> "float32"
   | Double -> "float64"
   | Double_u -> "float64u"
@@ -146,7 +149,7 @@ let rec expr ppf = function
     fprintf ppf "block-hdr(%s)%s"
       (Nativeint.to_string n) (Debuginfo.to_string d)
   | Cconst_float (n, _dbg) -> fprintf ppf "%F" n
-  | Cconst_symbol (s, _dbg) -> fprintf ppf "\"%s\"" s
+  | Cconst_symbol (s, _, _dbg) -> fprintf ppf "\"%s\"" s
   | Cconst_pointer (n, _dbg) -> fprintf ppf "%ia" n
   | Cconst_natpointer (n, _dbg) -> fprintf ppf "%sa" (Nativeint.to_string n)
   | Cvar id -> V.print ppf id

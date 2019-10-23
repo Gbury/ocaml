@@ -117,9 +117,9 @@ let mut_from_env env ptr =
       else Mutable
     | _ -> Mutable
 
-let get_field env ptr n dbg =
+let get_val_field env ptr n dbg =
   let mut = mut_from_env env ptr in
-  get_field_gen mut ptr n dbg
+  get_field_gen Must_scan mut ptr n dbg
 
 type rhs_kind =
   | RHS_block of int
@@ -185,7 +185,7 @@ let transl_constant dbg = function
               (Nativeint.add (Nativeint.shift_left (Nativeint.of_int n) 1) 1n,
                dbg)
   | Uconst_ref (label, _) ->
-      Cconst_symbol (label, dbg)
+      Cconst_symbol (label, Value, dbg)
 
 let emit_constant cst cont =
   match cst with
@@ -236,12 +236,12 @@ let box_int dbg bi arg =
       let sym = Compilenv.new_const_symbol () in
       let data_items = box_int_constant sym bi (Nativeint.of_int n) in
       Cmmgen_state.add_data_items data_items;
-      Cconst_symbol (sym, dbg)
+      Cconst_symbol (sym, Value, dbg)
   | Cconst_natint (n, _) ->
       let sym = Compilenv.new_const_symbol () in
       let data_items = box_int_constant sym bi n in
       Cmmgen_state.add_data_items data_items;
-      Cconst_symbol (sym, dbg)
+      Cconst_symbol (sym, Value, dbg)
   | _ ->
       box_int_gen dbg bi arg
 
@@ -316,7 +316,7 @@ let is_unboxed_number_cmm ~strict cmm =
     | Cop(Calloc, [Cblockheader (hdr, _); _], dbg)
       when Nativeint.equal hdr float_header ->
         notify (Boxed (Boxed_float dbg, false))
-    | Cop(Calloc, [Cblockheader (hdr, _); Cconst_symbol (ops, _); _], dbg) ->
+    | Cop(Calloc, [Cblockheader (hdr, _); Cconst_symbol (ops, Other, _); _], dbg) ->
         if Nativeint.equal hdr boxedintnat_header
         && String.equal ops caml_nativeint_ops
         then
@@ -333,7 +333,7 @@ let is_unboxed_number_cmm ~strict cmm =
           notify (Boxed (Boxed_integer (Pint64, dbg), false))
         else
           notify No_unboxing
-    | Cconst_symbol (s, _) ->
+    | Cconst_symbol (s, _, _) ->
         begin match Cmmgen_state.structured_constant_of_sym s with
         | Some (Uconst_float _) ->
             notify (Boxed (Boxed_float Debuginfo.none, true))
@@ -373,7 +373,7 @@ let rec transl env e =
         | [] -> Debuginfo.none
         | fundecl::_ -> fundecl.dbg
       in
-      Cconst_symbol (sym, dbg)
+      Cconst_symbol (sym, Value, dbg)
   | Uclosure(fundecls, clos_vars) ->
       let rec transl_fundecls pos = function
           [] ->
@@ -383,13 +383,13 @@ let rec transl env e =
             let dbg = f.dbg in
             let without_header =
               if f.arity = 1 || f.arity = 0 then
-                Cconst_symbol (f.label, dbg) ::
+                Cconst_symbol (f.label, Function, dbg) ::
                 int_const dbg f.arity ::
                 transl_fundecls (pos + 3) rem
               else
-                Cconst_symbol (curry_function_sym f.arity, dbg) ::
+                Cconst_symbol (curry_function_sym f.arity, Function, dbg) ::
                 int_const dbg f.arity ::
-                Cconst_symbol (f.label, dbg) ::
+                Cconst_symbol (f.label, Function, dbg) ::
                 transl_fundecls (pos + 4) rem
             in
             if pos = 0 then without_header
@@ -451,7 +451,7 @@ let rec transl env e =
   | Uprim(prim, args, dbg) ->
       begin match (simplif_primitive prim, args) with
       | (Pread_symbol sym, []) ->
-          Cconst_symbol (sym, dbg)
+          Cconst_symbol (sym, Value, dbg)
       | (Pmakeblock _, []) ->
           assert false
       | (Pmakeblock(tag, _mut, _kind), args) ->
@@ -516,7 +516,7 @@ let rec transl env e =
             dbg)
       | (Pbigarraydim(n), [b]) ->
           let dim_ofs = 4 + n in
-          tag_int (Cop(Cload (Word_int, Mutable),
+          tag_int (Cop(Cload (Word Cannot_scan, Mutable),
             [field_address (transl env b) dim_ofs dbg],
             dbg)) dbg
       | (p, [arg]) ->
@@ -666,7 +666,7 @@ let rec transl env e =
       end
   | Uunreachable ->
       let dbg = Debuginfo.none in
-      Cop(Cload (Word_int, Mutable), [Cconst_int (0, dbg)], dbg)
+      Cop(Cload (Word Can_scan, Mutable), [Cconst_int (0, dbg)], dbg)
 
 and transl_catch env nfail ids body handler dbg =
   let ids = List.map (fun (id, kind) -> (id, kind, ref No_result)) ids in
@@ -689,7 +689,8 @@ and transl_catch env nfail ids body handler dbg =
   let body = transl env_body body in
   let typ_of_bn = function
     | Boxed_float _ -> Cmm.typ_float
-    | Boxed_integer (Pint64, _) when size_int = 4 -> [|Int;Int|]
+    | Boxed_integer (Pint64, _) when size_int = 4 ->
+        [|Int_reg Cannot_scan; Int_reg Cannot_scan|]
     | Boxed_integer _ -> Cmm.typ_int
   in
   let new_env, rewrite, ids =
@@ -760,9 +761,9 @@ and transl_ccall env prim args dbg =
     | Same_as_ocaml_repr -> (typ_val, fun x -> x)
     | Unboxed_float -> (typ_float, box_float dbg)
     | Unboxed_integer Pint64 when size_int = 4 ->
-        ([|Int; Int|], box_int dbg Pint64)
-    | Unboxed_integer bi -> (typ_int, box_int dbg bi)
-    | Untagged_int -> (typ_int, (fun i -> tag_int i dbg))
+        ([|Int_reg Cannot_scan; Int_reg Cannot_scan|], box_int dbg Pint64)
+    | Unboxed_integer bi -> ([| Int_reg Cannot_scan |], box_int dbg bi)
+    | Untagged_int -> ([| Int_reg Cannot_scan |], (fun i -> tag_int i dbg))
   in
   let args = transl_args prim.prim_native_repr_args args in
   wrap_result
@@ -776,7 +777,7 @@ and transl_prim_1 env p arg dbg =
       transl env arg
   (* Heap operations *)
   | Pfield n ->
-      get_field env (transl env arg) n dbg
+      get_val_field env (transl env arg) n dbg
   | Pfloatfield n ->
       let ptr = transl env arg in
       box_float dbg (floatfield n ptr dbg)

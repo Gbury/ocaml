@@ -20,8 +20,8 @@ open Cmm
 module V = Backend_var
 module VP = Backend_var.With_provenance
 
-let afl_area_ptr dbg = Cconst_symbol ("caml_afl_area_ptr", dbg)
-let afl_prev_loc dbg = Cconst_symbol ("caml_afl_prev_loc", dbg)
+let afl_area_ptr dbg = Cconst_symbol ("caml_afl_area_ptr", Other, dbg)
+let afl_prev_loc dbg = Cconst_symbol ("caml_afl_prev_loc", Other, dbg)
 let afl_map_size = 1 lsl 16
 
 let rec with_afl_logging b dbg =
@@ -42,8 +42,8 @@ let rec with_afl_logging b dbg =
     let afl_area = V.create_local "shared_mem" in
     let op oper args = Cop (oper, args, dbg) in
     Clet(VP.create afl_area,
-      op (Cload (Word_int, Asttypes.Mutable)) [afl_area_ptr dbg],
-      Clet(VP.create cur_pos, op Cxor [op (Cload (Word_int, Asttypes.Mutable))
+      op (Cload (Word Can_scan, Asttypes.Mutable)) [afl_area_ptr dbg],
+      Clet(VP.create cur_pos, op Cxor [op (Cload (Word Can_scan, Asttypes.Mutable))
         [afl_prev_loc dbg]; Cconst_int (cur_location, dbg)],
       Csequence(
         op (Cstore(Byte_unsigned, Assignment))
@@ -51,7 +51,7 @@ let rec with_afl_logging b dbg =
             op Cadda [op (Cload (Byte_unsigned, Asttypes.Mutable))
                         [op Cadda [Cvar afl_area; Cvar cur_pos]];
                       Cconst_int (1, dbg)]],
-        op (Cstore(Word_int, Assignment))
+        op (Cstore(Word Can_scan, Assignment))
           [afl_prev_loc dbg; Cconst_int (cur_location lsr 1, dbg)]))) in
   Csequence(instrumentation, instrument b)
 

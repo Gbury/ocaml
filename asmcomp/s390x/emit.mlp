@@ -177,11 +177,11 @@ let record_frame_label ?label live raise_ dbg =
   let live_offset = ref [] in
   Reg.Set.iter
     (function
-      | {typ = Val; loc = Reg r} ->
+      | {typ = Int_reg Must_scan; loc = Reg r} ->
           live_offset := (r lsl 1) + 1 :: !live_offset
-      | {typ = Val; loc = Stack s} as reg ->
+      | {typ = Int_reg Must_scan; loc = Stack s} as reg ->
           live_offset := slot_offset s (register_class reg) :: !live_offset
-      | {typ = Addr} as r ->
+      | {typ = Int_reg (Cannot_scan | Cannot_be_live_at_gc)} as r ->
           Misc.fatal_error ("bad GC root " ^ Reg.name r)
       | _ -> ())
     live;
@@ -323,17 +323,17 @@ let emit_instr i =
         let src = i.arg.(0) and dst = i.res.(0) in
         if src.loc <> dst.loc then begin
            match (src, dst) with
-              {loc = Reg _; typ = (Val | Int | Addr)}, {loc = Reg _} ->
+              {loc = Reg _; typ = Int_reg _}, {loc = Reg _} ->
                 `	lgr	{emit_reg dst}, {emit_reg src}\n`
-            | {loc = Reg _; typ = Float}, {loc = Reg _; typ = Float} ->
+            | {loc = Reg _; typ = Float_reg}, {loc = Reg _; typ = Float_reg} ->
                 `	ldr	{emit_reg dst}, {emit_reg src}\n`
-            | {loc = Reg _; typ = (Val | Int | Addr)}, {loc = Stack _} ->
+            | {loc = Reg _; typ = Int_reg _}, {loc = Stack _} ->
                 `	stg	{emit_reg src}, {emit_stack dst}\n`
-            | {loc = Reg _; typ = Float}, {loc = Stack _} ->
+            | {loc = Reg _; typ = Float_reg}, {loc = Stack _} ->
                 `	std	{emit_reg src}, {emit_stack dst}\n`
-            | {loc = Stack _; typ = (Val | Int | Addr)}, {loc = Reg _} ->
+            | {loc = Stack _; typ = Int_reg _}, {loc = Reg _} ->
                 `	lg	{emit_reg dst}, {emit_stack src}\n`
-            | {loc = Stack _; typ = Float}, {loc = Reg _} ->
+            | {loc = Stack _; typ = Float_reg}, {loc = Reg _} ->
                 `	ldy	{emit_reg dst}, {emit_stack src}\n`
             | (_, _) ->
                 fatal_error "Emit: Imove"
@@ -403,7 +403,7 @@ let emit_instr i =
           | Sixteen_signed -> "lgh"
           | Thirtytwo_unsigned -> "llgf"
           | Thirtytwo_signed -> "lgf"
-          | Word_int | Word_val -> "lg"
+          | Word _ -> "lg"
           | Single -> "ley"
           | Double | Double_u -> "ldy" in
         emit_load_store loadinstr addr i.arg 0 i.res.(0);
@@ -419,7 +419,7 @@ let emit_instr i =
             Byte_unsigned | Byte_signed -> "stcy"
           | Sixteen_unsigned | Sixteen_signed -> "sthy"
           | Thirtytwo_unsigned | Thirtytwo_signed -> "sty"
-          | Word_int | Word_val -> "stg"
+          | Word _ -> "stg"
           | Single -> assert false
           | Double | Double_u -> "stdy" in
         emit_load_store storeinstr addr i.arg 1 i.arg.(0)

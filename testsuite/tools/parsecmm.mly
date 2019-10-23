@@ -190,10 +190,10 @@ machtype:
   | componentlist               { Array.of_list(List.rev $1) }
 ;
 component:
-    VAL                         { Val }
-  | ADDR                        { Addr }
-  | INT                         { Int }
-  | FLOAT                       { Float }
+    VAL                         { (Int_reg Must_scan) }
+  | ADDR                        { (Int_reg Cannot_be_live_at_gc) }
+  | INT                         { (Int_reg Can_scan) }
+  | FLOAT                       { Float_reg }
 ;
 componentlist:
     component                    { [$1] }
@@ -202,7 +202,7 @@ componentlist:
 expr:
     INTCONST    { Cconst_int ($1, debuginfo ()) }
   | FLOATCONST  { Cconst_float (float_of_string $1, debuginfo ()) }
-  | STRING      { Cconst_symbol ($1, debuginfo ()) }
+  | STRING      { Cconst_symbol ($1, Other, debuginfo ()) }
   | POINTER     { Cconst_pointer ($1, debuginfo ()) }
   | IDENT       { Cvar(find_ident $1) }
   | LBRACKET RBRACKET { Ctuple [] }
@@ -247,15 +247,15 @@ expr:
                 { unbind_ident $5; Ctrywith($3, $5, $6, debuginfo ()) }
   | LPAREN VAL expr expr RPAREN
       { let open Asttypes in
-        Cop(Cload (Word_val, Mutable), [access_array $3 $4 Arch.size_addr],
+        Cop(Cload (Word Must_scan, Mutable), [access_array $3 $4 Arch.size_addr],
           debuginfo ()) }
   | LPAREN ADDRAREF expr expr RPAREN
       { let open Asttypes in
-        Cop(Cload (Word_val, Mutable), [access_array $3 $4 Arch.size_addr],
+        Cop(Cload (Word Must_scan, Mutable), [access_array $3 $4 Arch.size_addr],
           Debuginfo.none) }
   | LPAREN INTAREF expr expr RPAREN
       { let open Asttypes in
-        Cop(Cload (Word_int, Mutable), [access_array $3 $4 Arch.size_int],
+        Cop(Cload (Word Can_scan, Mutable), [access_array $3 $4 Arch.size_int],
           Debuginfo.none) }
   | LPAREN FLOATAREF expr expr RPAREN
       { let open Asttypes in
@@ -263,11 +263,11 @@ expr:
           Debuginfo.none) }
   | LPAREN ADDRASET expr expr expr RPAREN
       { let open Lambda in
-        Cop(Cstore (Word_val, Assignment),
+        Cop(Cstore (Word Must_scan, Assignment),
             [access_array $3 $4 Arch.size_addr; $5], Debuginfo.none) }
   | LPAREN INTASET expr expr expr RPAREN
       { let open Lambda in
-        Cop(Cstore (Word_int, Assignment),
+        Cop(Cstore (Word Can_scan, Assignment),
             [access_array $3 $4 Arch.size_int; $5], Debuginfo.none) }
   | LPAREN FLOATASET expr expr expr RPAREN
       { let open Lambda in
@@ -296,12 +296,12 @@ chunk:
   | SIGNED HALF                 { Sixteen_signed }
   | UNSIGNED INT32              { Thirtytwo_unsigned }
   | SIGNED INT32                { Thirtytwo_signed }
-  | INT                         { Word_int }
-  | ADDR                        { Word_val }
+  | INT                         { (Word Can_scan) }
+  | ADDR                        { (Word Cannot_be_live_at_gc) }
   | FLOAT32                     { Single }
   | FLOAT64                     { Double }
   | FLOAT                       { Double_u }
-  | VAL                         { Word_val }
+  | VAL                         { (Word Must_scan) }
 ;
 unaryop:
     LOAD chunk                  { Cload ($2, Asttypes.Mutable) }

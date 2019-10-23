@@ -13,69 +13,103 @@
 (*                                                                        *)
 (**************************************************************************)
 
+type gc_action =
+  | Must_scan
+  | Can_scan
+  | Cannot_scan
+  | Cannot_be_live_at_gc
+
 type machtype_component =
-  | Val
-  | Addr
-  | Int
-  | Float
+  | Int_reg of gc_action
+  | Float_reg
 
 type machtype = machtype_component array
 
 let typ_void = ([||] : machtype_component array)
-let typ_val = [|Val|]
-let typ_addr = [|Addr|]
-let typ_int = [|Int|]
-let typ_float = [|Float|]
+let typ_val = [| Int_reg Must_scan |]
+let typ_derived = [| Int_reg Cannot_be_live_at_gc |]
+let typ_int = [| Int_reg Can_scan |]
+let typ_float = [| Float_reg |]
+let typ_raw = [| Int_reg Cannot_scan |]
 
-(** [machtype_component]s are partially ordered as follows:
+(* [gc_actions] are partially ordered as follows:
 
-      Addr     Float
-       ^
-       |
-      Val
-       ^
-       |
-      Int
+      Cannot_be_live_at_gc
+              ^
+            /   \
+           /     \
+          /       \
+         /         \
+        /           \
+    Must_scan   Cannot_scan
+        ^           ^
+         \          /
+          \        /
+           \      /
+            \    /
+           Can_scan
 
-  In particular, [Addr] must be above [Val], to ensure that if there is
-  a join point between a code path yielding [Addr] and one yielding [Val]
-  then the result is treated as a derived pointer into the heap (i.e. [Addr]).
-  (Such a result may not be live across any call site or a fatal compiler
-  error will result.)
+  In particular, [Cannot_be_live_at_gc] must be above [Must_scan], to ensure
+  that if there is a join point between a code path yielding
+  [Cannot_scan] and one yielding [Must_scan] then the result is treated
+  as a derived pointer into the heap (i.e. [Cannot_be_live_at_gc]). (Such a
+  result may not be live across any call site or a fatal compiler error will
+  result.)
 *)
+
+let lub_gc_action act1 act2 =
+  match act1, act2 with
+  | Can_scan, Can_scan -> Can_scan
+  | Can_scan, Must_scan -> Must_scan
+  | Can_scan, Cannot_be_live_at_gc -> Cannot_be_live_at_gc
+  | Can_scan, Cannot_scan -> Cannot_scan
+  | Must_scan, Can_scan -> Must_scan
+  | Must_scan, Must_scan -> Must_scan
+  | Must_scan, Cannot_be_live_at_gc -> Cannot_be_live_at_gc
+  | Must_scan, Cannot_scan -> assert false
+  | Cannot_be_live_at_gc, Can_scan -> Cannot_be_live_at_gc
+  | Cannot_be_live_at_gc, Must_scan -> Cannot_be_live_at_gc
+  | Cannot_be_live_at_gc, Cannot_be_live_at_gc -> Cannot_be_live_at_gc
+  | Cannot_be_live_at_gc, Cannot_scan -> Cannot_be_live_at_gc
+  | Cannot_scan, Can_scan -> Cannot_scan
+  | Cannot_scan, Must_scan -> assert false
+  | Cannot_scan, Cannot_be_live_at_gc -> Cannot_be_live_at_gc
+  | Cannot_scan, Cannot_scan -> Cannot_scan
 
 let lub_component comp1 comp2 =
   match comp1, comp2 with
-  | Int, Int -> Int
-  | Int, Val -> Val
-  | Int, Addr -> Addr
-  | Val, Int -> Val
-  | Val, Val -> Val
-  | Val, Addr -> Addr
-  | Addr, Int -> Addr
-  | Addr, Addr -> Addr
-  | Addr, Val -> Addr
-  | Float, Float -> Float
-  | (Int | Addr | Val), Float
-  | Float, (Int | Addr | Val) ->
+  | Int_reg act1, Int_reg act2 -> Int_reg (lub_gc_action act1 act2)
+  | Float_reg, Float_reg -> Float_reg
+  | Int_reg _, Float_reg
+  | Float_reg, Int_reg _ ->
     (* Float unboxing code must be sure to avoid this case. *)
     assert false
 
+let ge_gc_action act1 act2 =
+  match act1, act2 with
+  | Can_scan, Can_scan -> true
+  | Can_scan, Must_scan -> false
+  | Can_scan, Cannot_be_live_at_gc -> false
+  | Can_scan, Cannot_scan -> false
+  | Must_scan, Can_scan -> true
+  | Must_scan, Must_scan -> true
+  | Must_scan, Cannot_be_live_at_gc -> false
+  | Must_scan, Cannot_scan -> assert false
+  | Cannot_be_live_at_gc, Can_scan -> true
+  | Cannot_be_live_at_gc, Must_scan -> true
+  | Cannot_be_live_at_gc, Cannot_be_live_at_gc -> true
+  | Cannot_be_live_at_gc, Cannot_scan -> true
+  | Cannot_scan, Can_scan -> true
+  | Cannot_scan, Must_scan -> assert false
+  | Cannot_scan, Cannot_be_live_at_gc -> false
+  | Cannot_scan, Cannot_scan -> true
+
 let ge_component comp1 comp2 =
   match comp1, comp2 with
-  | Int, Int -> true
-  | Int, Addr -> false
-  | Int, Val -> false
-  | Val, Int -> true
-  | Val, Val -> true
-  | Val, Addr -> false
-  | Addr, Int -> true
-  | Addr, Addr -> true
-  | Addr, Val -> true
-  | Float, Float -> true
-  | (Int | Addr | Val), Float
-  | Float, (Int | Addr | Val) ->
-    assert false
+  | Int_reg act1, Int_reg act2 -> ge_gc_action act1 act2
+  | Float_reg, Float_reg -> true
+  | Int_reg _, Float_reg
+  | Float_reg, Int_reg _ -> assert false
 
 type integer_comparison = Lambda.integer_comparison =
   | Ceq | Cne | Clt | Cgt | Cle | Cge
@@ -116,13 +150,22 @@ type memory_chunk =
   | Sixteen_signed
   | Thirtytwo_unsigned
   | Thirtytwo_signed
-  | Word_int
-  | Word_val
+  | Word of gc_action
   | Single
   | Double
   | Double_u
 
-and operation =
+type symbol_kind =
+  | Function
+  | Value
+  | Other
+
+let machtype_component_of_symbol_kind kind =
+  match kind with
+  | Value -> Int_reg Can_scan
+  | Function | Other -> Int_reg Cannot_scan
+
+type operation =
     Capply of machtype
   | Cextcall of string * machtype * bool * label option
     (** If specified, the given label will be placed immediately after the
@@ -146,7 +189,7 @@ type expression =
     Cconst_int of int * Debuginfo.t
   | Cconst_natint of nativeint * Debuginfo.t
   | Cconst_float of float * Debuginfo.t
-  | Cconst_symbol of string * Debuginfo.t
+  | Cconst_symbol of string * symbol_kind * Debuginfo.t
   | Cconst_pointer of int * Debuginfo.t
   | Cconst_natpointer of nativeint * Debuginfo.t
   | Cblockheader of nativeint * Debuginfo.t
@@ -168,6 +211,8 @@ type expression =
           * expression * Debuginfo.t) list
         * expression
   | Cexit of int * expression list
+  (* CR Gbury: There is no check that the machtype of
+               catches and exit match. *)
   | Ctrywith of expression * Backend_var.With_provenance.t * expression
       * Debuginfo.t
 

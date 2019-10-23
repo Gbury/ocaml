@@ -184,13 +184,16 @@ val remove_unit : expression -> expression
     [n]th field of the block pointed to by [ptr] *)
 val field_address : expression -> int -> Debuginfo.t -> expression
 
-(** [get_field_gen mut ptr n dbg] returns an expression for the access to the
-    [n]th field of the block pointed to by [ptr] *)
+(** [get_field_gen gc mut ptr n dbg] returns an expression for the access to the
+    [n]th field of the block pointed to by [ptr]. The field should be a memory
+    chunk [Word gc]. *)
 val get_field_gen :
+  Cmm.gc_action ->
   Asttypes.mutable_flag -> expression -> int -> Debuginfo.t -> expression
 
 (** [set_field ptr n newval init dbg] returns an expression for setting the
-    [n]th field of the block pointed to by [ptr] to [newval] *)
+    [n]th field of the block pointed to by [ptr] to [newval]. The field is
+    expected to hold a caml value. *)
 val set_field :
   expression -> int -> expression -> Lambda.initialization_or_assignment ->
   Debuginfo.t -> expression
@@ -231,12 +234,13 @@ val float_array_length_shifted : expression -> Debuginfo.t -> expression
     Produces a pointer to the element of the array [ptr] on the position [ofs]
     with the given element [log2size] log2 element size. [ofs] is given as a
     tagged int expression.
-    The optional ?typ argument is the C-- type of the result.
-    By default, it is Addr, meaning we are constructing a derived pointer
-    into the heap.  If we know the pointer is outside the heap
-    (this is the case for bigarray indexing), we give type Int instead. *)
+    The optional ?typ argument is the C-- gc action of the result.
+    By default, it is [Cannot_be_live_at_gc], meaning we are constructing a
+    derived pointer into the heap.  If we know the pointer is outside the heap
+    (this is the case for bigarray indexing), we give type [Cannot_scan]
+    instead. *)
 val array_indexing :
-  ?typ:machtype_component -> int -> expression -> expression -> Debuginfo.t ->
+  ?typ:Cmm.gc_action -> int -> expression -> expression -> Debuginfo.t ->
   expression
 
 (** Array loads and stores

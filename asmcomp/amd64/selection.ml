@@ -31,7 +31,7 @@ type addressing_expr =
 
 let rec select_addr exp =
   match exp with
-    Cconst_symbol (s, _) when not !Clflags.dlcode ->
+    Cconst_symbol (s, _, _) when not !Clflags.dlcode ->
       (Asymbol s, 0)
   | Cop((Caddi | Caddv | Cadda), [arg; Cconst_int (m, _)], _) ->
       let (a, n) = select_addr arg in (a, n + m)
@@ -187,7 +187,7 @@ method! select_operation op args dbg =
   match op with
   (* Recognize the LEA instruction *)
     Caddi | Caddv | Cadda | Csubi ->
-      begin match self#select_addressing Word_int (Cop(op, args, dbg)) with
+      begin match self#select_addressing (Word Can_scan) (Cop(op, args, dbg)) with
         (Iindexed _, _)
       | (Iindexed2 0, _) -> super#select_operation op args dbg
       | (addr, arg) -> (Ispecific(Ilea addr), [arg])
@@ -212,7 +212,7 @@ method! select_operation op args dbg =
          assert false
      end
   (* Recognize store instructions *)
-  | Cstore ((Word_int|Word_val as chunk), _init) ->
+  | Cstore ((Word _ as chunk), _init) ->
       begin match args with
         [loc; Cop(Caddi, [Cop(Cload _, [loc'], _); Cconst_int (n, _dbg)], _)]
         when loc = loc' && self#is_immediate n ->

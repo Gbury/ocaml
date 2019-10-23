@@ -114,11 +114,11 @@ let record_frame_label ?label live raise_ dbg =
   let live_offset = ref [] in
   Reg.Set.iter
     (function
-      | {typ = Val; loc = Reg r} ->
+      | {typ = Int_reg Must_scan; loc = Reg r} ->
           live_offset := ((r lsl 1) + 1) :: !live_offset
-      | {typ = Val; loc = Stack s} as reg ->
+      | {typ = Int_reg Must_scan; loc = Stack s} as reg ->
           live_offset := slot_offset s (register_class reg) :: !live_offset
-      | {typ = Addr} as r ->
+      | {typ = Int_reg (Cannot_scan | Cannot_be_live_at_gc)} as r ->
           Misc.fatal_error ("bad GC root " ^ Reg.name r)
       | _ -> ())
     live;
@@ -480,15 +480,15 @@ let emit_instr i =
         let src = i.arg.(0) and dst = i.res.(0) in
         if src.loc = dst.loc then 0 else begin
           begin match (src, dst) with
-            {loc = Reg _; typ = Float}, {loc = Reg _} ->
+            {loc = Reg _; typ = Float_reg}, {loc = Reg _} ->
               `	fcpyd	{emit_reg dst}, {emit_reg src}\n`
           | {loc = Reg _}, {loc = Reg _} ->
               `	mov	{emit_reg dst}, {emit_reg src}\n`
-          | {loc = Reg _; typ = Float}, _ ->
+          | {loc = Reg _; typ = Float_reg}, _ ->
               `	fstd	{emit_reg src}, {emit_stack dst}\n`
           | {loc = Reg _}, _ ->
               `	str	{emit_reg src}, {emit_stack dst}\n`
-          | {typ = Float}, _ ->
+          | {typ = Float_reg}, _ ->
               `	fldd	{emit_reg dst}, {emit_stack src}\n`
           | _ ->
               `	ldr	{emit_reg dst}, {emit_stack src}\n`

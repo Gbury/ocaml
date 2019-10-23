@@ -66,10 +66,10 @@ let num_register_classes = 3
 
 let register_class r =
   match (r.typ, !fpu) with
-  | (Val | Int | Addr), _  -> 0
-  | Float, VFPv2         -> 1
-  | Float, VFPv3_D16     -> 1
-  | Float, _             -> 2
+  | Int_reg _, _             -> 0
+  | Float_reg, VFPv2         -> 1
+  | Float_reg, VFPv3_D16     -> 1
+  | Float_reg, _             -> 2
 
 let num_available_registers =
   [| 9; 16; 32 |]
@@ -87,14 +87,14 @@ let rotate_registers = true
 let hard_int_reg =
   let v = Array.make 9 Reg.dummy in
   for i = 0 to 8 do
-    v.(i) <- Reg.at_location Int (Reg i)
+    v.(i) <- Reg.at_location (Int_reg Must_scan) (Reg i)
   done;
   v
 
 let hard_float_reg =
   let v = Array.make 32 Reg.dummy in
   for i = 0 to 31 do
-    v.(i) <- Reg.at_location Float (Reg(100 + i))
+    v.(i) <- Reg.at_location Float_reg (Reg(100 + i))
   done;
   v
 
@@ -121,7 +121,7 @@ let calling_conventions first_int last_int first_float last_float make_stack
     match arg.(i) with
     | [| arg |] ->
       begin match arg.typ with
-      | Val | Int | Addr as ty ->
+      | Int_reg _ as ty ->
           if !int <= last_int then begin
             loc.(i) <- [| phys_reg !int |];
             incr int
@@ -129,7 +129,7 @@ let calling_conventions first_int last_int first_float last_float make_stack
             loc.(i) <- [| stack_slot (make_stack !ofs) ty |];
             ofs := !ofs + size_int
           end
-      | Float ->
+      | Float_reg ->
           assert (abi = EABI_HF);
           assert (!fpu >= VFPv2);
           if !float <= last_float then begin
@@ -137,14 +137,14 @@ let calling_conventions first_int last_int first_float last_float make_stack
             incr float
           end else begin
             ofs := Misc.align !ofs size_float;
-            loc.(i) <- [| stack_slot (make_stack !ofs) Float |];
+            loc.(i) <- [| stack_slot (make_stack !ofs) Float_reg |];
             ofs := !ofs + size_float
           end
       end
     | [| arg1; arg2 |] ->
       (* Passing of 64-bit quantities to external functions. *)
       begin match arg1.typ, arg2.typ with
-      | Int, Int ->
+      | Int_reg Cannot_scan, Int_reg Cannot_scan ->
           (* 64-bit quantities split across two registers must either be in a
              consecutive pair of registers where the lowest numbered is an
              even-numbered register; or in a stack slot that is 8-byte
@@ -158,16 +158,23 @@ let calling_conventions first_int last_int first_float last_float make_stack
           end else begin
             let size_int64 = size_int * 2 in
             ofs := Misc.align !ofs size_int64;
-            let stack_lower = stack_slot (make_stack !ofs) Int in
-            let stack_upper = stack_slot (make_stack (size_int + !ofs)) Int in
+            let stack_lower = stack_slot (make_stack !ofs) (Int_reg Cannot_scan) in
+            let stack_upper = stack_slot (make_stack (size_int + !ofs)) (Int_reg Cannot_scan) in
             loc.(i) <- [| stack_lower; stack_upper |];
             ofs := !ofs + size_int64
           end
       | _, _ ->
-        let f = function Int -> "I" | Addr -> "A" | Val -> "V" | Float -> "F" in
-        fatal_error (Printf.sprintf "Proc.calling_conventions: bad register \
-            type(s) for multi-register argument: %s, %s"
-          (f arg1.typ) (f arg2.typ))
+          let f = function
+              Int_reg Can_scan -> "Can_scan"
+            | Int_reg Cannot_be_live_at_gc -> "Cannot_live"
+            | Int_reg Must_scan -> "Must_scan"
+            | Int_reg Cannot_scan -> "Cannot_scan"
+            | Float_reg -> "Float"
+          in
+          fatal_error (
+            Printf.sprintf "Proc.calling_conventions: bad register \
+                            type(s) for multi-register argument: %s, %s"
+              (f arg1.typ) (f arg2.typ))
       end
     | _ ->
       fatal_error "Proc.calling_conventions: bad number of registers for \

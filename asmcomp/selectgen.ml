@@ -58,9 +58,14 @@ let oper_result_type = function
   | Cextcall(_s, ty, _alloc, _) -> ty
   | Cload (c, _) ->
       begin match c with
-      | Word_val -> typ_val
+      | Byte_unsigned
+      | Byte_signed
+      | Sixteen_unsigned
+      | Sixteen_signed
+      | Thirtytwo_unsigned
+      | Thirtytwo_signed -> [| Int_reg Cannot_scan |]
+      | Word gc_action -> [| Int_reg gc_action |]
       | Single | Double | Double_u -> typ_float
-      | _ -> typ_int
       end
   | Calloc -> typ_val
   | Cstore (_c, _) -> typ_void
@@ -68,7 +73,7 @@ let oper_result_type = function
     Cand | Cor | Cxor | Clsl | Clsr | Casr |
     Ccmpi _ | Ccmpa _ | Ccmpf _ -> typ_int
   | Caddv -> typ_val
-  | Cadda -> typ_addr
+  | Cadda -> typ_derived
   | Cnegf | Cabsf | Caddf | Csubf | Cmulf | Cdivf -> typ_float
   | Cfloatofint -> typ_float
   | Cintoffloat -> typ_int
@@ -79,9 +84,9 @@ let oper_result_type = function
    may be deferred (cf. [emit_parts]). *)
 
 let size_component = function
-  | Val | Addr -> Arch.size_addr
-  | Int -> Arch.size_int
-  | Float -> Arch.size_float
+  | Int_reg (Must_scan | Cannot_be_live_at_gc) -> Arch.size_addr
+  | Int_reg (Can_scan | Cannot_scan) -> Arch.size_int
+  | Float_reg -> Arch.size_float
 
 let size_machtype mty =
   let size = ref 0 in
@@ -381,7 +386,7 @@ method virtual select_addressing :
 (* Default instruction selection for stores (of words) *)
 
 method select_store is_assign addr arg =
-  (Istore(Word_val, addr, is_assign), arg)
+  (Istore(Word Must_scan, addr, is_assign), arg)
 
 (* call marking methods, documented in selectgen.mli *)
 val contains_calls = ref false
@@ -428,7 +433,7 @@ method select_checkbound_extra_args () = []
 
 method select_operation op args _dbg =
   match (op, args) with
-  | (Capply _, Cconst_symbol (func, _dbg) :: rem) ->
+  | (Capply _, Cconst_symbol (func, _, _dbg) :: rem) ->
     let label_after = Cmm.new_label () in
     (Icall_imm { func; label_after; }, rem)
   | (Capply _, _) ->
@@ -452,12 +457,13 @@ method select_operation op args _dbg =
         | Lambda.Heap_initialization -> false
         | Lambda.Assignment -> true
       in
-      if chunk = Word_int || chunk = Word_val then begin
-        let (op, newarg2) = self#select_store is_assign addr arg2 in
-        (op, [newarg2; eloc])
-      end else begin
-        (Istore(chunk, addr, is_assign), [arg2; eloc])
-        (* Inversion addr/datum in Istore *)
+      begin match chunk with
+      | Word _ ->
+          let (op, newarg2) = self#select_store is_assign addr arg2 in
+          (op, [newarg2; eloc])
+      | _ ->
+          (Istore(chunk, addr, is_assign), [arg2; eloc])
+          (* Inversion addr/datum in Istore *)
       end
   | (Calloc, _) -> (self#select_allocation 0), args
   | (Caddi, _) -> self#select_arith_comm Iadd args
@@ -596,18 +602,18 @@ method insert_moves env src dst =
     self#insert_move env src.(i) dst.(i)
   done
 
-(* Adjust the types of destination pseudoregs for a [Cassign] assignment.
-   The type inferred at [let] binding might be [Int] while we assign
-   something of type [Val] (PR#6501). *)
+(* Adjust the types of destination pseudoregs for a [Cassign] assignment
+   (PR#6501) -- analogous to what happens at join points. *)
 
 method adjust_type src dst =
   let ts = src.typ and td = dst.typ in
-  if ts <> td then
-    match ts, td with
-    | Val, Int -> dst.typ <- Val
-    | Int, Val -> ()
-    | _, _ -> Misc.fatal_error("Selection.adjust_type: bad assignment to "
-                               ^ Reg.name dst)
+  if ts <> td then begin
+    match lub_component ts td with
+    | exception _ ->
+        Misc.fatal_error
+          ("Selection.adjust_type: bad assignment to " ^ Reg.name dst)
+    | typ -> dst.typ <- typ
+  end
 
 method adjust_types src dst =
   for i = 0 to min (Array.length src) (Array.length dst) - 1 do
@@ -659,16 +665,19 @@ method private maybe_emit_spacetime_move env ~spacetime_reg =
 method emit_expr (env:environment) exp =
   match exp with
     Cconst_int (n, _dbg) ->
-      let r = self#regs_for typ_int in
+      let typ = if n mod 2 = 0 then typ_raw else typ_int in
+      let r = self#regs_for typ in
       Some(self#insert_op env (Iconst_int(Nativeint.of_int n)) [||] r)
   | Cconst_natint (n, _dbg) ->
-      let r = self#regs_for typ_int in
+      let typ = if Nativeint.(equal (rem n 2n) 0n) then typ_raw else typ_int in
+      let r = self#regs_for typ in
       Some(self#insert_op env (Iconst_int n) [||] r)
   | Cconst_float (n, _dbg) ->
       let r = self#regs_for typ_float in
       Some(self#insert_op env (Iconst_float (Int64.bits_of_float n)) [||] r)
-  | Cconst_symbol (n, _dbg) ->
-      let r = self#regs_for typ_val in
+  | Cconst_symbol (n, kind, _dbg) ->
+      let typ = machtype_component_of_symbol_kind kind in
+      let r = self#regs_for [| typ |] in
       Some(self#insert_op env (Iconst_symbol n) [||] r)
   | Cconst_pointer (n, _dbg) ->
       let r = self#regs_for typ_val in  (* integer as Caml value *)
@@ -870,7 +879,7 @@ method emit_expr (env:environment) exp =
              registers from src are present in dest *)
           let tmp_regs = Reg.createv_like src in
           (* Ccatch registers must not contain out of heap pointers *)
-          Array.iter (fun reg -> assert(reg.typ <> Addr)) src;
+          Array.iter (fun reg -> assert(reg.typ <> Int_reg Cannot_be_live_at_gc)) src;
           self#insert_moves env src tmp_regs ;
           self#insert_moves env tmp_regs (Array.concat dest_args) ;
           self#insert env (Iexit nfail) [||] [||];
@@ -1035,9 +1044,12 @@ method emit_stores env data regs_addr =
             Istore(_, _, _) ->
               for i = 0 to Array.length regs - 1 do
                 let r = regs.(i) in
-                let kind = if r.typ = Float then Double_u else Word_val in
-                self#insert env
-                            (Iop(Istore(kind, !a, false)))
+                let kind =
+                  match r.typ with
+                  | Int_reg k -> Word k
+                  | Float_reg -> Double_u
+                in
+                self#insert env (Iop(Istore(kind, !a, false)))
                             (Array.append [|r|] regs_addr) [||];
                 a := Arch.offset_addressing !a (size_component r.typ)
               done
@@ -1267,7 +1279,7 @@ end
 *)
 
 let is_tail_call nargs =
-  assert (Reg.dummy.typ = Int);
+  assert (match Reg.dummy.typ with Int_reg _ -> true | Float_reg -> false);
   let args = Array.make (nargs + 1) Reg.dummy in
   let (_loc_arg, stack_ofs) = Proc.loc_arguments args in
   stack_ofs = 0

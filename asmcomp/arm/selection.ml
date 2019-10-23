@@ -30,7 +30,7 @@ let is_offset chunk n =
   (* ARM load/store byte/word have -4095 to 4095 *)
   | Byte_unsigned | Byte_signed
   | Thirtytwo_unsigned | Thirtytwo_signed
-  | Word_int | Word_val | Single
+  | Word _ | Single
     when not !thumb ->
       n >= -4095 && n <= 4095
   (* Thumb-2 load/store have -255 to 4095 *)
@@ -95,7 +95,8 @@ method! regs_for tyv =
                     the unboxed external functionality *)
                  let rec expand = function
                    [] -> []
-                 | Float :: tyl -> Int :: Int :: expand tyl
+                 | Float_reg :: tyl ->
+                    Int_reg Cannot_scan :: Int_reg Cannot_scan :: expand tyl
                  | ty :: tyl -> ty :: expand tyl in
                  Array.of_list (expand (Array.to_list tyv))
                end else begin
@@ -259,11 +260,11 @@ method private select_operation_softfp op args dbg =
   (* Add coercions around loads and stores of 32-bit floats *)
   | (Cload (Single, mut), args) ->
       (self#iextcall("__aeabi_f2d", false),
-        [Cop(Cload (Word_int, mut), args, dbg)])
+        [Cop(Cload (Word Cannot_scan, mut), args, dbg)])
   | (Cstore (Single, init), [arg1; arg2]) ->
       let arg2' =
         Cop(Cextcall("__aeabi_d2f", typ_int, false, None), [arg2], dbg) in
-      self#select_operation (Cstore (Word_int, init)) [arg1; arg2'] dbg
+      self#select_operation (Cstore (Word Cannot_scan, init)) [arg1; arg2'] dbg
   (* Other operations are regular *)
   | (op, args) -> super#select_operation op args dbg
 

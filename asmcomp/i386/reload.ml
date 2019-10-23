@@ -31,7 +31,7 @@ inherit Reloadgen.reload_generic as super
 
 method! makereg r =
   match r.typ with
-    Float -> r
+    Float_reg -> r
   | _ -> super#makereg r
 
 (* By overriding makereg, we make sure that pseudoregs of type float

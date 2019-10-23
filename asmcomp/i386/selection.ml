@@ -227,7 +227,7 @@ method! select_operation op args dbg =
       self#select_floatarith Idivf (Ispecific Idivfrev) Ifloatdiv Ifloatdivrev
                              args
   (* Recognize store instructions *)
-  | Cstore ((Word_int | Word_val) as chunk, _) ->
+  | Cstore (Word _ as chunk, _) ->
       begin match args with
         [loc; Cop(Caddi, [Cop(Cload _, [loc'], _); Cconst_int (n, _)], _)]
         when loc = loc' ->
@@ -292,8 +292,8 @@ method select_push exp =
   | Cconst_pointer (n, _) ->
       (Ispecific(Ipush_int(Nativeint.of_int n)), Ctuple [])
   | Cconst_natpointer (n, _) -> (Ispecific(Ipush_int n), Ctuple [])
-  | Cconst_symbol (s, _) -> (Ispecific(Ipush_symbol s), Ctuple [])
-  | Cop(Cload ((Word_int | Word_val as chunk), _), [loc], _) ->
+  | Cconst_symbol (s, _, _) -> (Ispecific(Ipush_symbol s), Ctuple [])
+  | Cop(Cload ((Word _ as chunk), _), [loc], _) ->
       let (addr, arg) = self#select_addressing chunk loc in
       (Ispecific(Ipush_load addr), arg)
   | Cop(Cload (Double_u, _), [loc], _) ->

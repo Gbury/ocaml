@@ -135,11 +135,11 @@ let record_frame_label ?label live raise_ dbg =
   let live_offset = ref [] in
   Reg.Set.iter
     (function
-      | {typ = Val; loc = Reg r} ->
+      | {typ = Int_reg Must_scan; loc = Reg r} ->
           live_offset := ((r lsl 1) + 1) :: !live_offset
-      | {typ = Val; loc = Stack s} as reg ->
+      | {typ = Int_reg Must_scan; loc = Stack s} as reg ->
           live_offset := slot_offset s (register_class reg) :: !live_offset
-      | {typ = Addr} as r ->
+      | {typ = Int_reg (Cannot_scan | Cannot_be_live_at_gc)} as r ->
           Misc.fatal_error ("bad GC root " ^ Reg.name r)
       | _ -> ())
     live;
@@ -599,7 +599,7 @@ let emit_instr i =
         let src = i.arg.(0) and dst = i.res.(0) in
         if src.loc <> dst.loc then begin
           match (src, dst) with
-          | {loc = Reg _; typ = Float}, {loc = Reg _} ->
+          | {loc = Reg _; typ = Float_reg}, {loc = Reg _} ->
               `	fmov	{emit_reg dst}, {emit_reg src}\n`
           | {loc = Reg _}, {loc = Reg _} ->
               `	mov	{emit_reg dst}, {emit_reg src}\n`
@@ -672,7 +672,7 @@ let emit_instr i =
         | Single ->
             `	ldr	s7, {emit_addressing addr base}\n`;
             `	fcvt	{emit_reg dst}, s7\n`
-        | Word_int | Word_val | Double | Double_u ->
+        | Word _ | Double | Double_u ->
             `	ldr	{emit_reg dst}, {emit_addressing addr base}\n`
         end
     | Lop(Istore(size, addr, _)) ->
@@ -694,7 +694,7 @@ let emit_instr i =
         | Single ->
             `	fcvt	s7, {emit_reg src}\n`;
             `	str	s7, {emit_addressing addr base}\n`;
-        | Word_int | Word_val | Double | Double_u ->
+        | Word _ | Double | Double_u ->
             `	str	{emit_reg src}, {emit_addressing addr base}\n`
         end
     | Lop(Ialloc { bytes = n; label_after_call_gc; }) ->

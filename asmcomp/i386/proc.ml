@@ -57,8 +57,8 @@ let num_register_classes = 2
 
 let register_class r =
   match r.typ with
-  | Val | Int | Addr -> 0
-  | Float -> 1
+  | Int_reg _ -> 0
+  | Float_reg -> 1
 
 let num_available_registers = [| 7; 0 |]
 
@@ -76,10 +76,10 @@ let rotate_registers = false
 
 let hard_int_reg =
   let v = Array.make 7 Reg.dummy in
-  for i = 0 to 6 do v.(i) <- Reg.at_location Int (Reg i) done;
+  for i = 0 to 6 do v.(i) <- Reg.at_location (Int_reg Must_scan) (Reg i) done;
   v
 
-let hard_float_reg = [| Reg.at_location Float (Reg 100) |]
+let hard_float_reg = [| Reg.at_location Float_reg (Reg 100) |]
 
 let all_phys_regs =
   Array.append hard_int_reg hard_float_reg
@@ -122,7 +122,7 @@ let calling_conventions first_int last_int first_float last_float make_stack
   let ofs = ref (-64) in
   for i = 0 to Array.length arg - 1 do
     match arg.(i).typ with
-      Val | Int | Addr as ty ->
+      Int_reg _ as ty ->
         if !int <= last_int then begin
           loc.(i) <- phys_reg !int;
           incr int
@@ -130,12 +130,12 @@ let calling_conventions first_int last_int first_float last_float make_stack
           loc.(i) <- stack_slot (make_stack !ofs) ty;
           ofs := !ofs + size_int
         end
-    | Float ->
+    | Float_reg ->
         if !float <= last_float then begin
           loc.(i) <- phys_reg !float;
           incr float
         end else begin
-          loc.(i) <- stack_slot (make_stack !ofs) Float;
+          loc.(i) <- stack_slot (make_stack !ofs) Float_reg;
           ofs := !ofs + size_float
         end
   done;
@@ -158,7 +158,7 @@ let loc_external_arguments _arg =
   fatal_error "Proc.loc_external_arguments"
 let loc_external_results res =
   match res with
-  | [|{typ=Int};{typ=Int}|] -> [|eax; edx|]
+  | [|{typ=Int_reg (Can_scan | Cannot_scan)};{typ=Int_reg (Can_scan | Cannot_scan) }|] -> [|eax; edx|]
   | _ ->
       let (loc, _ofs) = calling_conventions 0 0 100 100 not_supported res in loc
 
@@ -183,7 +183,7 @@ let stack_ptr_dwarf_register_number = 4
 (* Volatile registers: the x87 top of FP stack is *)
 
 let reg_is_volatile = function
-  | { typ = Float; loc = Reg _ } -> true
+  | { typ = Float_reg; loc = Reg _ } -> true
   | _ -> false
 
 let regs_are_volatile rs =
