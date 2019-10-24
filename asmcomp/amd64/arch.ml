@@ -136,7 +136,6 @@ let print_specific_operation printreg op ppf arg =
 let infer_specific arg res = function
   | Ilea _ ->
       Array.fold_left (fun acc r ->
-          `Constraint (res.(0), r) ::
           `Bound (r, Cmm.Int) :: acc
         ) [] arg
   | Istore_int _ ->
