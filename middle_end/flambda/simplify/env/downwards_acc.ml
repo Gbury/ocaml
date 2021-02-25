@@ -29,23 +29,26 @@ type t = {
   shareable_constants : Symbol.t Static_const.Map.t;
   used_closure_vars : Name_occurrences.t;
   lifted_constants : LCS.t;
+  data_flow : Data_flow.t;
 }
 
 let print ppf
       { denv; continuation_uses_env; shareable_constants; used_closure_vars;
-        lifted_constants; } =
+        lifted_constants; data_flow; } =
   Format.fprintf ppf "@[<hov 1>(\
       @[<hov 1>(denv@ %a)@]@ \
       @[<hov 1>(continuation_uses_env@ %a)@]@ \
       @[<hov 1>(shareable_constants@ %a)@]@ \
       @[<hov 1>(used_closure_vars@ %a)@]@ \
       @[<hov 1>(lifted_constant_state@ %a)@]\
+      @[<hov 1>(data_flow %a)@]\
       )@]"
     DE.print denv
     CUE.print continuation_uses_env
     (Static_const.Map.print Symbol.print) shareable_constants
     Name_occurrences.print used_closure_vars
     LCS.print lifted_constants
+    Data_flow.print data_flow
 
 let create denv continuation_uses_env =
   { denv;
@@ -53,9 +56,17 @@ let create denv continuation_uses_env =
     shareable_constants = Static_const.Map.empty;
     used_closure_vars = Name_occurrences.empty;
     lifted_constants = LCS.empty;
+    data_flow = Data_flow.empty;
   }
 
 let denv t = t.denv
+
+let data_flow t = t.data_flow
+
+let [@inline always] map_data_flow t ~f =
+  { t with
+    data_flow = f t.data_flow;
+  }
 
 let [@inline always] map_denv t ~f =
   { t with

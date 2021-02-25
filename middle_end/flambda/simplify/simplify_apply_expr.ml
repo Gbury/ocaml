@@ -851,6 +851,16 @@ let simplify_c_call dacc apply ~callee_ty ~param_arity ~return_arity
     ~rebuild:(rebuild_c_call apply ~use_id ~exn_cont_use_id ~return_arity)
 
 let simplify_apply ~simplify_expr dacc apply ~down_to_up =
+  (* This is an over-approximation. It should be replaced with adequate
+     calls after the potential simplifications in the future. *)
+  let dacc = DA.map_data_flow dacc ~f:(fun data_flow ->
+    let data_flow =
+      Data_flow.add_used_in_current_handler (Apply.free_names apply) data_flow
+    in
+    match Apply.continuation apply with
+    | Never_returns -> data_flow
+    | Return k -> Data_flow.add_apply_result_cont k data_flow
+  ) in
   match simplify_apply_shared dacc apply with
   | Bottom ->
     down_to_up dacc ~rebuild:(fun uacc ~after_rebuild ->

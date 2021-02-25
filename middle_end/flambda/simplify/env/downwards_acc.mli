@@ -40,6 +40,12 @@ val map_denv
 (** Replace the environment component of the given downwards accumulator. *)
 val with_denv : t -> Downwards_env.t -> t
 
+(** Extract the rec usage accumulator *)
+val data_flow : t -> Data_flow.t
+
+(** Map the data_flow of the given downwards accumulator. *)
+val map_data_flow : t -> f:(Data_flow.t -> Data_flow.t) -> t
+
 (* CR mshinwell: Why do these take scope arguments when [DE] knows the
    current scope level? *)
 include Continuation_uses_env_intf.S with type t := t

@@ -143,6 +143,11 @@ let simplify_apply_cont dacc apply_cont ~down_to_up =
   let { S. simples = args; simple_tys = arg_types; } =
     S.simplify_simples dacc (AC.args apply_cont)
   in
+  let dacc = DA.map_data_flow dacc ~f:(
+    Data_flow.add_apply_cont_args
+      (AC.continuation apply_cont)
+      (List.map Simple.free_names args)
+  ) in
   let use_kind : Continuation_use_kind.t =
     (* CR mshinwell: Is [Continuation.sort] reliable enough to detect
        the toplevel continuation?  Probably not -- we should store it in
