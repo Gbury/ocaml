@@ -78,9 +78,8 @@ let rebuild_one_continuation_handler cont ~at_unit_toplevel
         if is_single_inlinable_use then extra_params_and_args.extra_params, []
         else
           List.partition (fun extra_param ->
-            Name_occurrences.mem_var free_names (KP.var extra_param)
-            (* &&
-            Variable.Set.mem (KP.var extra_param) (UA.required_variables uacc) *)
+            Name_occurrences.mem_var free_names (KP.var extra_param) &&
+            Variable.Set.mem (KP.var extra_param) (UA.required_variables uacc)
           ) extra_params_and_args.extra_params
       in
       let used_as_normal_or_rec, not_used_as_normal_or_rec =
