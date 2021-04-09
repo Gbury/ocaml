@@ -72,7 +72,10 @@ module For_blocks : sig
       expect that doing the actual meet could give us a better result) and the
       last case where we already know what the result of the meet will be.
   *)
-  val get_field : t -> Target_imm.t -> Type_grammar.t Or_unknown.t
+  val get_field : t -> Target_imm.t -> Type_grammar.t Or_unknown_or_bottom.t
+
+  val get_variant_field :
+    t -> Tag.t -> Target_imm.t -> Type_grammar.t Or_unknown_or_bottom.t
 
   val is_bottom : t -> bool
 
