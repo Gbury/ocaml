@@ -750,7 +750,7 @@ let prove_block_field_simple env ~min_name_mode t field_index : Simple.t proof =
           begin match Row_like.For_blocks.get_field blocks field_index with
           | Bottom -> Invalid
           | Unknown -> Unknown
-          | Known ty ->
+          | Ok ty ->
             begin match get_alias_exn ty with
             | simple ->
               begin match
