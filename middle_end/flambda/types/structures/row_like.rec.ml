@@ -628,7 +628,7 @@ struct
           | Unknown -> Unknown
           | Known res -> Ok res
 
-    let get_variant_field t variant_tag field_index : _ Or_unknown_or_bottom.t =
+    let _get_variant_field t variant_tag field_index : _ Or_unknown_or_bottom.t =
       let index = Target_imm.to_targetint field_index in
       let aux { index = size; maps_to; } : _ Or_unknown_or_bottom.t =
         match size with
