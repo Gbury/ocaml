@@ -303,7 +303,7 @@ module Dependency_graph = struct
              transitive cloture of the used variables.
              Therefore an edge from src to dst means: if src is used, then
              dst is also used.
-             Aplied here, this means : if the param of a continuation is used,
+             Applied here, this means : if the param of a continuation is used,
              then any argument provided for that param is also used.
              The other way wouldn't make much sense. *)
           let src = params.(i) in
@@ -314,7 +314,7 @@ module Dependency_graph = struct
     ) apply_cont_args t
 
   let create ~return_continuation ~exn_continuation map extra =
-    (* Build the dependencies using the regular params and args of continations,
+    (* Build the dependencies using the regular params and args of continuations,
        and the let-bindings in continuations handlers. *)
     let t =
       Continuation.Map.fold
@@ -337,6 +337,18 @@ module Dependency_graph = struct
                 Name_occurrences.fold_variables (Flambda_primitive.free_names prim)
                   ~f:(fun t dst -> add_dependency ~src:src' ~dst t)
                   ~init:(add_dependency ~src ~dst:src' t)
+              | New_let_binding_with_named_args (_src', _prim_gen) ->
+                (* In this case, the free_vars present in the result of
+                   _prim_gen are fresh (and a subset of the simples given to
+                   _prim_gen) and generated when going up while creating a
+                   wrapper continuation for the return of a function application.
+                   In that case, the fresh parameters created for the wrapper
+                   cannot introduce dependencies to other variables or parameters
+                   of continuations.
+                   Therefore, in this case, the data_flow analysis is incomplete,
+                   and we instead rely on the free_names analysis to eliminate
+                   the extra_let binding if it is unneeded. *)
+                t
             ) t extra_params_and_args.extra_params extra_args
           ) extra_params_and_args.extra_args t
       ) extra t

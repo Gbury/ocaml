@@ -102,11 +102,6 @@ let rebuild_one_continuation_handler cont ~at_unit_toplevel
               match num with
               | Zero -> false
               | One | More_than_one ->
-                (* CR gbury: the rec_use check (which uses
-                   `UA.required_variables`), should supercedes the
-                   free_names check for unused parameters. Maybe the
-                   count_variable_normal_mode check could be omitted and completely
-                   replaced by the rec_use check at one point. *)
                 Variable.Set.mem (KP.var param) (UA.required_variables uacc)
             end) params
         end
