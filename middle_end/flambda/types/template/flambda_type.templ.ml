@@ -504,60 +504,57 @@ let prove_unique_tag_and_size env t
       | None -> Unknown
       | Some (tag, size) -> Proved (tag, size)
 
-type variant_proof = {
-  const_ctors : Target_imm.Set.t;
+type variant_like_proof = {
+  const_ctors : Target_imm.Set.t Or_unknown.t;
   non_const_ctors_with_sizes : Targetint.OCaml.t Tag.Scannable.Map.t;
 }
 
-let prove_variant env t : variant_proof proof_allowing_kind_mismatch =
+let prove_variant_like env t : variant_like_proof proof_allowing_kind_mismatch =
   (* Format.eprintf "prove_variant:@ %a\n%!" print t; *)
   match expand_head t env with
-  | Const (Tagged_immediate _) -> Unknown
+  | Const (Tagged_immediate imm) ->
+    Proved {
+      const_ctors = Known (Target_imm.Set.singleton imm);
+      non_const_ctors_with_sizes = Tag.Scannable.Map.empty;
+    }
   | Const _ -> Wrong_kind
   | Value (Ok (Variant blocks_imms)) ->
-    begin match blocks_imms.immediates with
+    begin match blocks_imms.blocks with
     | Unknown -> Unknown
-    | Known imms ->
-      let const_ctors : _ Or_unknown.t =
-        match prove_naked_immediates env imms with
-        | Unknown -> Unknown
-        | Invalid -> Known Target_imm.Set.empty
-        | Proved const_ctors -> Known const_ctors
-      in
-      match const_ctors with
+    | Known blocks ->
+      match Row_like.For_blocks.all_tags_and_sizes blocks with
       | Unknown -> Unknown
-      | Known const_ctors ->
-        let valid =
-          Target_imm.Set.for_all Target_imm.is_non_negative const_ctors
+      | Known non_const_ctors_with_sizes ->
+        let non_const_ctors_with_sizes =
+          Tag.Map.fold
+            (fun tag size (result : _ Or_unknown.t) : _ Or_unknown.t ->
+               match result with
+               | Unknown -> Unknown
+               | Known result ->
+                 match Tag.Scannable.of_tag tag with
+                 | None -> Unknown
+                 | Some tag ->
+                   Known (Tag.Scannable.Map.add tag size result))
+            non_const_ctors_with_sizes
+            (Or_unknown.Known Tag.Scannable.Map.empty)
         in
-        if not valid then Invalid
-        else
-          match blocks_imms.blocks with
-          | Unknown -> Unknown
-          | Known blocks ->
-            match Row_like.For_blocks.all_tags_and_sizes blocks with
+        match non_const_ctors_with_sizes with
+        | Unknown -> Unknown
+        | Known non_const_ctors_with_sizes ->
+          let const_ctors : _ Or_unknown.t =
+            match blocks_imms.immediates with
             | Unknown -> Unknown
-            | Known non_const_ctors_with_sizes ->
-              let non_const_ctors_with_sizes =
-                Tag.Map.fold
-                  (fun tag size (result : _ Or_bottom.t) : _ Or_bottom.t ->
-                    match result with
-                    | Bottom -> Bottom
-                    | Ok result ->
-                      match Tag.Scannable.of_tag tag with
-                      | None -> Bottom
-                      | Some tag ->
-                        Ok (Tag.Scannable.Map.add tag size result))
-                  non_const_ctors_with_sizes
-                  (Or_bottom.Ok Tag.Scannable.Map.empty)
-              in
-              match non_const_ctors_with_sizes with
-              | Bottom -> Invalid
-              | Ok non_const_ctors_with_sizes ->
-                Proved {
-                  const_ctors;
-                  non_const_ctors_with_sizes;
-                }
+            | Known imms ->
+              begin match prove_naked_immediates env imms with
+              | Unknown -> Unknown
+              | Invalid -> Known Target_imm.Set.empty
+              | Proved const_ctors -> Known const_ctors
+              end
+          in
+          Proved {
+            const_ctors;
+            non_const_ctors_with_sizes;
+          }
     end
   | Value (Ok _) -> Invalid
   | Value Unknown -> Unknown

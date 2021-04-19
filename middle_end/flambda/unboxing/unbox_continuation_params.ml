@@ -460,15 +460,15 @@ end
 module Variant : sig
   type t
 
-  val create : T.variant_proof -> t
+  val create : T.variant_like_proof -> t
 
   val max_size : t -> Targetint.OCaml.t
 
-  val const_ctors : t -> Target_imm.Set.t
+  val const_ctors : t -> Target_imm.Set.t Or_unknown.t
 
   val non_const_ctors_with_sizes : t -> Targetint.OCaml.t Tag.Scannable.Map.t
 end = struct
-  type t = T.variant_proof
+  type t = T.variant_like_proof
 
   let create variant = variant
 
@@ -1059,7 +1059,7 @@ let rec make_unboxing_decision denv ~depth ~arg_types_by_use_id
             DE.print denv
         end
     | Wrong_kind | Invalid | Unknown ->
-      match T.prove_variant (DE.typing_env denv) param_type with
+      match T.prove_variant_like (DE.typing_env denv) param_type with
       | Proved variant ->
         (*
         Format.eprintf "Starting variant unboxing\n%!";

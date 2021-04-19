@@ -514,15 +514,15 @@ val prove_naked_int64s : Typing_env.t -> t -> Numbers.Int64.Set.t proof
 
 val prove_naked_nativeints : Typing_env.t -> t -> Targetint.Set.t proof
 
-type variant_proof = private {
-  const_ctors : Target_imm.Set.t;
+type variant_like_proof = private {
+  const_ctors : Target_imm.Set.t Or_unknown.t;
   non_const_ctors_with_sizes : Targetint.OCaml.t Tag.Scannable.Map.t;
 }
 
-val prove_variant
+val prove_variant_like
    : Typing_env.t
   -> t
-  -> variant_proof proof_allowing_kind_mismatch
+  -> variant_like_proof proof_allowing_kind_mismatch
 
 (** If [ty] is known to represent a boxed number or a tagged integer,
     [prove_is_a_boxed_number env ty] is [Proved kind]. [kind] is the kind of
