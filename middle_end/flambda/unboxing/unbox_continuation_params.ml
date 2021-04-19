@@ -1120,9 +1120,17 @@ let rec make_unboxing_decision denv ~depth ~arg_types_by_use_id
 let make_unboxing_decisions0 denv ~arg_types_by_use_id ~params
       ~param_types extra_params_and_args =
   assert (List.compare_lengths params param_types = 0);
+
   let denv, param_types_rev, extra_params_and_args =
     List.fold_left (fun (denv, param_types_rev, extra_params_and_args)
               (arg_types_by_use_id, (param, param_type)) ->
+        (* Temporary hack before the merge of the split unboxing work *)
+        let arg_types_by_use_id =
+          Apply_cont_rewrite_id.Map.map
+            (fun { Continuation_env_and_param_types.arg_type; typing_env; } ->
+              typing_env, arg_type
+            ) arg_types_by_use_id
+        in
         let denv, param_type, extra_params_and_args =
           make_unboxing_decision denv ~depth:1 ~arg_types_by_use_id
             ~param_being_unboxed:param ~param_type extra_params_and_args
