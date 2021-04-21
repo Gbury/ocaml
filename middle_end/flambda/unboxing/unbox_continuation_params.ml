@@ -1120,7 +1120,6 @@ let rec make_unboxing_decision denv ~depth ~arg_types_by_use_id
 let make_unboxing_decisions0 denv ~arg_types_by_use_id ~params
       ~param_types extra_params_and_args =
   assert (List.compare_lengths params param_types = 0);
-
   let denv, param_types_rev, extra_params_and_args =
     List.fold_left (fun (denv, param_types_rev, extra_params_and_args)
               (arg_types_by_use_id, (param, param_type)) ->
