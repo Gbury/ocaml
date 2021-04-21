@@ -37,16 +37,16 @@ module Args = struct
     in
     Format.fprintf ppf
       "@[<hov 1>(\
-       @[<hov 1]>(max_inlining_depth@ %d)@]@ \
-       @[<hov 1]>(call_cost@ %f)@]@ \
-       @[<hov 1]>(alloc_cost@ %f)@]@ \
-       @[<hov 1]>(prim_cost@ %f)@]@ \
-       @[<hov 1]>(branch_cost@ %f)@]@ \
-       @[<hov 1]>(indirect_call_cost@ %f)@]@ \
-       @[<hov 1]>(poly_compare_cost@ %f)@]@ \
-       @[<hov 1]>(small_function_size@ %d)@]@ \
-       @[<hov 1]>(large_function_size@ %d)@]@ \
-       @[<hov 1]>(threshold@ %f)@]\
+       @[<hov 1>(max_inlining_depth@ %d)@]@ \
+       @[<hov 1>(call_cost@ %f)@]@ \
+       @[<hov 1>(alloc_cost@ %f)@]@ \
+       @[<hov 1>(prim_cost@ %f)@]@ \
+       @[<hov 1>(branch_cost@ %f)@]@ \
+       @[<hov 1>(indirect_call_cost@ %f)@]@ \
+       @[<hov 1>(poly_compare_cost@ %f)@]@ \
+       @[<hov 1>(small_function_size@ %d)@]@ \
+       @[<hov 1>(large_function_size@ %d)@]@ \
+       @[<hov 1>(threshold@ %f)@]\
       )@]"
       max_inlining_depth
       call_cost
