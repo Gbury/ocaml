@@ -74,6 +74,9 @@ val int64 : ?dbg:Debuginfo.t -> int64 -> Cmm.expression
 val targetint : ?dbg:Debuginfo.t -> Targetint.t -> Cmm.expression
 (** Create a constant int expression from a targetint. *)
 
+val nativeint : ?dbg:Debuginfo.t -> Nativeint.t -> Cmm.expression
+(** Create a constant int expression from a nativeint. *)
+
 
 (** {2 Block creation} *)
 

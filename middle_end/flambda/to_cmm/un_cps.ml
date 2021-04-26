@@ -1349,7 +1349,9 @@ and let_dynamic_set_of_closures env res body closure_vars
     Effects.Only_generative_effects Immutable, Coeffects.No_coeffects
   in
   let decl_map = decls |> Closure_id.Lmap.bindings |> Closure_id.Map.of_list in
-  let l, env, effs = fill_layout decl_map elts env effs [] 0 layout.slots in
+  let l, env, effs =
+    fill_layout decl_map layout.startenv elts env effs [] 0 layout.slots
+  in
   let csoc = C.make_closure_block l in
   (* Create a variable to hold the set of closure *)
   let soc_var = Variable.create "*set_of_closures*" in
@@ -1376,15 +1378,15 @@ and get_closure_by_offset env set_cmm cid =
   | None ->
     Misc.fatal_errorf "No closure offset for %a" Closure_id.print cid
 
-and fill_layout decls elts env effs acc i = function
+and fill_layout decls startenv elts env effs acc i = function
   | [] -> List.rev acc, env, effs
   | (j, slot) :: r ->
     let acc = fill_up_to j acc i in
-    let acc, offset, env, eff = fill_slot decls elts env acc j slot in
+    let acc, offset, env, eff = fill_slot decls startenv elts env acc j slot in
     let effs = Ece.join eff effs in
-    fill_layout decls elts env effs acc offset r
+    fill_layout decls startenv elts env effs acc offset r
 
-and fill_slot decls elts env acc offset slot =
+and fill_slot decls startenv elts env acc offset slot =
   match (slot : Un_cps_closure.layout_slot) with
   | Infix_header ->
     let field = C.alloc_infix_header (offset + 1) Debuginfo.none in
@@ -1400,10 +1402,11 @@ and fill_slot decls elts env acc offset slot =
     let code_symbol = Code_id.code_symbol code_id in
     let code_name = Linkage_name.to_string (Symbol.linkage_name code_symbol) in
     let arity = Env.get_func_decl_params_arity env decl in
+    let closure_info = C.closure_info ~arity ~startenv:(startenv - offset) in
     (* We build here the **reverse** list of fields for the closure *)
     if arity = 1 || arity = 0 then begin
       let acc =
-        C.int_const dbg arity ::
+        C.nativeint ~dbg closure_info ::
         C.symbol ~dbg code_name ::
         acc
       in
@@ -1411,7 +1414,7 @@ and fill_slot decls elts env acc offset slot =
     end else begin
       let acc =
         C.symbol ~dbg code_name ::
-        C.int_const dbg arity ::
+        C.nativeint ~dbg closure_info ::
         C.symbol ~dbg (C.curry_function_sym arity) ::
         acc
       in

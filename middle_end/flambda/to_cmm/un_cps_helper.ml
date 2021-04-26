@@ -85,6 +85,9 @@ let int32 ?(dbg=Debuginfo.none) i =
 let int64 ?(dbg=Debuginfo.none) i =
   natint_const_untagged dbg (Int64.to_nativeint i)
 
+let nativeint ?(dbg=Debuginfo.none) i =
+  natint_const_untagged dbg i
+
 let targetint ?(dbg=Debuginfo.none) t =
   match Targetint.repr t with
   | Int32 i -> int32 ~dbg i
