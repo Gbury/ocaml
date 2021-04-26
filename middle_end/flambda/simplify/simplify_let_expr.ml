@@ -100,54 +100,7 @@ let simplify_let ~simplify_expr ~simplify_toplevel dacc let_expr ~down_to_up =
         ~simplify_toplevel
     in
     let dacc = Simplify_named_result.dacc simplify_named_result in
-    (* First accumulate variable usage information. *)
-    (* CR gbury/pchambart : in the case of an invalid, we currently
-       over-approximate the uses. In case of an invalid, we might want to
-       instead flush the uses of the current control flow branch (but this
-       would require a more precise stack). *)
-    (* We currently over-approximate the use of variables in symbols: both in
-       the lifted constants, and in the bound constants, which we consider to be
-       always used, leading to the free_names in their defining expressions to
-       be considered as used unconditionally. *)
-    let dacc =
-      DA.map_data_flow dacc ~f:(fun data_flow ->
-        let data_flow =
-          LCS.fold (DA.get_lifted_constants dacc)
-            ~init:data_flow ~f:(fun data_flow lifted_constant ->
-              Data_flow.add_used_in_current_handler
-                (LC.free_names_of_defining_exprs lifted_constant) data_flow)
-        in
-        ListLabels.fold_left
-          (Simplify_named_result.bindings_to_place_in_any_order
-            simplify_named_result)
-          ~init:data_flow
-          ~f:(fun acc (binding : Simplify_named_result.binding_to_place) ->
-            match binding.simplified_defining_expr with
-            | Invalid _ -> acc
-            | Reachable { free_names; named; cost_metrics = _; } ->
-              let can_be_removed =
-                match named with
-                | Simple _ | Set_of_closures _ -> true
-                | Prim (prim, _) -> P.at_most_generative_effects prim
-              in
-              if not can_be_removed then
-                Data_flow.add_used_in_current_handler free_names acc
-              else
-                let generate_phantom_lets =
-                  DE.generate_phantom_lets (DA.denv dacc)
-                in
-                match binding.let_bound with
-                | Singleton v ->
-                  Data_flow.record_binding (VB.var v) free_names
-                    ~generate_phantom_lets acc
-                | Set_of_closures { closure_vars; name_mode = _; } ->
-                  ListLabels.fold_left closure_vars ~init:acc ~f:(fun acc v ->
-                    Data_flow.record_binding (VB.var v) free_names
-                      ~generate_phantom_lets acc)
-                | Symbols _ ->
-                  Data_flow.add_used_in_current_handler free_names acc))
-    in
-    (* Next remember any lifted constants that were generated during the
+    (* First remember any lifted constants that were generated during the
        simplification of the defining expression and sort them, since they
        may be mutually recursive.  Then add back in to [dacc]
        the [prior_lifted_constants] remembered above.  This results in the

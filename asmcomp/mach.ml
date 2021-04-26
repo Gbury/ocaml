@@ -15,16 +15,11 @@
 
 (* Representation of machine code by sequences of pseudoinstructions *)
 
-<<<<<<< HEAD
-type label = Cmm.label
-
 type trap_stack =
   | Uncaught
   | Generic_trap of trap_stack
   | Specific_trap of Cmm.trywith_shared_label * trap_stack
 
-=======
->>>>>>> ocaml/4.12
 type integer_comparison =
     Isigned of Cmm.integer_comparison
   | Iunsigned of Cmm.integer_comparison
@@ -53,22 +48,12 @@ type operation =
   | Iconst_int of nativeint
   | Iconst_float of int64
   | Iconst_symbol of string
-<<<<<<< HEAD
-  | Icall_ind of { label_after : label; }
-  | Icall_imm of { func : string; label_after : label; }
-  | Itailcall_ind of { label_after : label; }
-  | Itailcall_imm of { func : string; label_after : label; }
-  | Iextcall of { func : string; alloc : bool;
-                  label_after : label; returns: bool; }
-=======
   | Icall_ind
   | Icall_imm of { func : string; }
   | Itailcall_ind
   | Itailcall_imm of { func : string; }
-  | Iextcall of { func : string;
-                  ty_res : Cmm.machtype; ty_args : Cmm.exttype list;
-                  alloc : bool; }
->>>>>>> ocaml/4.12
+  | Iextcall of { func : string; alloc : bool;
+                  ty_args : Cmm.exttype list; returns: bool; }
   | Istackoffset of int
   | Iload of Cmm.memory_chunk * Arch.addressing_mode
   | Istore of Cmm.memory_chunk * Arch.addressing_mode * bool
@@ -155,11 +140,7 @@ let rec instr_iter f i =
       f i;
       match i.desc with
         Iend -> ()
-<<<<<<< HEAD
-      | Ireturn _ | Iop(Itailcall_ind _) | Iop(Itailcall_imm _) -> ()
-=======
-      | Ireturn | Iop Itailcall_ind | Iop(Itailcall_imm _) -> ()
->>>>>>> ocaml/4.12
+      | Ireturn _ | Iop Itailcall_ind | Iop(Itailcall_imm _) -> ()
       | Iifthenelse(_tst, ifso, ifnot) ->
           instr_iter f ifso; instr_iter f ifnot; instr_iter f i.next
       | Iswitch(_index, cases) ->
@@ -178,43 +159,6 @@ let rec instr_iter f i =
       | _ ->
           instr_iter f i.next
 
-<<<<<<< HEAD
-let spacetime_node_hole_pointer_is_live_before insn =
-  match insn.desc with
-  | Iop op ->
-    begin match op with
-    | Icall_ind _ | Icall_imm _ | Itailcall_ind _ | Itailcall_imm _ -> true
-    | Iextcall { alloc; } -> alloc
-    | Ialloc _ ->
-      (* Allocations are special: the call to [caml_call_gc] requires some
-         instrumentation code immediately prior, but this is not inserted until
-         the emitter (since the call is not visible prior to that in any IR).
-         As such, none of the Mach / Linearize analyses will ever see that
-         we use the node hole pointer for these, and we do not need to say
-         that it is live at such points. *)
-      false
-    | Iintop op | Iintop_imm (op, _) ->
-      begin match op with
-      | Icheckbound _
-        (* [Icheckbound] doesn't need to return [true] for the same reason as
-           [Ialloc]. *)
-      | Iadd | Isub | Imul | Imulh | Idiv | Imod
-      | Iand | Ior | Ixor | Ilsl | Ilsr | Iasr
-      | Icomp _ -> false
-      end
-    | Ispecific specific_op ->
-      Arch.spacetime_node_hole_pointer_is_live_before specific_op
-    | Imove | Ispill | Ireload | Iconst_int _ | Iconst_float _
-    | Iconst_symbol _ | Istackoffset _ | Iload _ | Istore _
-    | Inegf | Iabsf | Iaddf | Isubf | Imulf | Idivf
-    | Ifloatofint | Iintoffloat
-    | Iname_for_debugger _ -> false
-    end
-  | Iend | Ireturn _ | Iifthenelse _ | Iswitch _ | Icatch _
-  | Iexit _ | Itrywith _ | Iraise _ -> false
-
-=======
->>>>>>> ocaml/4.12
 let operation_can_raise op =
   match op with
   | Icall_ind | Icall_imm _ | Iextcall _

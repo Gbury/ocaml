@@ -3202,7 +3202,6 @@ lambda/debuginfo.cmi : \
     parsing/location.cmi \
     typing/ident.cmi \
     parsing/asttypes.cmi
-<<<<<<< HEAD
 lambda/dissect_letrec.cmo : \
     typing/types.cmi \
     lambda/printlambda.cmi \
@@ -3224,8 +3223,6 @@ lambda/dissect_letrec.cmx : \
 lambda/dissect_letrec.cmi : \
     lambda/lambda.cmi \
     typing/ident.cmi
-=======
->>>>>>> ocaml/4.12
 lambda/lambda.cmo : \
     typing/types.cmi \
     utils/targetint.cmi \
@@ -3237,10 +3234,7 @@ lambda/lambda.cmo : \
     typing/ident.cmi \
     typing/env.cmi \
     lambda/debuginfo.cmi \
-<<<<<<< HEAD
-=======
     utils/clflags.cmi \
->>>>>>> ocaml/4.12
     parsing/asttypes.cmi \
     lambda/lambda.cmi
 lambda/lambda.cmx : \
@@ -3254,10 +3248,7 @@ lambda/lambda.cmx : \
     typing/ident.cmx \
     typing/env.cmx \
     lambda/debuginfo.cmx \
-<<<<<<< HEAD
-=======
     utils/clflags.cmx \
->>>>>>> ocaml/4.12
     parsing/asttypes.cmi \
     lambda/lambda.cmi
 lambda/lambda.cmi : \
@@ -3289,10 +3280,7 @@ lambda/matching.cmo : \
     typing/ident.cmi \
     typing/env.cmi \
     lambda/debuginfo.cmi \
-<<<<<<< HEAD
     utils/config.cmi \
-=======
->>>>>>> ocaml/4.12
     utils/clflags.cmi \
     typing/btype.cmi \
     parsing/asttypes.cmi \
@@ -3316,10 +3304,7 @@ lambda/matching.cmx : \
     typing/ident.cmx \
     typing/env.cmx \
     lambda/debuginfo.cmx \
-<<<<<<< HEAD
     utils/config.cmx \
-=======
->>>>>>> ocaml/4.12
     utils/clflags.cmx \
     typing/btype.cmx \
     parsing/asttypes.cmi \
@@ -3366,10 +3351,7 @@ lambda/simplif.cmo : \
     parsing/location.cmi \
     lambda/lambda.cmi \
     typing/ident.cmi \
-<<<<<<< HEAD
     lambda/dissect_letrec.cmi \
-=======
->>>>>>> ocaml/4.12
     lambda/debuginfo.cmi \
     utils/clflags.cmi \
     parsing/asttypes.cmi \
@@ -3380,10 +3362,7 @@ lambda/simplif.cmx : \
     parsing/location.cmx \
     lambda/lambda.cmx \
     typing/ident.cmx \
-<<<<<<< HEAD
     lambda/dissect_letrec.cmx \
-=======
->>>>>>> ocaml/4.12
     lambda/debuginfo.cmx \
     utils/clflags.cmx \
     parsing/asttypes.cmi \
@@ -3396,7 +3375,6 @@ lambda/switch.cmo : \
 lambda/switch.cmx : \
     lambda/switch.cmi
 lambda/switch.cmi :
-<<<<<<< HEAD
 lambda/tag.cmo : \
     utils/targetint.cmi \
     utils/numbers.cmi \
@@ -3412,8 +3390,6 @@ lambda/tag.cmx : \
 lambda/tag.cmi : \
     utils/targetint.cmi \
     utils/identifiable.cmi
-=======
->>>>>>> ocaml/4.12
 lambda/translattribute.cmo : \
     utils/warnings.cmi \
     typing/typedtree.cmi \
@@ -3560,10 +3536,7 @@ lambda/translmod.cmo : \
     lambda/lambda.cmi \
     typing/ident.cmi \
     typing/env.cmi \
-<<<<<<< HEAD
     lambda/dissect_letrec.cmi \
-=======
->>>>>>> ocaml/4.12
     lambda/debuginfo.cmi \
     typing/ctype.cmi \
     utils/clflags.cmi \
@@ -3586,10 +3559,7 @@ lambda/translmod.cmx : \
     lambda/lambda.cmx \
     typing/ident.cmx \
     typing/env.cmx \
-<<<<<<< HEAD
     lambda/dissect_letrec.cmx \
-=======
->>>>>>> ocaml/4.12
     lambda/debuginfo.cmx \
     typing/ctype.cmx \
     utils/clflags.cmx \
@@ -3908,11 +3878,8 @@ asmcomp/debug/compute_ranges.cmo : \
     asmcomp/printlinear.cmi \
     utils/numbers.cmi \
     utils/misc.cmi \
-<<<<<<< HEAD
     asmcomp/linear.cmi \
-=======
     lambda/lambda.cmi \
->>>>>>> ocaml/4.12
     utils/int_replace_polymorphic_compare.cmi \
     asmcomp/debug/compute_ranges_intf.cmo \
     asmcomp/cmm.cmi \
@@ -3921,9 +3888,7 @@ asmcomp/debug/compute_ranges.cmx : \
     asmcomp/printlinear.cmx \
     utils/numbers.cmx \
     utils/misc.cmx \
-<<<<<<< HEAD
     asmcomp/linear.cmx \
-=======
     lambda/lambda.cmx \
     utils/int_replace_polymorphic_compare.cmx \
     typing/ident.cmx \
@@ -4075,7 +4040,6 @@ middle_end/flambda/find_recursive_functions.cmo : \
 middle_end/flambda/find_recursive_functions.cmx : \
     middle_end/variable.cmx \
     utils/strongly_connected_components.cmx \
->>>>>>> ocaml/4.12
     utils/int_replace_polymorphic_compare.cmx \
     asmcomp/debug/compute_ranges_intf.cmx \
     asmcomp/cmm.cmx \
@@ -10581,10 +10545,7 @@ driver/main_args.cmo : \
     utils/warnings.cmi \
     utils/profile.cmi \
     utils/misc.cmi \
-<<<<<<< HEAD
     middle_end/flambda/terms/flambda.cmi \
-=======
->>>>>>> ocaml/4.12
     utils/config.cmi \
     driver/compenv.cmi \
     utils/clflags.cmi \
@@ -10593,10 +10554,7 @@ driver/main_args.cmx : \
     utils/warnings.cmx \
     utils/profile.cmx \
     utils/misc.cmx \
-<<<<<<< HEAD
     middle_end/flambda/terms/flambda.cmx \
-=======
->>>>>>> ocaml/4.12
     utils/config.cmx \
     driver/compenv.cmx \
     utils/clflags.cmx \

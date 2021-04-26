@@ -13,15 +13,9 @@
 (*                                                                        *)
 (**************************************************************************)
 
-<<<<<<< HEAD
-(** Ephemerons and weak hash tables *)
-
-(** Ephemerons and weak hash tables are useful when one wants to cache
-=======
 (** Ephemerons and weak hash tables.
 
     Ephemerons and weak hash tables are useful when one wants to cache
->>>>>>> ocaml/4.12
     or memorize the computation of a function, as long as the
     arguments and the function are used, without creating memory leaks
     by continuously keeping old computation results that are not

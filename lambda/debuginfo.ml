@@ -20,14 +20,6 @@ open Location
 module Scoped_location = struct
   type scope_item =
     | Sc_anonymous_function
-<<<<<<< HEAD
-    | Sc_value_definition of string
-    | Sc_module_definition of string
-    | Sc_class_definition of string
-    | Sc_method_definition of string
-
-  type scopes = scope_item list
-=======
     | Sc_value_definition
     | Sc_module_definition
     | Sc_class_definition
@@ -45,7 +37,6 @@ module Scoped_location = struct
     Cons {item; str; str_fun = str ^ ".(fun)"}
 
   let empty_scopes = Empty
->>>>>>> ocaml/4.12
 
   let add_parens_if_symbolic = function
     | "" -> ""
@@ -54,48 +45,6 @@ module Scoped_location = struct
        | 'a'..'z' | 'A'..'Z' | '_' | '0'..'9' -> s
        | _ -> "(" ^ s ^ ")"
 
-<<<<<<< HEAD
-  let string_of_scope_item = function
-    | Sc_anonymous_function ->
-       "(fun)"
-    | Sc_value_definition name
-    | Sc_module_definition name
-    | Sc_class_definition name
-    | Sc_method_definition name ->
-       add_parens_if_symbolic name
-
-  let string_of_scopes scopes =
-    let dot acc =
-      match acc with
-      | [] -> []
-      | acc -> "." :: acc in
-    let rec to_strings acc = function
-      | [] -> acc
-        (* Collapse nested anonymous function scopes *)
-      | Sc_anonymous_function :: ((Sc_anonymous_function :: _) as rest) ->
-        to_strings acc rest
-        (* Use class#meth syntax for classes *)
-      | (Sc_method_definition _ as meth) ::
-        (Sc_class_definition _ as cls) :: rest ->
-        to_strings (string_of_scope_item cls :: "#" ::
-                      string_of_scope_item meth :: dot acc) rest
-      | s :: rest ->
-        to_strings (string_of_scope_item s :: dot acc) rest in
-    match scopes with
-    | [] -> "<unknown>"
-    | scopes -> String.concat "" (to_strings [] scopes)
-
-  let enter_anonymous_function ~scopes =
-    Sc_anonymous_function :: scopes
-  let enter_value_definition ~scopes id =
-    Sc_value_definition (Ident.name id) :: scopes
-  let enter_module_definition ~scopes id =
-    Sc_module_definition (Ident.name id) :: scopes
-  let enter_class_definition ~scopes id =
-    Sc_class_definition (Ident.name id) :: scopes
-  let enter_method_definition ~scopes (m : Asttypes.label) =
-    Sc_method_definition m :: scopes
-=======
   let dot ?(sep = ".") scopes s =
     let s = add_parens_if_symbolic s in
     match scopes with
@@ -126,7 +75,6 @@ module Scoped_location = struct
   let string_of_scopes = function
     | Empty -> "<unknown>"
     | Cons {str; _} -> str
->>>>>>> ocaml/4.12
 
   type t =
     | Loc_unknown

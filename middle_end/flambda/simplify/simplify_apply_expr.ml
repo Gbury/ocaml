@@ -702,11 +702,10 @@ let simplify_function_call ~simplify_expr dacc apply ~callee_ty
       EB.rebuild_invalid uacc ~after_rebuild
     )
 
-let simplify_apply_shared dacc apply =
+let simplify_apply_shared dacc apply : _ Or_bottom.t =
   let callee_ty =
     S.simplify_simple dacc (Apply.callee apply) ~min_name_mode:NM.normal
   in
-  let simplified_callee = T.get_alias_exn callee_ty in
   let { S. simples = args; simple_tys = arg_types; } =
     S.simplify_simples dacc (Apply.args apply)
   in
@@ -716,7 +715,7 @@ let simplify_apply_shared dacc apply =
       (Apply.inlining_state apply)
   in
   let apply =
-    Apply.create ~callee:simplified_callee
+    Apply.create ~callee:(T.get_alias_exn callee_ty)
       ~continuation:(Apply.continuation apply)
       (Apply.exn_continuation apply)
       ~args
@@ -725,23 +724,7 @@ let simplify_apply_shared dacc apply =
       ~inline:(Apply.inline apply)
       ~inlining_state
   in
-  (* CR gbury: we might have more precise results if this computation
-     was pushed down until after the decision to inline or not had
-     been made, so that it would take into account the simplification
-     made after inlining.
-     Also this considers that the extra arguments of the exn_continuation
-     are always used.
-  *)
-  let dacc =
-    DA.map_data_flow dacc ~f:(fun data_flow ->
-      let data_flow =
-        Data_flow.add_used_in_current_handler (Apply.free_names apply) data_flow
-      in
-      match Apply.continuation apply with
-      | Never_returns -> data_flow
-      | Return k -> Data_flow.add_apply_result_cont k data_flow)
-  in
-  dacc, callee_ty, apply, arg_types
+  Ok (callee_ty, apply, arg_types)
 
 let rebuild_method_call apply ~use_id ~exn_cont_use_id uacc ~after_rebuild =
   let apply =
@@ -884,14 +867,22 @@ let simplify_c_call ~simplify_expr dacc apply ~callee_ty ~param_arity
       ~rebuild:(rebuild_c_call apply ~use_id ~exn_cont_use_id ~return_arity)
 
 let simplify_apply ~simplify_expr dacc apply ~down_to_up =
-  let dacc, callee_ty, apply, arg_types = simplify_apply_shared dacc apply in
-  match Apply.call_kind apply with
-  | Function call ->
-    simplify_function_call ~simplify_expr dacc apply ~callee_ty call
-        ~arg_types ~down_to_up
-  | Method { kind; obj; } ->
-    simplify_method_call dacc apply ~callee_ty ~kind ~obj ~arg_types
-      ~down_to_up
-  | C_call { alloc = _; param_arity; return_arity; } ->
-    simplify_c_call ~simplify_expr dacc apply ~callee_ty ~param_arity
-      ~return_arity ~arg_types ~down_to_up
+  match simplify_apply_shared dacc apply with
+  | Bottom ->
+    down_to_up dacc ~rebuild:(fun uacc ~after_rebuild ->
+      let uacc =
+        UA.notify_removed ~operation:Removed_operations.call uacc
+      in
+      EB.rebuild_invalid uacc ~after_rebuild
+    )
+  | Ok (callee_ty, apply, arg_types) ->
+    match Apply.call_kind apply with
+    | Function call ->
+      simplify_function_call ~simplify_expr dacc apply ~callee_ty call
+         ~arg_types ~down_to_up
+    | Method { kind; obj; } ->
+      simplify_method_call dacc apply ~callee_ty ~kind ~obj ~arg_types
+        ~down_to_up
+    | C_call { alloc = _; param_arity; return_arity; } ->
+      simplify_c_call ~simplify_expr dacc apply ~callee_ty ~param_arity
+        ~return_arity ~arg_types ~down_to_up

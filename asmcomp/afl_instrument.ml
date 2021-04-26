@@ -103,13 +103,9 @@ let instrument_initialiser c dbg =
      calls *)
   with_afl_logging
     (Csequence
-<<<<<<< HEAD
        (Cop (Cextcall { func = "caml_setup_afl";
-                        ty = typ_int; alloc = false;
-                        label_after = None; returns = true; },
-=======
-       (Cop (Cextcall ("caml_setup_afl", typ_int, [], false),
->>>>>>> ocaml/4.12
+                        ty = typ_int; ty_args = []; alloc = false;
+                        returns = true; },
              [Cconst_int (0, dbg ())],
              dbg ()),
         c))

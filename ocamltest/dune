@@ -44,13 +44,8 @@
    (unix -> ocamltest_unix_real.ml)
    (-> ocamltest_unix_dummy.ml)))
  (modules (:standard \ options main))
-<<<<<<< HEAD
  (foreign_stubs (language c) (names run_unix run_stubs ocamltest_stdlib_stubs)
    (flags -DCAML_INTERNALS -I%{project_root}/runtime)))
-=======
- (c_flags (-DCAML_INTERNALS -I%{project_root}/runtime)) ; fixme
- (c_names run_unix run_stubs))
->>>>>>> ocaml/4.12
 
 (rule
  (targets empty.ml)

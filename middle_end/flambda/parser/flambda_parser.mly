@@ -1,11 +1,12 @@
 %{
 open Fexpr
 
-let make_loc (startpos, endpos) = Debuginfo.Scoped_location.of_location ~scopes:[] {
-  Location.loc_start = startpos;
-  Location.loc_end = endpos;
-  Location.loc_ghost = false;
-}
+let make_loc (startpos, endpos) = 
+  Debuginfo.Scoped_location.(of_location ~scopes:empty_scopes {
+    Location.loc_start = startpos;
+    Location.loc_end = endpos;
+    Location.loc_ghost = false;
+  })
 
 let make_located txt (startpos, endpos) =
   let loc = make_loc (startpos, endpos) in

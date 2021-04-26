@@ -51,14 +51,6 @@ CAMLextern void caml_memprof_delete_th_ctx(struct caml_memprof_th_ctx*);
 typedef void (*th_ctx_action)(struct caml_memprof_th_ctx*, void*);
 extern void (*caml_memprof_th_ctx_iter_hook)(th_ctx_action, void*);
 
-struct caml_memprof_th_ctx {
-  int suspended, callback_running;
-};
-extern void caml_memprof_init_th_ctx(struct caml_memprof_th_ctx* ctx);
-extern void caml_memprof_stop_th_ctx(struct caml_memprof_th_ctx* ctx);
-extern void caml_memprof_save_th_ctx(struct caml_memprof_th_ctx* ctx);
-extern void caml_memprof_restore_th_ctx(const struct caml_memprof_th_ctx* ctx);
-
 #endif
 
 #endif /* CAML_MEMPROF_H */

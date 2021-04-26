@@ -158,20 +158,15 @@ val mk_if_then_else :
 (** Boolean negation *)
 val mk_not : Debuginfo.t -> expression -> expression
 
-<<<<<<< HEAD
 (** Integer and float comparison that returns int not bool.
     The untagged versions do not tag the result and do not optimise
     known-constant cases. *)
 val mk_compare_ints : Debuginfo.t -> expression -> expression -> expression
+val mk_compare_floats : Debuginfo.t -> expression -> expression -> expression
 val mk_compare_ints_untagged :
   Debuginfo.t -> expression -> expression -> expression
 val mk_compare_floats_untagged :
   Debuginfo.t -> expression -> expression -> expression
-=======
-(** Integer and float comparison that returns int not bool *)
-val mk_compare_ints : Debuginfo.t -> expression -> expression -> expression
-val mk_compare_floats : Debuginfo.t -> expression -> expression -> expression
->>>>>>> ocaml/4.12
 
 (** Loop construction (while true do expr done).
     Used to be represented as Cloop. *)

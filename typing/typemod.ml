@@ -1844,13 +1844,6 @@ let package_subtype env p1 nl1 tl1 p2 nl2 tl2 =
     let (nl, tl) = List.split ntl in
     modtype_of_package env Location.none p nl tl
   in
-<<<<<<< HEAD
-  let mty1 = mkmty p1 nl1 tl1 and mty2 = mkmty p2 nl2 tl2 in
-  let loc = Location.none in
-  match Includemod.modtypes ~loc ~mark:Mark_both env mty1 mty2 with
-  | Tcoerce_none -> true
-  | _ | exception Includemod.Error _ -> false
-=======
   match mkmty p1 nl1 tl1, mkmty p2 nl2 tl2 with
   | exception Error(_, _, Cannot_scrape_package_type _) -> false
   | mty1, mty2 ->
@@ -1858,7 +1851,6 @@ let package_subtype env p1 nl1 tl1 p2 nl2 tl2 =
     match Includemod.modtypes ~loc ~mark:Mark_both env mty1 mty2 with
     | Tcoerce_none -> true
     | _ | exception Includemod.Error _ -> false
->>>>>>> ocaml/4.12
 
 let () = Ctype.package_subtype := package_subtype
 

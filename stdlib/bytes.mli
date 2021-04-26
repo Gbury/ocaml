@@ -60,10 +60,6 @@ external length : bytes -> int = "%bytes_length"
 external get : bytes -> int -> char = "%bytes_safe_get"
 (** [get s n] returns the byte at index [n] in argument [s].
     @raise Invalid_argument if [n] is not a valid index in [s]. *)
-<<<<<<< HEAD
-=======
-
->>>>>>> ocaml/4.12
 
 external set : bytes -> int -> char -> unit = "%bytes_safe_set"
 (** [set s n c] modifies [s] in place, replacing the byte at index [n]
@@ -105,11 +101,7 @@ val sub : bytes -> int -> int -> bytes
 (** [sub s pos len] returns a new byte sequence of length [len],
     containing the subsequence of [s] that starts at position [pos]
     and has length [len].
-<<<<<<< HEAD
-    @raise Invalid_argument if [start] and [len] do not designate a
-=======
     @raise Invalid_argument if [pos] and [len] do not designate a
->>>>>>> ocaml/4.12
     valid range of [s]. *)
 
 val sub_string : bytes -> int -> int -> string
@@ -122,14 +114,6 @@ val extend : bytes -> int -> int -> bytes
     is negative, then bytes are removed (instead of appended) from
     the corresponding side of [s].
     @raise Invalid_argument if the result length is negative or
-<<<<<<< HEAD
-    longer than {!Sys.max_string_length} bytes. *)
-
-val fill : bytes -> int -> int -> char -> unit
-(** [fill s start len c] modifies [s] in place, replacing [len]
-    characters with [c], starting at [start].
-    @raise Invalid_argument if [start] and [len] do not designate a
-=======
     longer than {!Sys.max_string_length} bytes.
     @since 4.05.0 in BytesLabels *)
 
@@ -137,7 +121,6 @@ val fill : bytes -> int -> int -> char -> unit
 (** [fill s pos len c] modifies [s] in place, replacing [len]
     characters with [c], starting at [pos].
     @raise Invalid_argument if [pos] and [len] do not designate a
->>>>>>> ocaml/4.12
     valid range of [s]. *)
 
 val blit :
@@ -148,19 +131,6 @@ val blit :
     index [dst_pos]. It works correctly even if [src] and [dst] are the
     same byte sequence, and the source and destination intervals
     overlap.
-<<<<<<< HEAD
-    @raise Invalid_argument if [srcoff] and [len] do not
-    designate a valid range of [src], or if [dstoff] and [len]
-    do not designate a valid range of [dst]. *)
-
-val blit_string : string -> int -> bytes -> int -> int -> unit
-(** [blit_string src srcoff dst dstoff len] copies [len] bytes from
-    string [src], starting at index [srcoff], to byte sequence [dst],
-    starting at index [dstoff].
-    @raise Invalid_argument if [srcoff] and [len] do not
-    designate a valid range of [src], or if [dstoff] and [len]
-    do not designate a valid range of [dst]. *)
-=======
     @raise Invalid_argument if [src_pos] and [len] do not
     designate a valid range of [src], or if [dst_pos] and [len]
     do not designate a valid range of [dst]. *)
@@ -175,30 +145,21 @@ val blit_string :
     designate a valid range of [src], or if [dst_pos] and [len]
     do not designate a valid range of [dst].
     @since 4.05.0 in BytesLabels *)
->>>>>>> ocaml/4.12
 
 val concat : bytes -> bytes list -> bytes
 (** [concat sep sl] concatenates the list of byte sequences [sl],
     inserting the separator byte sequence [sep] between each, and
     returns the result as a new byte sequence.
     @raise Invalid_argument if the result is longer than
-<<<<<<< HEAD
-    {!Sys.max_string_length} bytes. *)
-=======
     {!Sys.max_string_length} bytes.
     *)
->>>>>>> ocaml/4.12
 
 val cat : bytes -> bytes -> bytes
 (** [cat s1 s2] concatenates [s1] and [s2] and returns the result
     as a new byte sequence.
     @raise Invalid_argument if the result is longer than
-<<<<<<< HEAD
-    {!Sys.max_string_length} bytes. *)
-=======
     {!Sys.max_string_length} bytes.
     @since 4.05.0 in BytesLabels *)
->>>>>>> ocaml/4.12
 
 val iter : (char -> unit) -> bytes -> unit
 (** [iter f s] applies function [f] in turn to all the bytes of [s].
@@ -255,13 +216,8 @@ val rindex_opt: bytes -> char -> int option
 
 val index_from : bytes -> int -> char -> int
 (** [index_from s i c] returns the index of the first occurrence of
-<<<<<<< HEAD
-    byte [c] in [s] after position [i].  [Bytes.index s c] is
-    equivalent to [Bytes.index_from s 0 c].
-=======
     byte [c] in [s] after position [i].  [index s c] is
     equivalent to [index_from s 0 c].
->>>>>>> ocaml/4.12
     @raise Invalid_argument if [i] is not a valid position in [s].
     @raise Not_found if [c] does not occur in [s] after position [i]. *)
 
@@ -269,22 +225,14 @@ val index_from_opt: bytes -> int -> char -> int option
 (** [index_from_opt s i c] returns the index of the first occurrence of
     byte [c] in [s] after position [i] or [None] if [c] does not occur in [s]
     after position [i].
-<<<<<<< HEAD
-    [Bytes.index_opt s c] is equivalent to [Bytes.index_from_opt s 0 c].
-=======
     [index_opt s c] is equivalent to [index_from_opt s 0 c].
->>>>>>> ocaml/4.12
     @raise Invalid_argument if [i] is not a valid position in [s].
     @since 4.05 *)
 
 val rindex_from : bytes -> int -> char -> int
 (** [rindex_from s i c] returns the index of the last occurrence of
     byte [c] in [s] before position [i+1].  [rindex s c] is equivalent
-<<<<<<< HEAD
-    to [rindex_from s (Bytes.length s - 1) c].
-=======
     to [rindex_from s (length s - 1) c].
->>>>>>> ocaml/4.12
     @raise Invalid_argument if [i+1] is not a valid position in [s].
     @raise Not_found if [c] does not occur in [s] before position [i+1]. *)
 
@@ -292,11 +240,7 @@ val rindex_from_opt: bytes -> int -> char -> int option
 (** [rindex_from_opt s i c] returns the index of the last occurrence
     of byte [c] in [s] before position [i+1] or [None] if [c] does not
     occur in [s] before position [i+1].  [rindex_opt s c] is equivalent to
-<<<<<<< HEAD
-    [rindex_from s (Bytes.length s - 1) c].
-=======
     [rindex_from s (length s - 1) c].
->>>>>>> ocaml/4.12
     @raise Invalid_argument if [i+1] is not a valid position in [s].
     @since 4.05 *)
 

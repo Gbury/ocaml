@@ -26,10 +26,24 @@ let typ_int64 =
   if arch32 then [| Cmm.Int; Cmm.Int |] else [| Cmm.Int |]
 
 
+let exttype_of_kind k =
+  match (k  : Flambda_kind.t) with
+  | Value -> Cmm.XInt
+  | Naked_number Naked_float -> Cmm.XFloat
+  | Naked_number Naked_int64 -> Cmm.XInt64
+  | Naked_number Naked_int32 -> Cmm.XInt32
+  | Naked_number (Naked_immediate | Naked_nativeint) ->
+    begin match Targetint.num_bits with
+    | Thirty_two -> Cmm.XInt32
+    | Sixty_four -> Cmm.XInt64
+    end
+  | Fabricated -> assert false
+
+
 (* Void *)
 
 let void = Cmm.Ctuple []
-let unit ~dbg = Cmm.Cconst_pointer (1, dbg)
+let unit ~dbg = Cmm.Cconst_int (1, dbg)
 
 (* Data items *)
 
@@ -199,10 +213,10 @@ let load ?(dbg=Debuginfo.none) kind mut addr =
 let store ?(dbg=Debuginfo.none) kind init addr value =
   Cmm.Cop (Cmm.Cstore (kind, init), [addr; value], dbg)
 
-let extcall ?(dbg=Debuginfo.none) ?label ~returns ~alloc name typ_res args =
+let extcall ?(dbg=Debuginfo.none) ~returns ~alloc ~ty_args name typ_res args =
   if not returns then assert (typ_res = Cmm.typ_void);
   Cmm.Cop (Cextcall  { func = name; ty = typ_res;
-                       alloc; label_after = label; returns; }, args, dbg)
+                       alloc; ty_args; returns; }, args, dbg)
 
 
 (* Arithmetic helpers *)
@@ -249,6 +263,7 @@ let make_array ?(dbg=Debuginfo.none) kind args =
       | [] -> static_atom ~dbg 0
       | _ ->
           extcall ~dbg ~alloc:true ~returns:true
+            ~ty_args:[exttype_of_kind Flambda_kind.value]
             "caml_make_array" Cmm.typ_val
             [make_alloc dbg 0 args]
       end
@@ -352,15 +367,18 @@ let string_like_load_aux ~dbg kind width block ptr idx =
       sign_extend_32 dbg (unaligned_load_32 ptr idx dbg)
   | Sixty_four ->
       if arch32 then
+        let ty_args = 
+          [exttype_of_kind Flambda_kind.value; exttype_of_kind Flambda_kind.value]
+        in
         begin match (kind : Flambda_primitive.string_like_value) with
         | String ->
-            extcall ~alloc:false ~returns:true
+            extcall ~alloc:false ~returns:true ~ty_args 
               "caml_string_get_64" typ_int64 [block; idx]
         | Bytes ->
-            extcall ~alloc:false ~returns:true
+            extcall ~alloc:false ~returns:true ~ty_args
               "caml_bytes_get_64" typ_int64 [block; idx]
         | Bigstring ->
-            extcall ~alloc:false ~returns:true
+            extcall ~alloc:false ~returns:true ~ty_args
               "caml_ba_uint8_get64" typ_int64 [block; idx]
         end
       else begin
@@ -392,12 +410,17 @@ let bytes_like_set_aux ~dbg kind width block ptr idx value =
       unaligned_set_32 ptr idx value dbg
   | Sixty_four ->
       if arch32 then
+        let ty_args =
+          [exttype_of_kind Flambda_kind.value;
+           exttype_of_kind Flambda_kind.value;
+           exttype_of_kind Flambda_kind.value]
+        in
         begin match (kind : Flambda_primitive.bytes_like_value) with
         | Bytes ->
-            extcall ~alloc:false ~returns:true
+            extcall ~alloc:false ~returns:true ~ty_args
               "caml_bytes_set_64" typ_int64 [block; idx; value]
         | Bigstring ->
-            extcall ~alloc:false ~returns:true
+            extcall ~alloc:false ~returns:true ~ty_args
               "caml_ba_uint8_set64" typ_int64 [block; idx; value]
         end
       else begin
@@ -480,7 +503,7 @@ let bigarray_store ?(dbg=Debuginfo.none) _dims kind _layout ba offset v =
 
 (* try-with blocks *)
 
-let trywith ?(dbg=Debuginfo.none) ~kind ~body ~exn_var ~handler =
+let trywith ?(dbg=Debuginfo.none) ~kind ~body ~exn_var ~handler () =
   Cmm.Ctrywith (body, kind, exn_var, handler, dbg)
 
 let raise_kind (kind : Trap_action.raise_kind option) : Lambda.raise_kind =

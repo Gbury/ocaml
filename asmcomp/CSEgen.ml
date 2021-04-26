@@ -255,24 +255,15 @@ method private kill_loads n =
 
 method private cse n i k =
   match i.desc with
-<<<<<<< HEAD
-  | Iend | Ireturn _ | Iop(Itailcall_ind _) | Iop(Itailcall_imm _)
-=======
-  | Iend | Ireturn | Iop(Itailcall_ind) | Iop(Itailcall_imm _)
->>>>>>> ocaml/4.12
+  | Iend | Ireturn _ | Iop(Itailcall_ind) | Iop(Itailcall_imm _)
   | Iexit _ | Iraise _ ->
       k i
   | Iop (Imove | Ispill | Ireload) ->
       (* For moves, we associate the same value number to the result reg
          as to the argument reg. *)
       let n1 = set_move n i.arg.(0) i.res.(0) in
-<<<<<<< HEAD
       self#cse n1 i.next (fun next -> k { i with next; })
-  | Iop (Icall_ind _ | Icall_imm _ | Iextcall _) ->
-=======
-      {i with next = self#cse n1 i.next}
   | Iop (Icall_ind | Icall_imm _ | Iextcall _) ->
->>>>>>> ocaml/4.12
       (* For function calls, we should at least forget:
          - equations involving memory loads, since the callee can
            perform arbitrary memory stores;

@@ -23,7 +23,7 @@
 	}
     }
     ul{list-style:none;}
-    ul.itemize li::before{@include disc;}
+    ul.itemize li::before{@include caret;}
 
     /* When the TOC is repeated in the main content */
     ul.ul-content {
@@ -54,10 +54,7 @@
 	}
     }
     /* only for Contents/Foreword in index.html: */
-    ul.ul-content li::before{
-	@include disc;
-	margin-left: 0;
-    }
+    ul.ul-content li::before{@include caret;}
     /* table of contents: (manual.001.html): */
     ul.toc ul.toc ul.toc{
 	font-size:smaller;
@@ -278,7 +275,7 @@ blockquote.quote{
 }
 #part-menu li.active a{
     color:#000;
-    &::before{@include diamond}
+    &::before{@include caret;}
 }
 span.c003{
     color:#564233;
@@ -288,13 +285,10 @@ span.c003{
 }
 div.caml-example.toplevel code.caml-input::before,
 div.caml-example.toplevel div.caml-input::before{
-    /* content:"#"; */ /* pre-4.11 */
+    content:"#";
     color:#888
 }
-span.number{
-    padding-right: 1ex;
-}
-span.c004, span.c002{
+span.c004{
     color:#888
 }
 span.c006{
@@ -307,8 +301,7 @@ span.c009{
     background-color:#f3ece6;
     border-radius:6px
 }
-span.authors{
-    font-style:italic;
+span.authors.c009{
     background-color:inherit
 }
 span.c013{

@@ -63,14 +63,8 @@ FUNCTION(caml_call_gc)
         /* Record lowest stack address */
         STORE   sp, Caml_state(bottom_of_stack)
         /* Set up stack space, saving return address */
-<<<<<<< HEAD
-        /* (1 reg for RA, 1 reg for FP, 21 allocatable int regs,
-            20 caller-save float regs) * 8 */
-        /* + 1 for alignment */
-=======
         /* (1 reg for RA, 1 reg for FP, 22 allocatable int regs,
             20 caller-save float regs) * 8 */
->>>>>>> ocaml/4.12
         addi    sp, sp, -0x160
         STORE   ra, 0x8(sp)
         STORE   s0, 0x0(sp)
@@ -97,28 +91,6 @@ FUNCTION(caml_call_gc)
         STORE   t4, 0xa0(sp)
         STORE   t5, 0xa8(sp)
         STORE   t6, 0xb0(sp)
-<<<<<<< HEAD
-        /* Save caller-save floating-point registers on the stack
-           (callee-saves are preserved by caml_garbage_collection) */
-        fsd     ft0, 0xb8(sp)
-        fsd     ft1, 0xc0(sp)
-        fsd     ft2, 0xc8(sp)
-        fsd     ft3, 0xd0(sp)
-        fsd     ft4, 0xd8(sp)
-        fsd     ft5, 0xe0(sp)
-        fsd     ft6, 0xe8(sp)
-        fsd     ft7, 0xf0(sp)
-        fsd     fa0, 0xf8(sp)
-        fsd     fa1, 0x100(sp)
-        fsd     fa2, 0x108(sp)
-        fsd     fa3, 0x110(sp)
-        fsd     fa4, 0x118(sp)
-        fsd     fa5, 0x120(sp)
-        fsd     fa6, 0x128(sp)
-        fsd     fa7, 0x130(sp)
-        fsd     ft8, 0x138(sp)
-        fsd     ft9, 0x140(sp)
-=======
         STORE   t0, 0xb8(sp)
         /* Save caller-save floating-point registers on the stack
            (callee-saves are preserved by caml_garbage_collection) */
@@ -139,7 +111,6 @@ FUNCTION(caml_call_gc)
         fsd     fa6, 0x130(sp)
         fsd     fa7, 0x138(sp)
         fsd     ft8, 0x140(sp)
->>>>>>> ocaml/4.12
         fsd     ft9, 0x148(sp)
         fsd     ft10, 0x150(sp)
         fsd     ft11, 0x158(sp)
@@ -174,26 +145,6 @@ FUNCTION(caml_call_gc)
         LOAD    t4, 0xa0(sp)
         LOAD    t5, 0xa8(sp)
         LOAD    t6, 0xb0(sp)
-<<<<<<< HEAD
-        fld     ft0, 0xb8(sp)
-        fld     ft1, 0xc0(sp)
-        fld     ft2, 0xc8(sp)
-        fld     ft3, 0xd0(sp)
-        fld     ft4, 0xd8(sp)
-        fld     ft5, 0xe0(sp)
-        fld     ft6, 0xe8(sp)
-        fld     ft7, 0xf0(sp)
-        fld     fa0, 0xf8(sp)
-        fld     fa1, 0x100(sp)
-        fld     fa2, 0x108(sp)
-        fld     fa3, 0x110(sp)
-        fld     fa4, 0x118(sp)
-        fld     fa5, 0x120(sp)
-        fld     fa6, 0x128(sp)
-        fld     fa7, 0x130(sp)
-        fld     ft8, 0x138(sp)
-        fld     ft9, 0x140(sp)
-=======
         LOAD    t0, 0xb8(sp)
         fld     ft0, 0xc0(sp)
         fld     ft1, 0xc8(sp)
@@ -212,7 +163,6 @@ FUNCTION(caml_call_gc)
         fld     fa6, 0x130(sp)
         fld     fa7, 0x138(sp)
         fld     ft8, 0x140(sp)
->>>>>>> ocaml/4.12
         fld     ft9, 0x148(sp)
         fld     ft10, 0x150(sp)
         fld     ft11, 0x158(sp)

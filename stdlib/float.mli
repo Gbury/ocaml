@@ -443,36 +443,21 @@ module Array : sig
   (** Same as {!append}, but concatenates a list of floatarrays. *)
 
   val sub : t -> int -> int -> t
-<<<<<<< HEAD
-  (** [sub a start len] returns a fresh floatarray of length [len],
-      containing the elements number [start] to [start + len - 1]
-      of floatarray [a].
-      @raise Invalid_argument if [start] and [len] do not
-      designate a valid subarray of [a]; that is, if
-      [start < 0], or [len < 0], or [start + len > length a]. *)
-=======
   (** [sub a pos len] returns a fresh floatarray of length [len],
       containing the elements number [pos] to [pos + len - 1]
       of floatarray [a].
       @raise Invalid_argument if [pos] and [len] do not
       designate a valid subarray of [a]; that is, if
       [pos < 0], or [len < 0], or [pos + len > length a]. *)
->>>>>>> ocaml/4.12
 
   val copy : t -> t
   (** [copy a] returns a copy of [a], that is, a fresh floatarray
       containing the same elements as [a]. *)
 
   val fill : t -> int -> int -> float -> unit
-<<<<<<< HEAD
-  (** [fill a ofs len x] modifies the floatarray [a] in place,
-      storing [x] in elements number [ofs] to [ofs + len - 1].
-      @raise Invalid_argument if [ofs] and [len] do not
-=======
   (** [fill a pos len x] modifies the floatarray [a] in place,
       storing [x] in elements number [pos] to [pos + len - 1].
       @raise Invalid_argument if [pos] and [len] do not
->>>>>>> ocaml/4.12
       designate a valid subarray of [a]. *)
 
   val blit : t -> int -> t -> int -> int -> unit
@@ -482,15 +467,9 @@ module Array : sig
       It works correctly even if
       [src] and [dst] are the same floatarray, and the source and
       destination chunks overlap.
-<<<<<<< HEAD
-      @raise Invalid_argument if [o1] and [len] do not
-      designate a valid subarray of [v1], or if [o2] and [len] do not
-      designate a valid subarray of [v2]. *)
-=======
       @raise Invalid_argument if [src_pos] and [len] do not
       designate a valid subarray of [src], or if [dst_pos] and [len] do not
       designate a valid subarray of [dst]. *)
->>>>>>> ocaml/4.12
 
   val to_list : t -> float list
   (** [to_list a] returns the list of all the elements of [a]. *)

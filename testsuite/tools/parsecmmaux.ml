@@ -55,12 +55,8 @@ let report_error = function
       prerr_string "Unbound identifier "; prerr_string s; prerr_endline "."
 
 let debuginfo ?(loc=Location.symbol_rloc ()) () =
-<<<<<<< HEAD
-  Debuginfo.(from_location (Scoped_location.of_location ~scopes:[] loc))
-=======
   Debuginfo.(from_location
                (Scoped_location.of_location
                   ~scopes:Scoped_location.empty_scopes loc
                )
             )
->>>>>>> ocaml/4.12

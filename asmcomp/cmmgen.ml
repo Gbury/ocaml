@@ -761,12 +761,8 @@ and transl_catch env nfail ids body handler dbg =
 and transl_make_array dbg env kind args =
   match kind with
   | Pgenarray ->
-<<<<<<< HEAD
     Cop(Cextcall { func = "caml_make_array"; ty = typ_val;
-                   alloc = true; label_after =  None; returns = true; },
-=======
-      Cop(Cextcall("caml_make_array", typ_val, [], true),
->>>>>>> ocaml/4.12
+                   alloc = true; ty_args = []; returns = true; },
           [make_alloc dbg 0 (List.map (transl env) args)], dbg)
   | Paddrarray | Pintarray ->
       make_alloc dbg 0 (List.map (transl env) args)
@@ -815,14 +811,9 @@ and transl_ccall env prim args dbg =
   in
   let typ_args, args = transl_args prim.prim_native_repr_args args in
   wrap_result
-<<<<<<< HEAD
     (Cop(Cextcall { func = Primitive.native_name prim; ty = typ_res;
-                    alloc = prim.prim_alloc; label_after = None;
+                    alloc = prim.prim_alloc; ty_args = typ_args;
                     returns = true; }, args, dbg))
-=======
-    (Cop(Cextcall(Primitive.native_name prim,
-                  typ_res, typ_args, prim.prim_alloc), args, dbg))
->>>>>>> ocaml/4.12
 
 and transl_prim_1 env p arg dbg =
   match p with
@@ -973,11 +964,7 @@ and transl_prim_2 env p arg1 arg2 dbg =
   | Pcompare_floats ->
       let a1 = transl_unbox_float dbg env arg1 in
       let a2 = transl_unbox_float dbg env arg2 in
-<<<<<<< HEAD
       tag_int (mk_compare_floats_untagged dbg a1 a2) dbg
-=======
-      mk_compare_floats dbg a1 a2
->>>>>>> ocaml/4.12
   | Pisout ->
       transl_isout (transl env arg1) (transl env arg2) dbg
   (* Float operations *)
@@ -1366,13 +1353,9 @@ and transl_letrec env bindings cont =
       bindings
   in
   let op_alloc prim args =
-<<<<<<< HEAD
     Cop(Cextcall { func = prim; ty = typ_val;
-                   alloc = true; label_after = None;
+                   alloc = true; ty_args = [];
                    returns = true; }, args, dbg) in
-=======
-    Cop(Cextcall(prim, typ_val, [], true), args, dbg) in
->>>>>>> ocaml/4.12
   let rec init_blocks = function
     | [] -> fill_nonrec bsz
     | (id, _exp, RHS_block sz) :: rem ->
@@ -1398,12 +1381,8 @@ and transl_letrec env bindings cont =
     | [] -> cont
     | (id, exp, (RHS_block _ | RHS_infix _ | RHS_floatblock _)) :: rem ->
         let op =
-<<<<<<< HEAD
           Cop(Cextcall { func = "caml_update_dummy"; ty = typ_void;
-                         alloc = false; label_after = None; returns = true; },
-=======
-          Cop(Cextcall("caml_update_dummy", typ_void, [], false),
->>>>>>> ocaml/4.12
+                         alloc = false; ty_args = []; returns = true; },
               [Cvar (VP.var id); transl env exp], dbg) in
         Csequence(op, fill_blocks rem)
     | (_id, _exp, RHS_nonrec) :: rem ->

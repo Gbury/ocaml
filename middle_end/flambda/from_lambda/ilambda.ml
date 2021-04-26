@@ -96,7 +96,7 @@ and apply = {
   continuation : Continuation.t;
   exn_continuation : exn_continuation;
   loc : Lambda.scoped_location;
-  should_be_tailcall : bool;
+  tailcall : Lambda.tailcall_attribute;
   inlined : Lambda.inline_attribute;
   specialised : Lambda.specialise_attribute;
 }
@@ -204,7 +204,7 @@ and print ppf (t : t) =
       print_func_and_kind ap.func
       Continuation.print ap.continuation
       (Format.pp_print_list ~pp_sep:Format.pp_print_space print_simple) ap.args
-      Printlambda.apply_tailcall_attribute ap.should_be_tailcall
+      Printlambda.apply_tailcall_attribute ap.tailcall
       Printlambda.apply_inlined_attribute ap.inlined
       Printlambda.apply_specialised_attribute ap.specialised
   | Let (id, _user_visible, kind, arg, body) ->

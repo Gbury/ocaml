@@ -21,20 +21,11 @@
           (*match* =
              (setfield_ptr 0 (field 3 (global Anonymous!)) "Hello World!"))
           (makeblock 0)))
-<<<<<<< HEAD
-      (let (drop = (function param 0a))
-=======
       (let (drop = (function param 0))
->>>>>>> ocaml/4.12
         (setfield_ptr(root-init) 4 (global Anonymous!) drop))
       (let
         (*match* =
            (apply (field 4 (global Anonymous!))
-             (field 0 (field 3 (global Anonymous!)))))
-<<<<<<< HEAD
-        0a)
-      0a)))
-=======
+             (field_mut 0 (field 3 (global Anonymous!)))))
         0)
       0)))
->>>>>>> ocaml/4.12

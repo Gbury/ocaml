@@ -153,21 +153,6 @@ static void do_compaction (intnat new_allocation_policy)
      - all other blocks are white and contain valid pointers
   */
   caml_fl_reset_and_switch_policy (new_allocation_policy);
-<<<<<<< HEAD
-
-
-  /* First pass: encode all noninfix headers. */
-  {
-    ch = caml_heap_start;
-    while (ch != NULL){
-      header_t *p = (header_t *) ch;
-
-      chend = ch + Chunk_size (ch);
-      while ((char *) p < chend){
-        header_t hd = Hd_hp (p);
-        mlsize_t sz = Wosize_hd (hd);
-=======
->>>>>>> ocaml/4.12
 
   /* First pass: removed in 4.12 thanks to the new closure representation. */
 

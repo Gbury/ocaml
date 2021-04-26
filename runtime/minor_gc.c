@@ -31,12 +31,6 @@
 #include "caml/signals.h"
 #include "caml/weak.h"
 #include "caml/memprof.h"
-<<<<<<< HEAD
-#ifdef WITH_SPACETIME
-#include "caml/spacetime.h"
-#endif
-=======
->>>>>>> ocaml/4.12
 #include "caml/eventlog.h"
 
 /* Pointers into the minor heap.
@@ -466,11 +460,6 @@ extern uintnat caml_instr_alloc_jump;
 */
 void caml_gc_dispatch (void)
 {
-<<<<<<< HEAD
-  value *trigger = Caml_state->young_trigger; /* save old value of trigger */
-
-=======
->>>>>>> ocaml/4.12
   CAML_EVENTLOG_DO({
     CAML_EV_COUNTER(EV_C_ALLOC_JUMP, caml_instr_alloc_jump);
     caml_instr_alloc_jump =  0;
@@ -501,18 +490,7 @@ void caml_gc_dispatch (void)
     Caml_state->young_trigger = Caml_state->young_alloc_mid;
     caml_update_young_limit();
     caml_empty_minor_heap ();
-<<<<<<< HEAD
-    /* The minor heap is empty, we can start a major collection. */
     CAML_EV_END(EV_MINOR);
-    if (caml_gc_phase == Phase_idle)
-    {
-      CAML_EV_BEGIN(EV_MAJOR);
-      caml_major_collection_slice (-1);
-      CAML_EV_END(EV_MAJOR);
-    }
-=======
-    CAML_EV_END(EV_MINOR);
->>>>>>> ocaml/4.12
   }
   if (Caml_state->requested_major_slice) {
     Caml_state->requested_major_slice = 0;

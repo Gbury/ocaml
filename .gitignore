@@ -39,12 +39,8 @@ _ocamltestd
 _build
 
 # local to root directory
-<<<<<<< HEAD
 /Makefile.common
-=======
-
 /Makefile.build_config
->>>>>>> ocaml/4.12
 /Makefile.config
 /autom4te.cache
 /ocamlc

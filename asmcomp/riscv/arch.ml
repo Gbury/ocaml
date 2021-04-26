@@ -27,12 +27,6 @@ type specific_operation =
   | Imultaddf of bool        (* multiply, optionally negate, and add *)
   | Imultsubf of bool        (* multiply, optionally negate, and subtract *)
 
-<<<<<<< HEAD
-let spacetime_node_hole_pointer_is_live_before = function
-  | Imultaddf _ | Imultsubf _ -> false
-
-=======
->>>>>>> ocaml/4.12
 (* Addressing modes *)
 
 type addressing_mode =

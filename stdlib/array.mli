@@ -36,32 +36,19 @@ external length : 'a array -> int = "%array_length"
 external get : 'a array -> int -> 'a = "%array_safe_get"
 (** [get a n] returns the element number [n] of array [a].
    The first element has number 0.
-<<<<<<< HEAD
-   The last element has number [Array.length a - 1].
-   You can also write [a.(n)] instead of [Array.get a n].
-   @raise Invalid_argument
-   if [n] is outside the range 0 to [(Array.length a - 1)]. *)
-=======
    The last element has number [length a - 1].
    You can also write [a.(n)] instead of [get a n].
 
    @raise Invalid_argument
    if [n] is outside the range 0 to [(length a - 1)]. *)
->>>>>>> ocaml/4.12
 
 external set : 'a array -> int -> 'a -> unit = "%array_safe_set"
 (** [set a n x] modifies array [a] in place, replacing
    element number [n] with [x].
-<<<<<<< HEAD
-   You can also write [a.(n) <- x] instead of [Array.set a n x].
-   @raise Invalid_argument
-   if [n] is outside the range 0 to [Array.length a - 1]. *)
-=======
    You can also write [a.(n) <- x] instead of [set a n x].
 
    @raise Invalid_argument
    if [n] is outside the range 0 to [length a - 1]. *)
->>>>>>> ocaml/4.12
 
 external make : int -> 'a -> 'a array = "caml_make_vect"
 (** [make n x] returns a fresh array of length [n],
@@ -71,10 +58,6 @@ external make : int -> 'a -> 'a array = "caml_make_vect"
    Consequently, if [x] is mutable, it is shared among all elements
    of the array, and modifying [x] through one of the array entries
    will modify all other entries at the same time.
-<<<<<<< HEAD
-=======
-
->>>>>>> ocaml/4.12
    @raise Invalid_argument if [n < 0] or [n > Sys.max_array_length].
    If the value of [x] is a floating-point number, then the maximum
    size is only [Sys.max_array_length / 2].*)
@@ -98,10 +81,6 @@ val init : int -> (int -> 'a) -> 'a array
    with element number [i] initialized to the result of [f i].
    In other terms, [init n f] tabulates the results of [f]
    applied to the integers [0] to [n-1].
-<<<<<<< HEAD
-=======
-
->>>>>>> ocaml/4.12
    @raise Invalid_argument if [n < 0] or [n > Sys.max_array_length].
    If the return type of [f] is [float], then the maximum
    size is only [Sys.max_array_length / 2].*)
@@ -113,10 +92,6 @@ val make_matrix : int -> int -> 'a -> 'a array array
    are initially physically equal to [e].
    The element ([x,y]) of a matrix [m] is accessed
    with the notation [m.(x).(y)].
-<<<<<<< HEAD
-=======
-
->>>>>>> ocaml/4.12
    @raise Invalid_argument if [dimx] or [dimy] is negative or
    greater than {!Sys.max_array_length}.
    If the value of [e] is a floating-point number, then the maximum
@@ -131,11 +106,7 @@ val append : 'a array -> 'a array -> 'a array
 (** [append v1 v2] returns a fresh array containing the
    concatenation of the arrays [v1] and [v2].
    @raise Invalid_argument if
-<<<<<<< HEAD
-   [Array.length v1 + Array.length v2 > Sys.max_array_length]. *)
-=======
    [length v1 + length v2 > Sys.max_array_length]. *)
->>>>>>> ocaml/4.12
 
 val concat : 'a array list -> 'a array
 (** Same as {!append}, but concatenates a list of arrays. *)
@@ -144,12 +115,8 @@ val sub : 'a array -> int -> int -> 'a array
 (** [sub a pos len] returns a fresh array of length [len],
    containing the elements number [pos] to [pos + len - 1]
    of array [a].
-<<<<<<< HEAD
-   @raise Invalid_argument if [start] and [len] do not
-=======
 
    @raise Invalid_argument if [pos] and [len] do not
->>>>>>> ocaml/4.12
    designate a valid subarray of [a]; that is, if
    [pos < 0], or [len < 0], or [pos + len > length a]. *)
 
@@ -158,16 +125,10 @@ val copy : 'a array -> 'a array
    containing the same elements as [a]. *)
 
 val fill : 'a array -> int -> int -> 'a -> unit
-<<<<<<< HEAD
-(** [Array.fill a ofs len x] modifies the array [a] in place,
-   storing [x] in elements number [ofs] to [ofs + len - 1].
-   @raise Invalid_argument if [ofs] and [len] do not
-=======
 (** [fill a pos len x] modifies the array [a] in place,
    storing [x] in elements number [pos] to [pos + len - 1].
 
    @raise Invalid_argument if [pos] and [len] do not
->>>>>>> ocaml/4.12
    designate a valid subarray of [a]. *)
 
 val blit :
@@ -178,16 +139,10 @@ val blit :
    starting at element number [dst_pos]. It works correctly even if
    [src] and [dst] are the same array, and the source and
    destination chunks overlap.
-<<<<<<< HEAD
-   @raise Invalid_argument if [o1] and [len] do not
-   designate a valid subarray of [v1], or if [o2] and [len] do not
-   designate a valid subarray of [v2]. *)
-=======
 
    @raise Invalid_argument if [src_pos] and [len] do not
    designate a valid subarray of [src], or if [dst_pos] and [len] do not
    designate a valid subarray of [dst]. *)
->>>>>>> ocaml/4.12
 
 val to_list : 'a array -> 'a list
 (** [to_list a] returns the list of all the elements of [a]. *)
@@ -195,15 +150,9 @@ val to_list : 'a array -> 'a list
 val of_list : 'a list -> 'a array
 (** [of_list l] returns a fresh array containing the elements
    of [l].
-<<<<<<< HEAD
-   @raise Invalid_argument if the length of [l] is greater than
-   [Sys.max_array_length].*)
-
-=======
 
    @raise Invalid_argument if the length of [l] is greater than
    [Sys.max_array_length]. *)
->>>>>>> ocaml/4.12
 
 (** {1 Iterators} *)
 
@@ -245,25 +194,15 @@ val iter2 : ('a -> 'b -> unit) -> 'a array -> 'b array -> unit
 (** [iter2 f a b] applies function [f] to all the elements of [a]
    and [b].
    @raise Invalid_argument if the arrays are not the same size.
-<<<<<<< HEAD
-   @since 4.03.0 *)
-=======
    @since 4.03.0 (4.05.0 in ArrayLabels)
    *)
->>>>>>> ocaml/4.12
 
 val map2 : ('a -> 'b -> 'c) -> 'a array -> 'b array -> 'c array
 (** [map2 f a b] applies function [f] to all the elements of [a]
    and [b], and builds an array with the results returned by [f]:
-<<<<<<< HEAD
-   [[| f a.(0) b.(0); ...; f a.(Array.length a - 1) b.(Array.length b - 1)|]].
-   @raise Invalid_argument if the arrays are not the same size.
-   @since 4.03.0 *)
-=======
    [[| f a.(0) b.(0); ...; f a.(length a - 1) b.(length b - 1)|]].
    @raise Invalid_argument if the arrays are not the same size.
    @since 4.03.0 (4.05.0 in ArrayLabels) *)
->>>>>>> ocaml/4.12
 
 
 (** {1 Array scanning} *)
@@ -281,20 +220,12 @@ val exists : ('a -> bool) -> 'a array -> bool
     @since 4.03.0 *)
 
 val for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool
-<<<<<<< HEAD
-(** Same as {!Array.for_all}, but for a two-argument predicate.
-=======
 (** Same as {!for_all}, but for a two-argument predicate.
->>>>>>> ocaml/4.12
    @raise Invalid_argument if the two arrays have different lengths.
    @since 4.11.0 *)
 
 val exists2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool
-<<<<<<< HEAD
-(** Same as {!Array.exists}, but for a two-argument predicate.
-=======
 (** Same as {!exists}, but for a two-argument predicate.
->>>>>>> ocaml/4.12
    @raise Invalid_argument if the two arrays have different lengths.
    @since 4.11.0 *)
 

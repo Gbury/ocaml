@@ -54,7 +54,6 @@ export TSAN_SYMBOLIZER_PATH="$ASAN_SYMBOLIZER_PATH"
 
 #########################################################################
 
-<<<<<<< HEAD:tools/ci/inria/extra-checks
 # Cleanup repository
 git clean -q -f -d -x
 
@@ -83,8 +82,6 @@ rm -rf "$instdir"
 
 #########################################################################
 
-=======
->>>>>>> ocaml/4.12:tools/ci/inria/sanitizers/script
 echo "======== clang 9, address sanitizer, UB sanitizer =========="
 
 git clean -q -f -d -x

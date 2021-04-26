@@ -45,18 +45,6 @@ static double lambda = 0;
    Dummy if [lambda = 0]. */
 static float one_log1m_lambda;
 
-<<<<<<< HEAD
-/* [caml_memprof_suspended] is used for masking memprof callbacks when
-   a callback is running or when an uncaught exception handler is
-   called. */
-int caml_memprof_suspended = 0;
-
-/* [callback_running] is used to trigger a fatal error whenever
-   [Thread.exit] is called from a callback. */
-static int callback_running = 0;
-
-=======
->>>>>>> ocaml/4.12
 static intnat callstack_size;
 
 /* accessors for the OCaml type [Gc.Memprof.tracker],
@@ -459,16 +447,6 @@ Caml_inline value run_callback_exn(
   CAMLassert(t->running == NULL);
   CAMLassert(lambda > 0.);
 
-<<<<<<< HEAD
-  callback_running = t->callback_running = 1;
-  t->idx_ptr = t_idx;
-  res = caml_callback_exn(cb, param);
-  callback_running = 0;
-  /* The call above can modify [*t_idx] and thus invalidate [t]. */
-  if (*t_idx == Invalid_index) {
-    /* Make sure this entry has not been removed by [caml_memprof_set] */
-    return Val_unit;
-=======
   local->callback_status = ea == &entries_global ? t_idx : CB_LOCAL;
   t->running = local;
   t->user_data = Val_unit;      /* Release root. */
@@ -484,7 +462,6 @@ Caml_inline value run_callback_exn(
     CAMLassert(local->callback_status >= 0 && local->callback_status < ea->len);
     t_idx = local->callback_status;
     t = &ea->t[t_idx];
->>>>>>> ocaml/4.12
   }
   local->callback_status = CB_IDLE;
   CAMLassert(t->running == local);
@@ -572,15 +549,10 @@ static void flush_deleted(struct entry_array* ea)
   realloc_entries(ea, 0);
 }
 
-<<<<<<< HEAD
-static void check_action_pending(void) {
-  if (!caml_memprof_suspended && trackst.callback < trackst.len)
-=======
 static void check_action_pending(void)
 {
   if (local->suspended) return;
   if (callback_idx < entries_global.len || local->entries.len > 0)
->>>>>>> ocaml/4.12
     caml_set_action_pending();
 }
 
@@ -618,11 +590,6 @@ value caml_memprof_handle_postponed_exn(void)
       entries_global.t[entries_global.len++] = local->entries.t[i];
     mark_deleted(&local->entries, i);
   }
-<<<<<<< HEAD
-  caml_memprof_suspended = 0;
-  check_action_pending();  /* Needed in case of an exception */
-  flush_deleted();
-=======
 
   while (callback_idx < entries_global.len) {
     struct tracked* t = &entries_global.t[callback_idx];
@@ -653,7 +620,6 @@ value caml_memprof_handle_postponed_exn(void)
   /* We need to reset the suspended flag *after* flushing
      [local->entries] to make sure the floag is not set back to 1. */
   caml_memprof_set_suspended(0);
->>>>>>> ocaml/4.12
   return res;
 }
 
@@ -717,10 +683,6 @@ static void entry_array_minor_update(struct entry_array *ea, void *data)
       }
     }
   }
-<<<<<<< HEAD
-  if (trackst.callback > trackst.young) {
-    trackst.callback = trackst.young;
-=======
   ea->young_idx = ea->len;
 }
 
@@ -730,7 +692,6 @@ void caml_memprof_minor_update(void)
     /* The entries after [entries_global.young_idx] will possibly get
        promoted. Hence, there might be pending promotion callbacks. */
     callback_idx = entries_global.young_idx;
->>>>>>> ocaml/4.12
     check_action_pending();
   }
 
@@ -765,11 +726,6 @@ static void entry_array_clean_phase(struct entry_array *ea, void* data)
       }
     }
   }
-<<<<<<< HEAD
-  trackst.callback = 0;
-  check_action_pending();
-=======
->>>>>>> ocaml/4.12
 }
 
 void caml_memprof_update_clean_phase(void)
@@ -803,10 +759,6 @@ static void maybe_track_block(value block, uintnat n_samples,
   callstack = capture_callstack_postponed();
   if (callstack == 0) return;
 
-<<<<<<< HEAD
-  new_tracked(n_samples, Wosize_val(block), 0, 0, block, callstack);
-  check_action_pending();
-=======
   new_tracked(n_samples, wosize, src, Is_young(block), block, callstack);
   check_action_pending();
 }
@@ -827,7 +779,6 @@ void caml_memprof_track_custom(value block, mlsize_t bytes)
 
   maybe_track_block(block, rand_binom(Wsize_bsize(bytes)),
                     Wsize_bsize(bytes), SRC_CUSTOM);
->>>>>>> ocaml/4.12
 }
 
 /* Shifts the next sample in the minor heap by [n] words. Essentially,
@@ -888,18 +839,8 @@ void caml_memprof_track_young(uintnat wosize, int from_caml,
       rand_binom(caml_memprof_young_trigger - 1 - Caml_state->young_ptr);
     CAMLassert(encoded_alloc_lens == NULL);    /* No Comballoc in C! */
     caml_memprof_renew_minor_sample();
-<<<<<<< HEAD
-
-    callstack = capture_callstack_postponed();
-    if (callstack == 0) return;
-
-    new_tracked(n_samples, wosize,
-                0, 1, Val_hp(Caml_state->young_ptr), callstack);
-    check_action_pending();
-=======
     maybe_track_block(Val_hp(Caml_state->young_ptr), n_samples,
                       wosize, SRC_NORMAL);
->>>>>>> ocaml/4.12
     return;
   }
 
@@ -959,31 +900,6 @@ void caml_memprof_track_young(uintnat wosize, int from_caml,
 
   CAMLassert(alloc_ofs == 0 || Is_exception_result(res));
   CAMLassert(allocs_sampled <= nallocs);
-<<<<<<< HEAD
-  caml_memprof_suspended = 0;
-  check_action_pending();
-  /* We need to call [check_action_pending] since we
-     reset [caml_memprof_suspended] to 0 (a GC collection may have
-     triggered some new callback).
-
-     We need to make sure that the action pending flag is not set
-     systematically, which is to be expected, since [new_tracked]
-     created a new block without updating
-     [trackst.callback]. Fortunately, [handle_entry_callback_exn]
-     increments [trackst.callback] if it is equal to [t_idx]. */
-
-  /* This condition happens either in the case of an exception or if
-     one of the callbacks returned [None]. If these cases happen
-     frequently, then we need to call [flush_deleted] somewhere to
-     prevent a leak. */
-  if (has_delete)
-    flush_deleted();
-
-  if (Is_exception_result(res)) {
-    for (i = 0; i < allocs_sampled; i++)
-      if (idx_tab[i] != Invalid_index) {
-        struct tracked* t = &trackst.entries[idx_tab[i]];
-=======
 
   if (!Is_exception_result(res)) {
     /* The callbacks did not raise. The allocation will take place.
@@ -1016,28 +932,11 @@ void caml_memprof_track_young(uintnat wosize, int from_caml,
       *t = local->entries.t[idx];
 
       if (Is_exception_result(res)) {
->>>>>>> ocaml/4.12
         /* The allocations are cancelled because of the exception,
            but this callback has already been called. We simulate a
            deallocation. */
         t->block = Val_unit;
         t->deallocated = 1;
-<<<<<<< HEAD
-        if (trackst.callback > idx_tab[i]) {
-          trackst.callback = idx_tab[i];
-          check_action_pending();
-        }
-      }
-    if (idx_tab != &first_idx) caml_stat_free(idx_tab);
-    caml_raise(Extract_exception(res));
-  }
-
-  /* We can now restore the minor heap in the state needed by
-     [Alloc_small_aux]. */
-  if (Caml_state->young_ptr - whsize < Caml_state->young_trigger) {
-    CAML_EV_COUNTER(EV_C_FORCE_MINOR_MEMPROF, 1);
-    caml_gc_dispatch();
-=======
       } else {
         /* If the execution of the callback has succeeded, then we start the
            tracking of this block..
@@ -1057,7 +956,6 @@ void caml_memprof_track_young(uintnat wosize, int from_caml,
       }
     }
     mark_deleted(&local->entries, idx);
->>>>>>> ocaml/4.12
   }
 
   flush_deleted(&local->entries);
@@ -1149,15 +1047,12 @@ CAMLprim value caml_memprof_start(value lv, value szv, value tracker_param)
   CAMLreturn(Val_unit);
 }
 
-<<<<<<< HEAD
 /* not used anymore, the prototype is only kept until the next bootstrap */
 CAMLprim value caml_memprof_start_byt(value* argv, int argn)
 {
   return(Val_unit);
 }
 
-CAMLprim value caml_memprof_stop(value unit)
-=======
 static void empty_entry_array(struct entry_array *ea) {
   if (ea != NULL) {
     ea->alloc_len = ea->len = ea->young_idx = ea->delete_idx = 0;
@@ -1167,7 +1062,6 @@ static void empty_entry_array(struct entry_array *ea) {
 }
 
 static void th_ctx_memprof_stop(struct caml_memprof_th_ctx* ctx, void* data)
->>>>>>> ocaml/4.12
 {
   (void)data;
   if (ctx->callback_status != CB_IDLE) ctx->callback_status = CB_STOPPED;
@@ -1204,30 +1098,6 @@ CAMLprim value caml_memprof_stop(value unit)
 
 /**** Interface with systhread. ****/
 
-<<<<<<< HEAD
-void caml_memprof_init_th_ctx(struct caml_memprof_th_ctx* ctx) {
-  ctx->suspended = 0;
-  ctx->callback_running = 0;
-}
-
-void caml_memprof_stop_th_ctx(struct caml_memprof_th_ctx* ctx) {
-  /* Make sure that no memprof callback is being executed in this
-     thread. If so, memprof data structures may have pointers to the
-     thread's stack. */
-  if(ctx->callback_running)
-    caml_fatal_error("Thread.exit called from a memprof callback.");
-}
-
-void caml_memprof_save_th_ctx(struct caml_memprof_th_ctx* ctx) {
-  ctx->suspended = caml_memprof_suspended;
-  ctx->callback_running = callback_running;
-}
-
-void caml_memprof_restore_th_ctx(const struct caml_memprof_th_ctx* ctx) {
-  caml_memprof_suspended = ctx->suspended;
-  callback_running = ctx->callback_running;
-  check_action_pending();
-=======
 static void th_ctx_iter_default(th_ctx_action f, void* data) {
   f(local, data);
 }
@@ -1269,5 +1139,4 @@ CAMLexport void caml_memprof_enter_thread(struct caml_memprof_th_ctx* ctx)
   CAMLassert(local == NULL);
   local = ctx;
   caml_memprof_set_suspended(ctx->suspended);
->>>>>>> ocaml/4.12
 }

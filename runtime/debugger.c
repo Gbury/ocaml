@@ -205,11 +205,6 @@ void caml_debugger_init(void)
 #elif defined(HAS_SETENV_UNSETENV)
   unsetenv("CAML_DEBUG_SOCKET");
 #endif
-<<<<<<< HEAD
-
-  caml_ext_table_init(&breakpoints_table, 16);
-=======
->>>>>>> ocaml/4.12
 
 #ifdef _WIN32
   winsock_startup();

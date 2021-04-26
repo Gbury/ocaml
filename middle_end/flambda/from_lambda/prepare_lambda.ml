@@ -208,7 +208,7 @@ let simplify_primitive (prim : L.primitive) args loc =
       { ap_func = funct;
         ap_args = [arg];
         ap_loc = loc;
-        ap_should_be_tailcall = false;
+        ap_tailcall = Default_tailcall;
         (* CR-someday lwhite: it would be nice to be able to give
            inlined attributes to functions applied with the application
            operators. *)
@@ -258,7 +258,7 @@ let simplify_primitive (prim : L.primitive) args loc =
 let rec prepare env (lam : L.lambda) (k : L.lambda -> L.lambda) =
   match lam with
   | Lvar _ | Lconst _ -> k lam
-  | Lapply { ap_func; ap_args; ap_loc; ap_should_be_tailcall; ap_inlined;
+  | Lapply { ap_func; ap_args; ap_loc; ap_tailcall; ap_inlined;
       ap_specialised; } ->
     prepare env ap_func (fun ap_func ->
       prepare_list env ap_args (fun ap_args ->
@@ -266,7 +266,7 @@ let rec prepare env (lam : L.lambda) (k : L.lambda -> L.lambda) =
           ap_func;
           ap_args;
           ap_loc = ap_loc;
-          ap_should_be_tailcall = ap_should_be_tailcall;
+          ap_tailcall = ap_tailcall;
           ap_inlined = ap_inlined;
           ap_specialised = ap_specialised;
         })))

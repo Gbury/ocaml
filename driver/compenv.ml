@@ -498,7 +498,6 @@ let read_one_param ppf position name v =
       | Some pass -> set_save_ir_after pass true
     end
 
-<<<<<<< HEAD
   | "flambda-context-on-error" ->
     set "flambda-context-on-error" [ flambda_context_on_error ] v
   | "flambda-join-points" ->
@@ -524,8 +523,6 @@ let read_one_param ppf position name v =
   | "flambda-debug-concrete-types-only-on-canonicals" ->
     set "flambda-debug-concrete-types-only-on-canonicals"
       [ Flambda.Debug.concrete_types_only_on_canonicals ] v
-=======
->>>>>>> ocaml/4.12
   | _ ->
     if not (List.mem name !can_discard) then begin
       can_discard := name :: !can_discard;

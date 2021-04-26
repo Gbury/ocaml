@@ -589,11 +589,6 @@ module Map : sig
       (** The empty map. *)
 
       val is_empty: 'a t -> bool
-<<<<<<< HEAD
-      val mem : key -> 'a t -> bool
-      val add : key:key -> data:'a -> 'a t -> 'a t
-      val replace: key:key -> f:('a -> 'a) -> 'a t -> 'a t
-=======
       (** Test whether a map is empty or not. *)
 
       val mem: key -> 'a t -> bool
@@ -609,7 +604,9 @@ module Map : sig
          of [key] in [m] disappears.
          @before 4.03 Physical equality was not ensured. *)
 
->>>>>>> ocaml/4.12
+
+      val replace: key:key -> f:('a -> 'a) -> 'a t -> 'a t
+
       val update: key:key -> f:('a option -> 'a option) -> 'a t -> 'a t
       (** [update ~key ~f m] returns a map containing the same bindings as
           [m], except for the binding of [key]. Depending on the value of
@@ -801,17 +798,6 @@ module Map : sig
          or raises [Not_found] if no binding for [x] exists. *)
 
       val find_opt: key -> 'a t -> 'a option
-<<<<<<< HEAD
-      val find_first : f:(key -> bool) -> 'a t -> key * 'a
-      val find_first_opt : f:(key -> bool) -> 'a t -> (key * 'a) option
-      val find_last : f:(key -> bool) -> 'a t -> key * 'a
-      val find_last_opt : f:(key -> bool) -> 'a t -> (key * 'a) option
-      val get_singleton : 'a t -> (key * 'a) option
-      val get_singleton_exn : 'a t -> key * 'a
-      val map : f:('a -> 'b) -> 'a t -> 'b t
-      val mapi : f:(key -> 'a -> 'b) -> 'a t -> 'b t
-      val map_sharing: ('a -> 'a) -> 'a t -> 'a t
-=======
       (** [find_opt x m] returns [Some v] if the current value of [x]
           in [m] is [v], or [None] if no binding for [x] exists.
           @since 4.05
@@ -852,6 +838,9 @@ module Map : sig
           @since 4.05
          *)
 
+      val get_singleton : 'a t -> (key * 'a) option
+      val get_singleton_exn : 'a t -> key * 'a
+
       val map: f:('a -> 'b) -> 'a t -> 'b t
       (** [map ~f m] returns a map with same domain as [m], where the
          associated value [a] of all bindings of [m] has been
@@ -863,9 +852,10 @@ module Map : sig
       (** Same as {!S.map}, but the function receives as arguments both the
          key and the associated value for each binding of the map. *)
 
+      val map_sharing: ('a -> 'a) -> 'a t -> 'a t
+      
       (** {1 Iterators} *)
 
->>>>>>> ocaml/4.12
       val to_seq : 'a t -> (key * 'a) Seq.t
       (** Iterate on the whole map, in ascending order of keys
           @since 4.07 *)
@@ -1160,17 +1150,15 @@ module Set : sig
          *)
 
       val of_list: elt list -> t
-<<<<<<< HEAD
-      val get_singleton : t -> elt option
-=======
       (** [of_list l] creates a set from a list of elements.
           This is usually more efficient than folding [add] over the list,
           except perhaps for lists with many duplicated elements.
           @since 4.02.0 *)
 
+      val get_singleton : t -> elt option
+      
       (** {1 Iterators} *)
 
->>>>>>> ocaml/4.12
       val to_seq_from : elt -> t -> elt Seq.t
       (** [to_seq_from x s] iterates on a subset of the elements of [s]
           in ascending order, from [x] or above.

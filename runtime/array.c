@@ -24,11 +24,6 @@
 #include "caml/mlvalues.h"
 #include "caml/signals.h"
 #include "caml/eventlog.h"
-<<<<<<< HEAD
-/* Why is caml/spacetime.h included conditionnally sometimes and not here ? */
-#include "caml/spacetime.h"
-=======
->>>>>>> ocaml/4.12
 
 static const mlsize_t mlsize_t_max = -1;
 

@@ -112,10 +112,7 @@ COMPILERLIBS_SOURCES=\
   typing/persistent_env.ml \
   typing/env.ml \
   lambda/debuginfo.ml \
-<<<<<<< HEAD
   lambda/tag.ml \
-=======
->>>>>>> ocaml/4.12
   lambda/lambda.ml \
   lambda/runtimedef.ml \
   bytecomp/instruct.ml \

@@ -60,11 +60,7 @@ struct exec_trailer {
 
 /* Magic number for this release */
 
-<<<<<<< HEAD
-#define EXEC_MAGIC "Caml1999X028"
-=======
 #define EXEC_MAGIC "Caml1999X029"
->>>>>>> ocaml/4.12
 
 #endif /* CAML_INTERNALS */
 

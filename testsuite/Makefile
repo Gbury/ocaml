@@ -317,35 +317,3 @@ clean:
 report:
 	@if [ ! -f $(TESTLOG) ]; then echo "No $(TESTLOG) file."; exit 1; fi
 	@$(AWK) -f ./summarize.awk < $(TESTLOG)
-<<<<<<< HEAD
-
-.PHONY:logs
-logs:
-	@if [ ! -f $(TESTLOG) ]; then echo "No $(TESTLOG) file."; exit 1; fi
-	@awk -f summarize.awk < $(TESTLOG) | \
-		../runtime/ocamlrun ../ocaml -nostdlib -I ../stdlib/ \
-			-I ../otherlibs/unix/ ../otherlibs/unix/unix.cma \
-			ocamltest_logs.ml
-
-.PHONY: retry-list
-retry-list:
-	@while read LINE; do \
-	  if [ -n "$$LINE" ] ; then \
-	    echo re-ran $$LINE>> $(TESTLOG); \
-	    $(MAKE) $(NO_PRINT) clean-one DIR=$$LINE; \
-	    $(MAKE) $(NO_PRINT) exec-one DIR=$$LINE 2>&1 | tee -a $(TESTLOG) ; \
-	  fi \
-	done <_retries;
-	@$(MAKE) $(NO_PRINT) retries
-
-.PHONY: retries
-retries:
-	@$(AWK) -v retries=1 -v max_retries=$(MAX_TESTSUITE_DIR_RETRIES) \
-	     -f ./summarize.awk < $(TESTLOG) > _retries
-	@test `cat _retries | wc -l` -eq 0 || $(MAKE) $(NO_PRINT) retry-list
-	@rm -f _retries
-
-.PHONY: empty
-empty:
-=======
->>>>>>> ocaml/4.12

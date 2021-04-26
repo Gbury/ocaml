@@ -87,11 +87,8 @@ void caml_init_domain ()
   Caml_state->eventlog_startup_pid = 0;
   Caml_state->eventlog_startup_timestamp = 0;
   Caml_state->eventlog_out = NULL;
-<<<<<<< HEAD
-=======
 
 #if defined(NAKED_POINTERS_CHECKER) && !defined(_WIN32)
   Caml_state->checking_pointer_pc = NULL;
   #endif
->>>>>>> ocaml/4.12
 }

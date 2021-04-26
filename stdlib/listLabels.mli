@@ -13,17 +13,12 @@
 (*                                                                        *)
 (**************************************************************************)
 
-<<<<<<< HEAD
-type 'a t = 'a list = [] | (::) of 'a * 'a list (**)
-(** An alias for the type of lists.
-=======
 (* NOTE:
    If this file is listLabels.mli, run tools/sync_stdlib_docs after editing it
    to generate list.mli.
 
    If this file is list.mli, do not edit it directly -- edit
    listLabels.mli instead.
->>>>>>> ocaml/4.12
  *)
 
 (** List operations.
@@ -42,27 +37,13 @@ type 'a t = 'a list = [] | (::) of 'a * 'a list (**)
    {!StdLabels} module.
  *)
 
-<<<<<<< HEAD
-      let seq len = List.init ~f:(function i -> i) ~len
-   ]}
- *)
-=======
 type 'a t = 'a list = [] | (::) of 'a * 'a list (**)
 (** An alias for the type of lists. *)
->>>>>>> ocaml/4.12
 
 val length : 'a list -> int
 (** Return the length (number of elements) of the given list.
  *)
 
-<<<<<<< HEAD
-val hd : 'a list -> 'a
-(** Return the first element of the given list.
-   @raise Failure if the list is empty.
- *)
-
-=======
->>>>>>> ocaml/4.12
 val compare_lengths : 'a list -> 'b list -> int
 (** Compare the lengths of two lists. [compare_lengths l1 l2] is
    equivalent to [compare (length l1) (length l2)], except that
@@ -79,16 +60,12 @@ val compare_length_with : 'a list -> len:int -> int
 
 val cons : 'a -> 'a list -> 'a list
 (** [cons x xs] is [x :: xs]
-<<<<<<< HEAD
-    @since 4.05.0
-=======
     @since 4.03.0 (4.05.0 in ListLabels)
  *)
 
 val hd : 'a list -> 'a
 (** Return the first element of the given list.
    @raise Failure if the list is empty.
->>>>>>> ocaml/4.12
  *)
 
 val tl : 'a list -> 'a list
@@ -116,33 +93,20 @@ val rev : 'a list -> 'a list
  *)
 
 val init : len:int -> f:(int -> 'a) -> 'a list
-<<<<<<< HEAD
-(** [List.init len f] is [f 0; f 1; ...; f (len-1)], evaluated left to right.
-=======
 (** [init ~len ~f] is [f 0; f 1; ...; f (len-1)], evaluated left to right.
->>>>>>> ocaml/4.12
     @raise Invalid_argument if [len < 0].
     @since 4.06.0
  *)
 
 val append : 'a list -> 'a list -> 'a list
-<<<<<<< HEAD
-(** Catenate two lists. Same function as the infix operator [@].
-=======
 (** Concatenate two lists. Same function as the infix operator [@].
->>>>>>> ocaml/4.12
    Not tail-recursive (length of the first argument). The [@]
    operator is not tail-recursive either.
  *)
 
 val rev_append : 'a list -> 'a list -> 'a list
-<<<<<<< HEAD
-(** [List.rev_append l1 l2] reverses [l1] and concatenates it with [l2].
-   This is equivalent to [(]{!List.rev}[ l1) @ l2], but [rev_append] is
-=======
 (** [rev_append l1 l2] reverses [l1] and concatenates it with [l2].
    This is equivalent to [(]{!rev}[ l1) @ l2], but [rev_append] is
->>>>>>> ocaml/4.12
    tail-recursive and more efficient.
  *)
 
@@ -154,18 +118,12 @@ val concat : 'a list list -> 'a list
  *)
 
 val flatten : 'a list list -> 'a list
-<<<<<<< HEAD
-(** Same as [concat]. Not tail-recursive
-   (length of the argument + length of the longest sub-list).
- *)
-=======
 (** Same as {!concat}. Not tail-recursive
    (length of the argument + length of the longest sub-list).
  *)
 
 
 (** {1 Comparison} *)
->>>>>>> ocaml/4.12
 
 val equal : eq:('a -> 'a -> bool) -> 'a list -> 'a list -> bool
 (** [equal eq [a1; ...; an] [b1; ..; bm]] holds when
@@ -227,13 +185,8 @@ val mapi : f:(int -> 'a -> 'b) -> 'a list -> 'b list
  *)
 
 val rev_map : f:('a -> 'b) -> 'a list -> 'b list
-<<<<<<< HEAD
-(** [List.rev_map f l] gives the same result as
-   {!List.rev}[ (]{!List.map}[ f l)], but is tail-recursive and
-=======
 (** [rev_map ~f l] gives the same result as
    {!rev}[ (]{!map}[ f l)], but is tail-recursive and
->>>>>>> ocaml/4.12
    more efficient.
  *)
 
@@ -258,15 +211,6 @@ val fold_left_map :
 *)
 
 val fold_left : f:('a -> 'b -> 'a) -> init:'a -> 'b list -> 'a
-<<<<<<< HEAD
-(** [List.fold_left f a [b1; ...; bn]] is
-   [f (... (f (f a b1) b2) ...) bn].
- *)
-
-val fold_right : f:('a -> 'b -> 'b) -> 'a list -> init:'b -> 'b
-(** [List.fold_right f [a1; ...; an] b] is
-   [f a1 (f a2 (... (f an b) ...))]. Not tail-recursive.
-=======
 (** [fold_left ~f ~init [b1; ...; bn]] is
    [f (... (f (f init b1) b2) ...) bn].
  *)
@@ -274,7 +218,6 @@ val fold_right : f:('a -> 'b -> 'b) -> 'a list -> init:'b -> 'b
 val fold_right : f:('a -> 'b -> 'b) -> 'a list -> init:'b -> 'b
 (** [fold_right ~f [a1; ...; an] ~init] is
    [f a1 (f a2 (... (f an init) ...))]. Not tail-recursive.
->>>>>>> ocaml/4.12
  *)
 
 
@@ -296,38 +239,23 @@ val map2 : f:('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
  *)
 
 val rev_map2 : f:('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
-<<<<<<< HEAD
-(** [List.rev_map2 f l1 l2] gives the same result as
-   {!List.rev}[ (]{!List.map2}[ f l1 l2)], but is tail-recursive and
-=======
 (** [rev_map2 ~f l1 l2] gives the same result as
    {!rev}[ (]{!map2}[ f l1 l2)], but is tail-recursive and
->>>>>>> ocaml/4.12
    more efficient.
  *)
 
 val fold_left2 :
   f:('a -> 'b -> 'c -> 'a) -> init:'a -> 'b list -> 'c list -> 'a
-<<<<<<< HEAD
-(** [List.fold_left2 f a [b1; ...; bn] [c1; ...; cn]] is
-   [f (... (f (f a b1 c1) b2 c2) ...) bn cn].
-=======
 (** [fold_left2 ~f ~init [a1; ...; an] [b1; ...; bn]] is
    [f (... (f (f init a1 b1) a2 b2) ...) an bn].
->>>>>>> ocaml/4.12
    @raise Invalid_argument if the two lists are determined
    to have different lengths.
  *)
 
 val fold_right2 :
   f:('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> init:'c -> 'c
-<<<<<<< HEAD
-(** [List.fold_right2 f [a1; ...; an] [b1; ...; bn] c] is
-   [f a1 b1 (f a2 b2 (... (f an bn c) ...))].
-=======
 (** [fold_right2 ~f [a1; ...; an] [b1; ...; bn] ~init] is
    [f a1 b1 (f a2 b2 (... (f an bn init) ...))].
->>>>>>> ocaml/4.12
    @raise Invalid_argument if the two lists are determined
    to have different lengths. Not tail-recursive.
  *)
@@ -337,21 +265,6 @@ val fold_right2 :
 
 
 val for_all : f:('a -> bool) -> 'a list -> bool
-<<<<<<< HEAD
-(** [for_all p [a1; ...; an]] checks if all elements of the list
-   satisfy the predicate [p]. That is, it returns
-   [(p a1) && (p a2) && ... && (p an)].
- *)
-
-val exists : f:('a -> bool) -> 'a list -> bool
-(** [exists p [a1; ...; an]] checks if at least one element of
-   the list satisfies the predicate [p]. That is, it returns
-   [(p a1) || (p a2) || ... || (p an)].
- *)
-
-val for_all2 : f:('a -> 'b -> bool) -> 'a list -> 'b list -> bool
-(** Same as {!List.for_all}, but for a two-argument predicate.
-=======
 (** [for_all ~f [a1; ...; an]] checks if all elements of the list
    satisfy the predicate [f]. That is, it returns
    [(f a1) && (f a2) && ... && (f an)] for a non-empty list and
@@ -367,37 +280,23 @@ val exists : f:('a -> bool) -> 'a list -> bool
 
 val for_all2 : f:('a -> 'b -> bool) -> 'a list -> 'b list -> bool
 (** Same as {!for_all}, but for a two-argument predicate.
->>>>>>> ocaml/4.12
    @raise Invalid_argument if the two lists are determined
    to have different lengths.
  *)
 
 val exists2 : f:('a -> 'b -> bool) -> 'a list -> 'b list -> bool
-<<<<<<< HEAD
-(** Same as {!List.exists}, but for a two-argument predicate.
-=======
 (** Same as {!exists}, but for a two-argument predicate.
->>>>>>> ocaml/4.12
    @raise Invalid_argument if the two lists are determined
    to have different lengths.
  *)
 
 val mem : 'a -> set:'a list -> bool
-<<<<<<< HEAD
-(** [mem a l] is true if and only if [a] is equal
-   to an element of [l].
- *)
-
-val memq : 'a -> set:'a list -> bool
-(** Same as {!List.mem}, but uses physical equality instead of structural
-=======
 (** [mem a ~set] is true if and only if [a] is equal
    to an element of [set].
  *)
 
 val memq : 'a -> set:'a list -> bool
 (** Same as {!mem}, but uses physical equality instead of structural
->>>>>>> ocaml/4.12
    equality to compare list elements.
  *)
 
@@ -406,25 +305,10 @@ val memq : 'a -> set:'a list -> bool
 
 
 val find : f:('a -> bool) -> 'a list -> 'a
-<<<<<<< HEAD
-(** [find p l] returns the first element of the list [l]
-   that satisfies the predicate [p].
-   @raise Not_found if there is no value that satisfies [p] in the
-   list [l].
- *)
-
-val find_opt: f:('a -> bool) -> 'a list -> 'a option
-(** [find p l] returns the first element of the list [l]
-   that satisfies the predicate [p].
-   Returns [None] if there is no value that satisfies [p] in the
-   list [l].
-   @since 4.05
-=======
 (** [find ~f l] returns the first element of the list [l]
    that satisfies the predicate [f].
    @raise Not_found if there is no value that satisfies [f] in the
    list [l].
->>>>>>> ocaml/4.12
  *)
 
 val find_opt : f:('a -> bool) -> 'a list -> 'a option
@@ -443,22 +327,13 @@ val find_map : f:('a -> 'b option) -> 'a list -> 'b option
 *)
 
 val filter : f:('a -> bool) -> 'a list -> 'a list
-<<<<<<< HEAD
-(** [filter p l] returns all the elements of the list [l]
-   that satisfy the predicate [p]. The order of the elements
-=======
 (** [filter ~f l] returns all the elements of the list [l]
    that satisfy the predicate [f]. The order of the elements
->>>>>>> ocaml/4.12
    in the input list is preserved.
  *)
 
 val find_all : f:('a -> bool) -> 'a list -> 'a list
-<<<<<<< HEAD
-(** [find_all] is another name for {!List.filter}.
-=======
 (** [find_all] is another name for {!filter}.
->>>>>>> ocaml/4.12
  *)
 
 val filteri : f:(int -> 'a -> bool) -> 'a list -> 'a list
@@ -471,12 +346,6 @@ val filteri : f:(int -> 'a -> bool) -> 'a list -> 'a list
 val partition : f:('a -> bool) -> 'a list -> 'a list * 'a list
 (** [partition ~f l] returns a pair of lists [(l1, l2)], where
    [l1] is the list of all the elements of [l] that
-<<<<<<< HEAD
-   satisfy the predicate [p], and [l2] is the list of all the
-   elements of [l] that do not satisfy [p].
-   The order of the elements in the input list is preserved.
- *)
-=======
    satisfy the predicate [f], and [l2] is the list of all the
    elements of [l] that do not satisfy [f].
    The order of the elements in the input list is preserved.
@@ -496,7 +365,6 @@ val partition_map : f:('a -> ('b, 'c) Either.t) -> 'a list -> 'b list * 'c list
 
     @since 4.12.0
 *)
->>>>>>> ocaml/4.12
 
 
 (** {1 Association lists} *)
@@ -522,11 +390,7 @@ val assoc_opt : 'a -> ('a * 'b) list -> 'b option
  *)
 
 val assq : 'a -> ('a * 'b) list -> 'b
-<<<<<<< HEAD
-(** Same as {!List.assoc}, but uses physical equality instead of
-=======
 (** Same as {!assoc}, but uses physical equality instead of
->>>>>>> ocaml/4.12
    structural equality to compare keys.
  *)
 
@@ -537,21 +401,12 @@ val assq_opt : 'a -> ('a * 'b) list -> 'b option
  *)
 
 val mem_assoc : 'a -> map:('a * 'b) list -> bool
-<<<<<<< HEAD
-(** Same as {!List.assoc}, but simply return true if a binding exists,
-   and false if no bindings exist for the given key.
- *)
-
-val mem_assq : 'a -> map:('a * 'b) list -> bool
-(** Same as {!List.mem_assoc}, but uses physical equality instead of
-=======
 (** Same as {!assoc}, but simply return [true] if a binding exists,
    and [false] if no bindings exist for the given key.
  *)
 
 val mem_assq : 'a -> map:('a * 'b) list -> bool
 (** Same as {!mem_assoc}, but uses physical equality instead of
->>>>>>> ocaml/4.12
    structural equality to compare keys.
  *)
 
@@ -562,11 +417,7 @@ val remove_assoc : 'a -> ('a * 'b) list -> ('a * 'b) list
  *)
 
 val remove_assq : 'a -> ('a * 'b) list -> ('a * 'b) list
-<<<<<<< HEAD
-(** Same as {!List.remove_assoc}, but uses physical equality instead
-=======
 (** Same as {!remove_assoc}, but uses physical equality instead
->>>>>>> ocaml/4.12
    of structural equality to compare keys. Not tail-recursive.
  *)
 
@@ -618,22 +469,13 @@ val stable_sort : cmp:('a -> 'a -> int) -> 'a list -> 'a list
  *)
 
 val fast_sort : cmp:('a -> 'a -> int) -> 'a list -> 'a list
-<<<<<<< HEAD
-(** Same as {!List.sort} or {!List.stable_sort}, whichever is
-=======
 (** Same as {!sort} or {!stable_sort}, whichever is
->>>>>>> ocaml/4.12
     faster on typical input.
  *)
 
 val sort_uniq : cmp:('a -> 'a -> int) -> 'a list -> 'a list
-<<<<<<< HEAD
-(** Same as {!List.sort}, but also remove duplicates.
-    @since 4.03.0
-=======
 (** Same as {!sort}, but also remove duplicates.
     @since 4.02.0 (4.03.0 in ListLabels)
->>>>>>> ocaml/4.12
  *)
 
 val merge : cmp:('a -> 'a -> int) -> 'a list -> 'a list -> 'a list
@@ -649,19 +491,11 @@ val merge : cmp:('a -> 'a -> int) -> 'a list -> 'a list -> 'a list
 (** {1 Iterators} *)
 
 val to_seq : 'a list -> 'a Seq.t
-<<<<<<< HEAD
-(** Iterate on the list
-=======
 (** Iterate on the list.
->>>>>>> ocaml/4.12
     @since 4.07
  *)
 
 val of_seq : 'a Seq.t -> 'a list
-<<<<<<< HEAD
-(** Create a list from the iterator
-=======
 (** Create a list from the iterator.
->>>>>>> ocaml/4.12
     @since 4.07
  *)

@@ -286,12 +286,6 @@ let simplify_switch ~simplify_let dacc switch ~down_to_up =
               DA.record_continuation_use dacc (AC.continuation action)
                 Non_inlinable ~env_at_use ~arg_types:[]
             in
-            let dacc =
-              DA.map_data_flow dacc ~f:(
-                Data_flow.add_apply_cont_args
-                  (Apply_cont.continuation action)
-                  (List.map Simple.free_names args))
-            in
             let arms = Target_imm.Map.add arm (action, rewrite_id, []) arms in
             arms, dacc
           | _::_ ->
@@ -304,97 +298,12 @@ let simplify_switch ~simplify_let dacc switch ~down_to_up =
             in
             let arity = List.map T.kind arg_types in
             let action = Apply_cont.update_args action ~args in
-            let dacc =
-              DA.map_data_flow dacc ~f:(
-                Data_flow.add_apply_cont_args
-                  (Apply_cont.continuation action)
-                  (List.map Simple.free_names args))
-            in
             let arms =
               Target_imm.Map.add arm (action, rewrite_id, arity) arms
             in
             arms, dacc)
       (Switch.arms switch)
       (Target_imm.Map.empty, dacc)
-    in
-    let find_cse_simple prim =
-      match P.Eligible_for_cse.create prim with
-      | None -> None (* Constant *)
-      | Some with_fixed_value ->
-        match DE.find_cse (DA.denv dacc) with_fixed_value with
-        | None -> None
-        | Some simple ->
-          match
-            TE.get_canonical_simple_exn (DA.typing_env dacc) simple
-              ~min_name_mode:NM.normal
-              ~name_mode_of_existing_simple:NM.normal
-          with
-          | exception Not_found -> None
-          | simple -> Some simple
-    in
-    let dacc =
-      (* When the switch is an identity or a NOT, the expression is rewritten
-         to remove the switch during the upwards pass. The switch is replaced by
-         either a tagging or a boolean NOT and a tagging. The result of the
-         tagging can be a variable for which dependencies are not tracked by
-         data_flow the usual way during simplification of lets. This could be
-         benign, if a new expression to compute it was always introduced here,
-         because there is already a dependency registered on the scrutinee. But
-         if CSE replaces it by a variable that is only used here, we can
-         create a real new dependency that didn't exist before.  For example:
-
-           let untagged = untag x
-           apply_cont k untagged (cse_arg tag(untagged) = x)
-           where k x cse_param =
-             switch x
-             | 0 -> apply_cont k2 0
-             | 1 -> apply_cont k2 1
-
-         would be rewritten to:
-
-           let untagged = untag x
-           apply_cont k untagged (cse_arg tag(untagged) = x)
-           where k x cse_param =
-             let tagged = tag x
-             apply_cont k2 tagged
-
-         And with CSE:
-
-           let untagged = untag x
-           apply_cont k untagged (cse_arg tag(untagged) = x)
-           where k x cse_param =
-             apply_cont k2 cse_param
-
-         If the tracking were not done properly, cse_param could be considered
-         dead and removed from the parameters of continuation k.
-
-         We solve this by always looking for a tagged version of the
-         scrutinee in the CSE environment and registering it as a required
-         variable like the scrutinee. If it is not available, no problem can
-         occur.
-      *)
-      match
-        find_cse_simple (Unary (Box_number Untagged_immediate, scrutinee))
-      with
-      | None -> dacc
-      | Some tagged_scrutinee ->
-        let dacc =
-          DA.map_data_flow dacc ~f:(
-            Data_flow.add_used_in_current_handler
-              (Simple.free_names tagged_scrutinee))
-        in
-        match find_cse_simple (Unary (Boolean_not, tagged_scrutinee)) with
-        | None -> dacc
-        | Some not_scrutinee ->
-          DA.map_data_flow dacc ~f:(
-            Data_flow.add_used_in_current_handler
-              (Simple.free_names not_scrutinee))
-    in
-    let dacc =
-      if Target_imm.Map.cardinal arms <= 1 then dacc
-      else
-        DA.map_data_flow dacc ~f:(
-          Data_flow.add_used_in_current_handler (Simple.free_names scrutinee))
     in
     down_to_up dacc
       ~rebuild:(rebuild_switch ~simplify_let dacc ~arms ~scrutinee

@@ -32,12 +32,8 @@ UTILS=utils/config.cmo utils/build_path_prefix_map.cmo utils/misc.cmo \
 	utils/consistbl.cmo utils/strongly_connected_components.cmo \
         utils/one_bit_fewer.cmo \
 	utils/targetint.cmo utils/int_replace_polymorphic_compare.cmo \
-<<<<<<< HEAD
-	utils/domainstate.cmo utils/printing_cache.cmo \
+	utils/domainstate.cmo utils/binutils.cmo utils/printing_cache.cmo \
         utils/lmap.cmo
-=======
-	utils/domainstate.cmo utils/binutils.cmo
->>>>>>> ocaml/4.12
 UTILS_CMI=
 
 PARSING=parsing/location.cmo parsing/longident.cmo \
@@ -322,7 +318,6 @@ MIDDLE_END_FLAMBDA_SIMPLIFY=\
   middle_end/flambda/simplify/env/continuation_uses_env.cmo \
   middle_end/flambda/cmx/flambda_cmx.cmo \
   middle_end/flambda/simplify/env/continuation_uses_env_intf.cmo \
-  middle_end/flambda/simplify/env/data_flow.cmo \
   middle_end/flambda/simplify/env/downwards_acc.cmo \
   middle_end/flambda/simplify/env/upwards_acc.cmo \
   middle_end/flambda/simplify/expr_builder.cmo \

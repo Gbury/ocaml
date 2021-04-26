@@ -223,20 +223,12 @@ val exists : f:('a -> bool) -> 'a array -> bool
     @since 4.03.0 *)
 
 val for_all2 : f:('a -> 'b -> bool) -> 'a array -> 'b array -> bool
-<<<<<<< HEAD
-(** Same as {!ArrayLabels.for_all}, but for a two-argument predicate.
-=======
 (** Same as {!for_all}, but for a two-argument predicate.
->>>>>>> ocaml/4.12
    @raise Invalid_argument if the two arrays have different lengths.
    @since 4.11.0 *)
 
 val exists2 : f:('a -> 'b -> bool) -> 'a array -> 'b array -> bool
-<<<<<<< HEAD
-(** Same as {!ArrayLabels.exists}, but for a two-argument predicate.
-=======
 (** Same as {!exists}, but for a two-argument predicate.
->>>>>>> ocaml/4.12
    @raise Invalid_argument if the two arrays have different lengths.
    @since 4.11.0 *)
 

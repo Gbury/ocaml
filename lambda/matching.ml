@@ -95,7 +95,6 @@ open Lambda
 open Parmatch
 open Printf
 open Printpat
-open Debuginfo.Scoped_location
 
 module Scoped_location = Debuginfo.Scoped_location
 
@@ -1663,24 +1662,6 @@ let divide_constant ctx m =
 
 (* Matching against a constructor *)
 
-<<<<<<< HEAD
-let make_field_args loc binding_kind arg first_pos last_pos block_info argl =
-  let rec make_args pos =
-    if pos > last_pos then
-      argl
-    else
-      let field_info = {
-        index = pos;
-        block_info;
-      }
-      in
-      (Lprim (Pfield (field_info, Reads_agree), [ arg ], loc), binding_kind)
-        :: make_args (pos + 1)
-  in
-  make_args first_pos
-
-=======
->>>>>>> ocaml/4.12
 let get_key_constr = function
   | { pat_desc = Tpat_construct (_, cstr, _) } -> cstr
   | _ -> assert false
@@ -1690,111 +1671,6 @@ let get_pat_args_constr p rem =
   | { pat_desc = Tpat_construct (_, _, args) } -> args @ rem
   | _ -> assert false
 
-<<<<<<< HEAD
-(* NB: matcher_constr applies to default matrices.
-
-       In that context, matching by constructors of extensible
-       types degrades to arity checking, due to potential rebinding.
-       This comparison is performed by Types.may_equal_constr.
-*)
-
-let matcher_constr cstr =
-  match cstr.cstr_arity with
-  | 0 ->
-      let rec matcher_rec q rem =
-        match q.pat_desc with
-        | Tpat_or (p1, p2, _) -> (
-            try matcher_rec p1 rem with NoMatch -> matcher_rec p2 rem
-          )
-        | Tpat_construct (_, cstr', []) when Types.may_equal_constr cstr cstr'
-          ->
-            rem
-        | Tpat_any -> rem
-        | _ -> raise NoMatch
-      in
-      matcher_rec
-  | 1 ->
-      let rec matcher_rec q rem =
-        match q.pat_desc with
-        | Tpat_or (p1, p2, _) -> (
-            (* if both sides of the or-pattern match the head constructor,
-            (K p1 | K p2) :: rem
-          return (p1 | p2) :: rem *)
-            let r1 = try Some (matcher_rec p1 rem) with NoMatch -> None
-            and r2 = try Some (matcher_rec p2 rem) with NoMatch -> None in
-            match (r1, r2) with
-            | None, None -> raise NoMatch
-            | Some r1, None -> r1
-            | None, Some r2 -> r2
-            | Some (a1 :: _), Some (a2 :: _) ->
-                { a1 with
-                  pat_loc = Location.none;
-                  pat_desc = Tpat_or (a1, a2, None)
-                }
-                :: rem
-            | _, _ -> assert false
-          )
-        | Tpat_construct (_, cstr', [ arg ])
-          when Types.may_equal_constr cstr cstr' ->
-            arg :: rem
-        | Tpat_any -> omega :: rem
-        | _ -> raise NoMatch
-      in
-      matcher_rec
-  | _ -> (
-      fun q rem ->
-        match q.pat_desc with
-        | Tpat_or (_, _, _) ->
-            (* we cannot preserve the or-pattern as in the arity-1 case,
-               because we cannot express
-                 (K (p1, .., pn) | K (q1, .. qn))
-               as (p1 .. pn | q1 .. qn) *)
-            raise OrPat
-        | Tpat_construct (_, cstr', args)
-          when Types.may_equal_constr cstr cstr' ->
-            args @ rem
-        | Tpat_any -> Parmatch.omegas cstr.cstr_arity @ rem
-        | _ -> raise NoMatch
-    )
-
-let make_constr_matching ~scopes p def ctx = function
-  | [] -> fatal_error "Matching.make_constr_matching"
-  | (arg, _mut) :: argl ->
-      let cstr = pat_as_constr p in
-      let newargs =
-        if cstr.cstr_inlined <> None then
-          (arg, Alias) :: argl
-        else
-          match cstr.cstr_tag with
-          | Cstr_constant _ -> argl
-          | Cstr_block { tag; size; } ->
-              let block_info = { tag; size = Known size; } in
-              make_field_args (of_location ~scopes p.pat_loc)
-                Alias arg 0 (cstr.cstr_arity - 1) block_info argl
-          | Cstr_unboxed -> (arg, Alias) :: argl
-          | Cstr_extension (_, true) -> argl
-          | Cstr_extension (_, false) ->
-              let block_info = {
-                  tag = 0;
-                  size = Known (cstr.cstr_arity + 1);
-                }
-              in
-              make_field_args (of_location ~scopes p.pat_loc)
-                Alias arg 1 cstr.cstr_arity block_info argl
-      in
-      { pm =
-          { cases = [];
-            args = newargs;
-            default = Default_environment.specialize (matcher_constr cstr) def
-          };
-        ctx = Context.specialize p ctx;
-        discr = normalize_pat p
-      }
-
-let divide_constructor ~scopes ctx pm =
-  divide (make_constr_matching ~scopes) ( = )
-    get_key_constr get_args_constr ctx pm
-=======
 let get_expr_args_constr ~scopes head (arg, _mut) rem =
   let cstr =
     match head.pat_desc with
@@ -1802,12 +1678,18 @@ let get_expr_args_constr ~scopes head (arg, _mut) rem =
     | _ -> fatal_error "Matching.get_expr_args_constr"
   in
   let loc = head_loc ~scopes head in
-  let make_field_accesses binding_kind first_pos last_pos argl =
+  let make_field_accesses binding_kind first_pos last_pos block_info argl =
     let rec make_args pos =
       if pos > last_pos then
         argl
       else
-        (Lprim (Pfield pos, [ arg ], loc), binding_kind) :: make_args (pos + 1)
+        let field_info = {
+          index = pos;
+          block_info;
+        }
+        in
+        (Lprim (Pfield (field_info, Reads_agree), [ arg ], loc), binding_kind)
+          :: make_args (pos + 1)
     in
     make_args first_pos
   in
@@ -1815,11 +1697,19 @@ let get_expr_args_constr ~scopes head (arg, _mut) rem =
     (arg, Alias) :: rem
   else
     match cstr.cstr_tag with
-    | Cstr_constant _
-    | Cstr_block _ ->
-        make_field_accesses Alias 0 (cstr.cstr_arity - 1) rem
-    | Cstr_unboxed -> (arg, Alias) :: rem
-    | Cstr_extension _ -> make_field_accesses Alias 1 cstr.cstr_arity rem
+    | Cstr_constant _ -> rem
+    | Cstr_block { tag; size; } ->
+        let block_info = { tag; size = Known size; } in
+        make_field_accesses Alias 0 (cstr.cstr_arity - 1) block_info rem
+    | Cstr_unboxed -> (arg, Alias) :: rem  
+    | Cstr_extension (_, true) -> rem
+    | Cstr_extension (_, false) ->
+        let block_info = {
+            tag = 0;
+            size = Known (cstr.cstr_arity + 1);
+          }
+        in
+        make_field_accesses Alias 1 cstr.cstr_arity block_info rem
 
 let divide_constructor ~scopes ctx pm =
   divide
@@ -1828,13 +1718,9 @@ let divide_constructor ~scopes ctx pm =
     get_key_constr
     get_pat_args_constr
     ctx pm
->>>>>>> ocaml/4.12
 
 (* Matching against a variant *)
 
-let get_expr_args_variant_constant = drop_expr_arg
-
-<<<<<<< HEAD
 let nonconstant_variant_field index =
   Lambda.Pfield(
     {
@@ -1848,34 +1734,12 @@ let nonconstant_variant_field index =
     Reads_agree)
 
 
-let matcher_variant_nonconst lab p rem =
-  match p.pat_desc with
-  | Tpat_or (_, _, _) -> raise OrPat
-  | Tpat_variant (lab1, Some arg, _) when lab1 = lab -> arg :: rem
-  | Tpat_any -> omega :: rem
-  | _ -> raise NoMatch
+let get_expr_args_variant_constant = drop_expr_arg
 
-let make_variant_matching_nonconst ~scopes p lab def ctx = function
-  | [] -> fatal_error "Matching.make_variant_matching_nonconst"
-  | (arg, _mut) :: argl ->
-      let def =
-        Default_environment.specialize (matcher_variant_nonconst lab) def
-      and ctx = Context.specialize p ctx
-      and loc = of_location ~scopes p.pat_loc in
-      let field_prim = nonconstant_variant_field 1 in
-      { pm =
-          { cases = [];
-            args = (Lprim (field_prim, [ arg ], loc), Alias) :: argl;
-            default = def
-          };
-        ctx;
-        discr = normalize_pat p
-      }
-=======
 let get_expr_args_variant_nonconst ~scopes head (arg, _mut) rem =
   let loc = head_loc ~scopes head in
-  (Lprim (Pfield 1, [ arg ], loc), Alias) :: rem
->>>>>>> ocaml/4.12
+  let field_prim = nonconstant_variant_field 1 in
+  (Lprim (field_prim, [ arg ], loc), Alias) :: rem
 
 let divide_variant ~scopes row ctx { cases = cl; args; default = def } =
   let row = Btype.row_repr row in
@@ -1899,23 +1763,14 @@ let divide_variant ~scopes row ctx { cases = cl; args; default = def } =
           match pato with
           | None ->
               add_in_div
-<<<<<<< HEAD
-                (make_variant_matching_constant p lab def ctx)
-                ( = ) (Constant tag) (patl, action) variants
-          | Some pat ->
-              add_in_div
-                (make_variant_matching_nonconst ~scopes p lab def ctx)
-                ( = ) (Block tag)
-=======
                 (make_matching get_expr_args_variant_constant head def ctx)
-                ( = ) (Cstr_constant tag) (patl, action) variants
+                ( = ) (Constant tag) (patl, action) variants
           | Some pat ->
               add_in_div
                 (make_matching
                    (get_expr_args_variant_nonconst ~scopes)
                    head def ctx)
-                ( = ) (Cstr_block tag)
->>>>>>> ocaml/4.12
+                ( = ) (Block tag)
                 (pat :: patl, action)
                 variants
       )
@@ -1972,6 +1827,14 @@ let code_force_lazy_block = get_mod_field "CamlinternalLazy" "force_lazy_block"
 
 let code_force_lazy = get_mod_field "CamlinternalLazy" "force"
 
+let lazy_forward_field =
+  Lambda.Pfield (
+    {
+      index = 0;
+      block_info = { tag = Obj.forward_tag; size = Known 1; };
+    },
+    Reads_vary)
+
 (* inline_lazy_force inlines the beginning of the code of Lazy.force. When
    the value argument is tagged as:
    - forward, take field 0
@@ -1981,15 +1844,6 @@ let code_force_lazy = get_mod_field "CamlinternalLazy" "force"
    Using Lswitch below relies on the fact that the GC does not shortcut
    Forward(val_out_of_heap).
 *)
-
-let lazy_forward_field =
-  Lambda.Pfield (
-    {
-      index = 0;
-      block_info = { tag = Obj.forward_tag; size = Known 1; };
-    },
-    Reads_vary)
-
 
 let inline_lazy_force_cond arg loc =
   let idarg = Ident.create_local "lzarg" in
@@ -2050,20 +1904,13 @@ let inline_lazy_force_switch arg loc =
                 sw_numblocks = 256;
                 (* PR#6033 - tag ranges from 0 to 255 *)
                 sw_blocks =
-<<<<<<< HEAD
                   [ ( { sw_tag = Obj.forward_tag;
                         sw_size = 1;
                       } , Lprim (lazy_forward_field, [ varg ], loc));
                     ( { sw_tag = Obj.lazy_tag;
                         sw_size = 1;
                       }, Lapply
-                        { ap_should_be_tailcall = false;
-=======
-                  [ (Obj.forward_tag, Lprim (Pfield 0, [ varg ], loc));
-                    ( Obj.lazy_tag,
-                      Lapply
                         { ap_tailcall = Default_tailcall;
->>>>>>> ocaml/4.12
                           ap_loc = loc;
                           ap_func = force_fun;
                           ap_args = [ varg ];
@@ -2071,8 +1918,8 @@ let inline_lazy_force_switch arg loc =
                           ap_specialised = Default_specialise
                         } )
                   ];
-                sw_failaction = Some varg;
-                sw_tags_to_sizes = Tag.Scannable.Map.empty;
+                  sw_failaction = Some varg;
+                  sw_tags_to_sizes = Tag.Scannable.Map.empty;
               },
               loc ) ) )
 
@@ -2100,19 +1947,9 @@ let inline_lazy_force arg loc =
          tables (~ 250 elts); conditionals are better *)
     inline_lazy_force_cond arg loc
 
-<<<<<<< HEAD
-let make_lazy_matching def = function
-  | [] -> fatal_error "Matching.make_lazy_matching"
-  | (arg, _mut) :: argl ->
-      { cases = [];
-        args = (inline_lazy_force arg Loc_unknown, Strict) :: argl;
-        default = Default_environment.specialize matcher_lazy def
-      }
-=======
 let get_expr_args_lazy ~scopes head (arg, _mut) rem =
   let loc = head_loc ~scopes head in
   (inline_lazy_force arg loc, Strict) :: rem
->>>>>>> ocaml/4.12
 
 let divide_lazy ~scopes head ctx pm =
   divide_line (Context.specialize head)
@@ -2128,41 +1965,6 @@ let get_pat_args_tuple arity p rem =
   | { pat_desc = Tpat_tuple args } -> args @ rem
   | _ -> assert false
 
-<<<<<<< HEAD
-let matcher_tuple arity p rem =
-  match p.pat_desc with
-  | Tpat_or (_, _, _) -> raise OrPat
-  | Tpat_any
-  | Tpat_var _ ->
-      omegas arity @ rem
-  | Tpat_tuple args when List.length args = arity -> args @ rem
-  | _ -> raise NoMatch
-
-let make_tuple_matching loc arity def = function
-  | [] -> fatal_error "Matching.make_tuple_matching"
-  | (arg, _mut) :: argl ->
-      let rec make_args pos =
-        if pos >= arity then
-          argl
-        else
-          let field_info = {
-            index = pos;
-            block_info = { tag = 0; size = Known arity; };
-          }
-          in
-          (Lprim (Pfield (field_info, Reads_agree), [ arg ], loc), Alias)
-            :: make_args (pos + 1)
-      in
-      { cases = [];
-        args = make_args 0;
-        default = Default_environment.specialize (matcher_tuple arity) def
-      }
-
-let divide_tuple ~scopes arity p ctx pm =
-  divide_line (Context.specialize p)
-    (make_tuple_matching (of_location ~scopes p.pat_loc) arity)
-    (get_args_tuple arity) p ctx pm
-=======
 let get_expr_args_tuple ~scopes head (arg, _mut) rem =
   let loc = head_loc ~scopes head in
   let arity = Patterns.Head.arity head in
@@ -2170,7 +1972,13 @@ let get_expr_args_tuple ~scopes head (arg, _mut) rem =
     if pos >= arity then
       rem
     else
-      (Lprim (Pfield pos, [ arg ], loc), Alias) :: make_args (pos + 1)
+      let field_info = {
+        index = pos;
+        block_info = { tag = 0; size = Known arity; };
+      }
+      in
+      (Lprim (Pfield (field_info, Reads_agree), [ arg ], loc), Alias)
+        :: make_args (pos + 1)
   in
   make_args 0
 
@@ -2180,7 +1988,6 @@ let divide_tuple ~scopes head ctx pm =
     (get_expr_args_tuple ~scopes)
     (get_pat_args_tuple arity)
     head ctx pm
->>>>>>> ocaml/4.12
 
 (* Matching against a record pattern *)
 
@@ -2196,72 +2003,6 @@ let get_pat_args_record num_fields p rem =
       record_matching_line num_fields lbl_pat_list @ rem
   | _ -> assert false
 
-<<<<<<< HEAD
-let matcher_record num_fields p rem =
-  match p.pat_desc with
-  | Tpat_or (_, _, _) -> raise OrPat
-  | Tpat_any
-  | Tpat_var _ ->
-      record_matching_line num_fields [] @ rem
-  | Tpat_record ([], _) when num_fields = 0 -> rem
-  | Tpat_record (((_, lbl, _) :: _ as lbl_pat_list), _)
-    when Array.length lbl.lbl_all = num_fields ->
-      record_matching_line num_fields lbl_pat_list @ rem
-  | _ -> raise NoMatch
-
-let make_record_matching loc all_labels def = function
-  | [] -> fatal_error "Matching.make_record_matching"
-  | (arg, _mut) :: argl ->
-      let len = Array.length all_labels in
-      let rec make_args pos =
-        if pos >= len then
-          argl
-        else
-          let lbl = all_labels.(pos) in
-          let sem =
-            match lbl.lbl_mut with
-            | Immutable -> Reads_agree
-            | Mutable -> Reads_vary
-          in
-          let access =
-            let field_info_reg tag = {
-              index = lbl.lbl_pos;
-              block_info = { tag; size = Known len; };
-            }
-            in
-            match lbl.lbl_repres with
-            | Record_regular ->
-                Lprim (Pfield (field_info_reg 0, sem), [ arg ], loc)
-            | Record_inlined tag ->
-                Lprim (Pfield (field_info_reg tag, sem), [ arg ], loc)
-            | Record_unboxed _ -> arg
-            | Record_float ->
-                Lprim (Pfloatfield (lbl.lbl_pos, sem), [ arg ], loc)
-            | Record_extension _ ->
-                let field_info = {
-                  index = lbl.lbl_pos + 1;
-                  block_info = { tag = 0; size = Known (len + 1); };
-                }
-                in
-                Lprim (Pfield (field_info, sem), [ arg ], loc)
-          in
-          let str =
-            match lbl.lbl_mut with
-            | Immutable -> Alias
-            | Mutable -> StrictOpt
-          in
-          (access, str) :: make_args (pos + 1)
-      in
-      let nfields = Array.length all_labels in
-      let def = Default_environment.specialize (matcher_record nfields) def in
-      { cases = []; args = make_args 0; default = def }
-
-let divide_record ~scopes all_labels p ctx pm =
-  let get_args = get_args_record (Array.length all_labels) in
-  divide_line (Context.specialize p)
-    (make_record_matching (of_location ~scopes p.pat_loc) all_labels)
-    get_args p ctx pm
-=======
 let get_expr_args_record ~scopes head (arg, _mut) rem =
   let loc = head_loc ~scopes head in
   let all_labels =
@@ -2272,19 +2013,38 @@ let get_expr_args_record ~scopes head (arg, _mut) rem =
     | _ ->
         assert false
   in
+  let len = Array.length all_labels in
   let rec make_args pos =
-    if pos >= Array.length all_labels then
+    if pos >= len then
       rem
     else
       let lbl = all_labels.(pos) in
+      let sem =
+        match lbl.lbl_mut with
+        | Immutable -> Reads_agree
+        | Mutable -> Reads_vary
+      in
       let access =
+        let field_info_reg tag = {
+          index = lbl.lbl_pos;
+          block_info = { tag; size = Known len; };
+        }
+        in
         match lbl.lbl_repres with
-        | Record_regular
-        | Record_inlined _ ->
-            Lprim (Pfield lbl.lbl_pos, [ arg ], loc)
+        | Record_regular ->
+            Lprim (Pfield (field_info_reg 0, sem), [ arg ], loc)
+        | Record_inlined tag ->
+            Lprim (Pfield (field_info_reg tag, sem), [ arg ], loc)
         | Record_unboxed _ -> arg
-        | Record_float -> Lprim (Pfloatfield lbl.lbl_pos, [ arg ], loc)
-        | Record_extension _ -> Lprim (Pfield (lbl.lbl_pos + 1), [ arg ], loc)
+        | Record_float ->
+            Lprim (Pfloatfield (lbl.lbl_pos, sem), [ arg ], loc)
+        | Record_extension _ ->
+          let field_info = {
+            index = lbl.lbl_pos + 1;
+            block_info = { tag = 0; size = Known (len + 1); };
+          }
+          in
+          Lprim (Pfield (field_info, sem), [ arg ], loc)
       in
       let str =
         match lbl.lbl_mut with
@@ -2306,7 +2066,6 @@ let divide_record all_labels ~scopes head ctx pm =
     (get_expr_args_record ~scopes)
     (get_pat_args_record (Array.length all_labels))
     head ctx pm
->>>>>>> ocaml/4.12
 
 (* Matching against an array pattern *)
 
@@ -2319,40 +2078,6 @@ let get_pat_args_array p rem =
   | { pat_desc = Tpat_array patl } -> patl @ rem
   | _ -> assert false
 
-<<<<<<< HEAD
-let matcher_array len p rem =
-  match p.pat_desc with
-  | Tpat_or (_, _, _) -> raise OrPat
-  | Tpat_array args when List.length args = len -> args @ rem
-  | Tpat_any -> Parmatch.omegas len @ rem
-  | _ -> raise NoMatch
-
-let make_array_matching ~scopes kind p def ctx = function
-  | [] -> fatal_error "Matching.make_array_matching"
-  | (arg, _mut) :: argl ->
-      let len = get_key_array p in
-      let rec make_args pos =
-        if pos >= len then
-          argl
-        else
-          ( Lprim
-              ( Parrayrefu kind,
-                [ arg; Lconst (Const_base (Const_int pos)) ],
-                (of_location ~scopes p.pat_loc) ),
-            StrictOpt )
-          :: make_args (pos + 1)
-      in
-      let def = Default_environment.specialize (matcher_array len) def
-      and ctx = Context.specialize p ctx in
-      { pm = { cases = []; args = make_args 0; default = def };
-        ctx;
-        discr = normalize_pat p
-      }
-
-let divide_array ~scopes kind ctx pm =
-  divide (make_array_matching ~scopes kind) ( = )
-    get_key_array get_args_array ctx pm
-=======
 let get_expr_args_array ~scopes kind head (arg, _mut) rem =
   let len =
     let open Patterns.Head in
@@ -2378,7 +2103,6 @@ let divide_array ~scopes kind ctx pm =
     ( = )
     get_key_array get_pat_args_array
     ctx pm
->>>>>>> ocaml/4.12
 
 (*
    Specific string test sequence
@@ -3001,8 +2725,7 @@ let split_cases tag_lambda_list =
     | [] -> ([], [])
     | (cstr_tag, act) :: rem -> (
         let consts, nonconsts = split_rec rem in
-<<<<<<< HEAD
-        match cstr with
+        match cstr_tag with
           Cstr_constant n -> ((n, act) :: consts, nonconsts)
         | Cstr_block { tag; size; } ->
           let desc = { sw_tag = tag; sw_size = size; } in
@@ -3011,12 +2734,6 @@ let split_cases tag_lambda_list =
           (* The [sw_size] will never make it through to a [Lswitch]. *)
           let desc = { sw_tag = 0; sw_size = 0; } in
           (consts, (desc, act) :: nonconsts)
-=======
-        match cstr_tag with
-        | Cstr_constant n -> ((n, act) :: consts, nonconsts)
-        | Cstr_block n -> (consts, (n, act) :: nonconsts)
-        | Cstr_unboxed -> (consts, (0, act) :: nonconsts)
->>>>>>> ocaml/4.12
         | Cstr_extension _ -> assert false
       )
   in
@@ -3035,7 +2752,7 @@ let split_cases_simple tag_lambda_list =
   let const, nonconst = split_rec tag_lambda_list in
   sort_int_lambda_list const,
   sort_int_lambda_list nonconst
-
+  
 let split_extension_cases tag_lambda_list =
   let rec split_rec = function
     | [] -> ([], [])
@@ -3082,9 +2799,9 @@ let combine_constructor loc arg pat_env cstr partial ctx def
                       (Lprim (Pintcomp Ceq, [ Lvar tag; ext ], loc), act, rem))
                   nonconsts default
               in
-              Llet (Alias, Pgenval, tag,
-                    Lprim (nonconstant_variant_field 0, [ arg ], loc),
-                    tests)
+              Llet (Alias, Pgenval, tag, 
+                  Lprim (nonconstant_variant_field 0, [ arg ], loc),
+                  tests)
         in
         List.fold_right
           (fun (path, act) rem ->
@@ -3107,15 +2824,10 @@ let combine_constructor loc arg pat_env cstr partial ctx def
               descr_lambda_list pats in
           mk_failaction_pos partial constrs ctx def
       in
-<<<<<<< HEAD
-      let tag_lambda_list = fails @ tag_lambda_list in
-      let consts, nonconsts = split_cases tag_lambda_list in
-      let flambda = !Clflags.native_code && Config.flambda in
-=======
       let descr_lambda_list = fails @ descr_lambda_list in
       let consts, nonconsts =
         split_cases (List.map tag_lambda descr_lambda_list) in
->>>>>>> ocaml/4.12
+      let flambda = !Clflags.native_code && Config.flambda in
       let lambda1 =
         match (fail_opt, same_actions descr_lambda_list) with
         | None, Some act -> act (* Identical actions, no failure *)
@@ -3151,8 +2863,7 @@ let combine_constructor loc arg pat_env cstr partial ctx def
                         act )
                 | Some _ | None ->
                     (* Emit a switch, as bytecode implements this sophisticated
-                       instruction (and Flambda 2.0 should optimise it
-                       correctly). *)
+                      instruction *)
                     let sw =
                       { sw_numconsts = cstr.cstr_consts;
                         sw_consts = consts;
@@ -3488,17 +3199,10 @@ let rec compile_match ~scopes repr partial ctx
         (event_branch repr action, Jumps.empty)
   | nonempty_cases ->
       compile_match_nonempty ~scopes repr partial ctx
-<<<<<<< HEAD
-        { m with cases = List.map Non_empty_clause.of_initial nonempty_cases }
-
-and compile_match_nonempty ~scopes repr partial ctx
-    (m : Typedtree.pattern Non_empty_clause.t pattern_matching) =
-=======
         { m with cases = map_on_rows Non_empty_row.of_initial nonempty_cases }
 
 and compile_match_nonempty ~scopes repr partial ctx
     (m : Typedtree.pattern Non_empty_row.t clause pattern_matching) =
->>>>>>> ocaml/4.12
   match m with
   | { cases = []; args = [] } -> comp_exit ctx m
   | { args = (arg, str) :: argl } ->
@@ -3507,11 +3211,7 @@ and compile_match_nonempty ~scopes repr partial ctx
       let cases = List.map (half_simplify_nonempty ~arg:newarg) m.cases in
       let m = { m with args; cases } in
       let first_match, rem =
-<<<<<<< HEAD
-        split_and_precompile_half_simplified ~arg:(Some v) m in
-=======
         split_and_precompile_half_simplified ~arg_id:(Some v) m in
->>>>>>> ocaml/4.12
       combine_handlers ~scopes repr partial ctx (v, str, arg) first_match rem
   | _ -> assert false
 
@@ -3571,15 +3271,6 @@ and do_compile_matching ~scopes repr partial ctx pmh =
             assert false
       in
       let ph = what_is_cases pm.cases in
-<<<<<<< HEAD
-      let pomega = Pattern_head.to_omega_pattern ph in
-      let ploc = Pattern_head.loc ph in
-      match Pattern_head.desc ph with
-      | Any ->
-         compile_no_test ~scopes divide_var Context.rshift repr partial ctx pm
-      | Tuple l ->
-          compile_no_test ~scopes (divide_tuple ~scopes l pomega)
-=======
       let pomega = Patterns.Head.to_omega_pattern ph in
       let ploc = head_loc ~scopes ph in
       let open Patterns.Head in
@@ -3591,62 +3282,40 @@ and do_compile_matching ~scopes repr partial ctx pmh =
       | Tuple _ ->
           compile_no_test ~scopes
             (divide_tuple ~scopes ph)
->>>>>>> ocaml/4.12
             Context.combine repr partial ctx pm
       | Record [] -> assert false
       | Record (lbl :: _) ->
           compile_no_test ~scopes
-<<<<<<< HEAD
-            (divide_record ~scopes lbl.lbl_all pomega)
-=======
             (divide_record ~scopes lbl.lbl_all ph)
->>>>>>> ocaml/4.12
             Context.combine repr partial ctx pm
       | Constant cst ->
           compile_test
             (compile_match ~scopes repr partial)
             partial divide_constant
-            (combine_constant (of_location ~scopes ploc) arg cst partial)
+            (combine_constant ploc arg cst partial)
             ctx pm
       | Construct cstr ->
           compile_test
             (compile_match ~scopes repr partial)
             partial (divide_constructor ~scopes)
-<<<<<<< HEAD
-            (combine_constructor (of_location ~scopes ploc) arg
-               (Pattern_head.env ph) cstr partial)
-=======
             (combine_constructor ploc arg ph.pat_env cstr partial)
->>>>>>> ocaml/4.12
             ctx pm
       | Array _ ->
           let kind = Typeopt.array_pattern_kind pomega in
           compile_test
             (compile_match ~scopes repr partial)
             partial (divide_array ~scopes kind)
-<<<<<<< HEAD
-            (combine_array (of_location ~scopes ploc) arg kind partial)
-            ctx pm
-      | Lazy ->
-          compile_no_test ~scopes
-            (divide_lazy pomega)
-=======
             (combine_array ploc arg kind partial)
             ctx pm
       | Lazy ->
           compile_no_test ~scopes
             (divide_lazy ~scopes ph)
->>>>>>> ocaml/4.12
             Context.combine repr partial ctx pm
       | Variant { cstr_row = row } ->
           compile_test
             (compile_match ~scopes repr partial)
             partial (divide_variant ~scopes !row)
-<<<<<<< HEAD
-            (combine_variant (of_location ~scopes ploc) !row arg partial)
-=======
             (combine_variant ploc !row arg partial)
->>>>>>> ocaml/4.12
             ctx pm
     )
   | PmVar { inside = pmh } ->
@@ -3794,11 +3463,7 @@ let check_total ~scopes loc ~failer total lambda i =
     Lstaticcatch (lambda, (i, []),
                   failure_handler ~scopes loc ~failer ())
 
-<<<<<<< HEAD
-let compile_matching ~scopes repr handler_fun arg pat_act_list partial =
-=======
 let compile_matching ~scopes loc ~failer repr arg pat_act_list partial =
->>>>>>> ocaml/4.12
   let partial = check_partial pat_act_list partial in
   match partial with
   | Partial -> (
@@ -3813,11 +3478,7 @@ let compile_matching ~scopes loc ~failer repr arg pat_act_list partial =
       try
         let lambda, total =
           compile_match ~scopes repr partial (Context.start 1) pm in
-<<<<<<< HEAD
-        check_total total lambda raise_num handler_fun
-=======
         check_total ~scopes loc ~failer total lambda raise_num
->>>>>>> ocaml/4.12
       with Unused -> assert false
       (* ; handler_fun() *)
     )
@@ -3833,45 +3494,6 @@ let compile_matching ~scopes loc ~failer repr arg pat_act_list partial =
       assert (Jumps.is_empty total);
       lambda
 
-<<<<<<< HEAD
-let partial_function ~scopes loc () =
-  let sloc = of_location ~scopes loc in
-  let slot =
-    transl_extension_path sloc Env.initial_safe_string Predef.path_match_failure
-  in
-  let fname, line, char =
-    Location.get_pos_info loc.Location.loc_start in
-  Lprim
-    ( Praise Raise_regular,
-      [ Lprim
-          ( Pmakeblock (0, Immutable, None),
-            [ slot;
-              Lconst
-                (Const_block
-                   ( 0,
-                     [ Const_base (Const_string (fname, loc, None));
-                       Const_base (Const_int line);
-                       Const_base (Const_int char)
-                     ] ))
-            ],
-            sloc )
-      ],
-      sloc )
-
-let for_function ~scopes loc repr param pat_act_list partial =
-  let f () = partial_function ~scopes loc () in
-  compile_matching ~scopes repr f param pat_act_list partial
-
-(* In the following two cases, exhaustiveness info is not available! *)
-let for_trywith ~scopes param pat_act_list =
-  compile_matching ~scopes None
-    (fun () -> Lprim (Praise Raise_reraise, [ param ], Loc_unknown))
-    param pat_act_list Partial
-
-let simple_for_let ~scopes loc param pat body =
-  compile_matching ~scopes None (partial_function ~scopes loc)
-    param [ (pat, body) ] Partial
-=======
 let for_function ~scopes loc repr param pat_act_list partial =
   compile_matching ~scopes loc ~failer:Raise_match_failure
     repr param pat_act_list partial
@@ -3891,7 +3513,6 @@ let for_trywith ~scopes loc param pat_act_list =
 let simple_for_let ~scopes loc param pat body =
   compile_matching ~scopes loc ~failer:Raise_match_failure
     None param [ (pat, body) ] Partial
->>>>>>> ocaml/4.12
 
 (* Optimize binding of immediate tuples
 
@@ -4069,15 +3690,10 @@ let for_tupled_function ~scopes loc paraml pats_act_list partial =
       compile_match ~scopes None partial
         (Context.start (List.length paraml)) pm
     in
-<<<<<<< HEAD
-    check_total total lambda raise_num (partial_function ~scopes loc)
-  with Unused -> partial_function ~scopes loc ()
-=======
     check_total ~scopes loc ~failer:Raise_match_failure
       total lambda raise_num
   with Unused ->
     failure_handler ~scopes loc ~failer:Raise_match_failure ()
->>>>>>> ocaml/4.12
 
 let flatten_pattern size p =
   match p.pat_desc with
@@ -4166,11 +3782,7 @@ let do_for_multiple_match ~scopes loc paraml pat_act_list partial =
           )
       | Total -> (-1, Default_environment.empty)
     in
-<<<<<<< HEAD
-    let loc = of_location ~scopes loc in
-=======
     let loc = Scoped_location.of_location ~scopes loc in
->>>>>>> ocaml/4.12
     let arg = Lprim (Pmakeblock (0, Immutable, None), paraml, loc) in
     ( raise_num,
       arg,
@@ -4180,42 +3792,6 @@ let do_for_multiple_match ~scopes loc paraml pat_act_list partial =
       } )
   in
   try
-<<<<<<< HEAD
-    try
-      (* Once for checking that compilation is possible *)
-      let next, nexts =
-        split_and_precompile ~arg_id:None ~arg_lambda:arg pm1
-      in
-      let size = List.length paraml
-      and idl = List.map (fun _ -> Ident.create_local "*match*") paraml in
-      let args = List.map (fun id -> (Lvar id, Alias)) idl in
-      let flat_next = flatten_precompiled size args next
-      and flat_nexts =
-        List.map (fun (e, pm) -> (e, flatten_precompiled size args pm)) nexts
-      in
-      let lam, total =
-        comp_match_handlers (compile_flattened ~scopes repr) partial
-          (Context.start size) flat_next flat_nexts
-      in
-      List.fold_right2 (bind Strict) idl paraml
-        ( match partial with
-        | Partial ->
-            check_total total lam raise_num (partial_function ~scopes loc)
-        | Total ->
-            assert (Jumps.is_empty total);
-            lam
-        )
-    with Cannot_flatten -> (
-      let lambda, total =
-        compile_match ~scopes None partial (Context.start 1) pm1 in
-      match partial with
-      | Partial ->
-          check_total total lambda raise_num (partial_function ~scopes loc)
-      | Total ->
-          assert (Jumps.is_empty total);
-          lambda
-    )
-=======
     match split_and_precompile ~arg_id:None ~arg_lambda:arg pm1 with
     | exception Cannot_flatten ->
         (* One pattern binds the whole tuple, flattening is not possible.
@@ -4251,7 +3827,6 @@ let do_for_multiple_match ~scopes loc paraml pat_act_list partial =
               assert (Jumps.is_empty total);
               lam
           )
->>>>>>> ocaml/4.12
   with Unused -> assert false
 
 (* ; partial_function loc () *)

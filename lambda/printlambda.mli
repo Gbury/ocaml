@@ -33,6 +33,6 @@ val print_bigarray :
   string -> bool -> Lambda.bigarray_kind -> formatter ->
   Lambda.bigarray_layout -> unit
 val function_attribute : formatter -> function_attribute -> unit
-val apply_tailcall_attribute : formatter -> bool -> unit
+val apply_tailcall_attribute : formatter -> tailcall_attribute -> unit
 val apply_inlined_attribute : formatter -> inline_attribute -> unit
 val apply_specialised_attribute : formatter -> specialise_attribute -> unit

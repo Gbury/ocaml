@@ -845,39 +845,6 @@ let really_compare_programs backend comparison_tool log env =
     Filecompare.reference_filename = program;
     Filecompare.output_filename = program2
   } in
-<<<<<<< HEAD
-  if Ocamltest_config.flambda
-  then begin
-    let reason =
-      "flambda temporarily disables comparison of programs" in
-    (Result.pass_with_reason reason, env)
-  end else
-  if backend = Ocaml_backends.Native &&
-    (Sys.os_type="Win32" || Sys.os_type="Cygwin")
-  then begin
-    let reason =
-      "comparison of native programs temporarily disabled under Windows" in
-    (Result.pass_with_reason reason, env)
-  end else begin
-    let comparison_tool =
-      if backend=Ocaml_backends.Native &&
-        (Sys.os_type="Win32" || Sys.os_type="Cygwin")
-        then
-          let bytes_to_ignore = 512 (* comparison_start_address program *) in
-          Filecompare.(make_cmp_tool ~ignore:{bytes=bytes_to_ignore; lines=0})
-        else comparison_tool in
-    match Filecompare.compare_files ~tool:comparison_tool files with
-      | Filecompare.Same -> (Result.pass, env)
-      | Filecompare.Different ->
-        let reason = Printf.sprintf "Files %s and %s are different"
-          program program2 in
-        (Result.fail_with_reason reason, env)
-      | Filecompare.Unexpected_output -> assert false
-      | Filecompare.Error (commandline, exitcode) ->
-        let reason = Actions_helpers.mkreason what commandline exitcode in
-        (Result.fail_with_reason reason, env)
-  end
-=======
   match Filecompare.compare_files ~tool:comparison_tool files with
   | Filecompare.Same -> (Result.pass, env)
   | Filecompare.Different ->
@@ -888,7 +855,6 @@ let really_compare_programs backend comparison_tool log env =
   | Filecompare.Error (commandline, exitcode) ->
     let reason = Actions_helpers.mkreason what commandline exitcode in
     (Result.fail_with_reason reason, env)
->>>>>>> ocaml/4.12
 
 let compare_programs backend comparison_tool log env =
   let compare_programs =

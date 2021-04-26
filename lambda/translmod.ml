@@ -378,23 +378,13 @@ let eval_rec_bindings bindings cont =
       bind_inits rem
   | (Id id, Some(loc, shape), _rhs) :: rem ->
       Llet(Strict, Pgenval, id,
-<<<<<<< HEAD
-           Lapply{ap_should_be_tailcall=false;
+           Lapply{
                   ap_loc=Loc_unknown;
                   ap_func=mod_prim "init_mod";
                   ap_args=[loc; shape];
+                  ap_tailcall=Default_tailcall;
                   ap_inlined=Default_inline;
                   ap_specialised=Default_specialise},
-=======
-           Lapply{
-             ap_loc=Loc_unknown;
-             ap_func=mod_prim "init_mod";
-             ap_args=[loc; shape];
-             ap_tailcall=Default_tailcall;
-             ap_inlined=Default_inline;
-             ap_specialised=Default_specialise;
-           },
->>>>>>> ocaml/4.12
            bind_inits rem)
   and bind_strict = function
     [] ->
@@ -412,26 +402,14 @@ let eval_rec_bindings bindings cont =
   | (_, None, _rhs) :: rem ->
       patch_forwards rem
   | (Id id, Some(_loc, shape), rhs) :: rem ->
-<<<<<<< HEAD
-      Lsequence(Lapply{ap_should_be_tailcall=false;
+      Lsequence(Lapply{
                        ap_loc=Loc_unknown;
                        ap_func=mod_prim "update_mod";
                        ap_args=[shape; Lvar id; rhs];
+                       ap_tailcall=Default_tailcall;
                        ap_inlined=Default_inline;
                        ap_specialised=Default_specialise},
                 patch_forwards rem)
-=======
-      Lsequence(
-        Lapply {
-          ap_loc=Loc_unknown;
-          ap_func=mod_prim "update_mod";
-          ap_args=[shape; Lvar id; rhs];
-          ap_tailcall=Default_tailcall;
-          ap_inlined=Default_inline;
-          ap_specialised=Default_specialise;
-        },
-        patch_forwards rem)
->>>>>>> ocaml/4.12
   in
     bind_inits bindings
 
@@ -453,21 +431,14 @@ let compile_recmodule ~scopes compile_rhs bindings cont =
 
 (* Code to translate class entries in a structure *)
 
-<<<<<<< HEAD
 let class_block_size = 4
 
-=======
->>>>>>> ocaml/4.12
 let transl_class_bindings ~scopes cl_list =
   let ids = List.map (fun (ci, _) -> ci.ci_id_class) cl_list in
   (ids,
    List.map
      (fun ({ci_id_class=id; ci_expr=cl; ci_virt=vf}, meths) ->
-<<<<<<< HEAD
        (id, transl_class ~scopes ids id meths cl vf, class_block_size))
-=======
-       (id, transl_class ~scopes ids id meths cl vf))
->>>>>>> ocaml/4.12
      cl_list)
 
 (* Compile one or more functors, merging curried functors to produce
@@ -565,22 +536,13 @@ and transl_module ~scopes cc rootpath mexp =
       in
       oo_wrap mexp.mod_env true
         (apply_coercion loc Strict cc)
-<<<<<<< HEAD
-        (Lapply{ap_should_be_tailcall=false;
+        (Lapply{
                 ap_loc=loc;
                 ap_func=transl_module ~scopes Tcoerce_none None funct;
                 ap_args=[transl_module ~scopes ccarg None arg];
+                ap_tailcall=Default_tailcall;
                 ap_inlined=inlined_attribute;
                 ap_specialised=Default_specialise})
-=======
-        (Lapply{
-           ap_loc=loc;
-           ap_func=transl_module ~scopes Tcoerce_none None funct;
-           ap_args=[transl_module ~scopes ccarg None arg];
-           ap_tailcall=Default_tailcall;
-           ap_inlined=inlined_attribute;
-           ap_specialised=Default_specialise})
->>>>>>> ocaml/4.12
   | Tmod_constraint(arg, _, _, ccarg) ->
       transl_module ~scopes (compose_coercions cc ccarg) rootpath arg
   | Tmod_unpack(arg, _) ->
@@ -721,15 +683,11 @@ and transl_structure ~scopes loc fields cc rootpath final_env = function
               in
               Llet(pure_module mb.mb_expr, Pgenval, id, module_body, body), size
           end
-<<<<<<< HEAD
-      | Tstr_module {mb_presence=Mp_absent} ->
-=======
       | Tstr_module ({mb_presence=Mp_absent} as mb) ->
           List.iter (Translattribute.check_attribute_on_module mb.mb_expr)
             mb.mb_attributes;
           List.iter (Translattribute.check_attribute_on_module mb.mb_expr)
             mb.mb_expr.mod_attributes;
->>>>>>> ocaml/4.12
           transl_structure ~scopes loc fields cc rootpath final_env rem
       | Tstr_recmodule bindings ->
           let ext_fields =
@@ -779,11 +737,7 @@ and transl_structure ~scopes loc fields cc rootpath final_env = function
                   rebind_idents (pos + 1) (id :: newfields) ids
                 in
                 Llet(Alias, Pgenval, id,
-<<<<<<< HEAD
                      Lprim(mod_field pos, [Lvar mid],
-=======
-                     Lprim(Pfield pos, [Lvar mid],
->>>>>>> ocaml/4.12
                            of_location ~scopes incl.incl_loc), body),
                 size
           in
@@ -812,11 +766,7 @@ and transl_structure ~scopes loc fields cc rootpath final_env = function
                     rebind_idents (pos + 1) (id :: newfields) ids
                   in
                   Llet(Alias, Pgenval, id,
-<<<<<<< HEAD
                       Lprim(mod_field pos, [Lvar mid],
-=======
-                      Lprim(Pfield pos, [Lvar mid],
->>>>>>> ocaml/4.12
                             of_location ~scopes od.open_loc), body),
                   size
               in
@@ -875,11 +825,7 @@ let transl_implementation_flambda module_name (str, cc) =
   primitive_declarations := [];
   Translprim.clear_used_primitives ();
   let module_id = Ident.create_persistent module_name in
-<<<<<<< HEAD
-  let scopes = [Sc_module_definition module_name] in
-=======
   let scopes = enter_module_definition ~scopes:empty_scopes module_id in
->>>>>>> ocaml/4.12
   let body, size =
     Translobj.transl_label_init
       (fun () -> transl_struct ~scopes Loc_unknown [] cc
@@ -1198,15 +1144,11 @@ let transl_store_structure ~scopes glob map prims aliases str =
                            transl_store ~scopes rootpath
                              (add_ident true id subst)
                              cont rem))
-<<<<<<< HEAD
-        | Tstr_module {mb_presence=Mp_absent} ->
-=======
         | Tstr_module ({mb_presence=Mp_absent} as mb) ->
             List.iter (Translattribute.check_attribute_on_module mb.mb_expr)
               mb.mb_attributes;
             List.iter (Translattribute.check_attribute_on_module mb.mb_expr)
               mb.mb_expr.mod_attributes;
->>>>>>> ocaml/4.12
             transl_store ~scopes rootpath subst cont rem
         | Tstr_recmodule bindings ->
             let ids = List.filter_map (fun mb -> mb.mb_id) bindings in
@@ -1227,13 +1169,9 @@ let transl_store_structure ~scopes glob map prims aliases str =
         | Tstr_class cl_list ->
             let (ids, class_bindings) = transl_class_bindings ~scopes cl_list in
             let lam =
-<<<<<<< HEAD
               Dissect_letrec.preallocate_letrec
                 ~bindings:class_bindings
                 ~body:(store_idents Loc_unknown ids)
-=======
-              Lletrec(class_bindings, store_idents Loc_unknown ids)
->>>>>>> ocaml/4.12
             in
             Lsequence(Lambda.subst no_env_update subst lam,
                       transl_store ~scopes rootpath (add_idents false ids subst)
@@ -1286,11 +1224,7 @@ let transl_store_structure ~scopes glob map prims aliases str =
               | [] -> transl_store
                         ~scopes rootpath (add_idents true ids subst) cont rem
               | id :: idl ->
-<<<<<<< HEAD
                   Llet(Alias, Pgenval, id, Lprim(mod_field pos, [Lvar mid],
-=======
-                  Llet(Alias, Pgenval, id, Lprim(Pfield pos, [Lvar mid],
->>>>>>> ocaml/4.12
                                                  of_location ~scopes loc),
                        Lsequence(store_ident (of_location ~scopes loc) id,
                                  store_idents (pos + 1) idl))
@@ -1372,11 +1306,7 @@ let transl_store_structure ~scopes glob map prims aliases str =
       match cc with
         Tcoerce_none ->
           Ident.Map.add id
-<<<<<<< HEAD
             (Lprim(mod_field pos,
-=======
-            (Lprim(Pfield pos,
->>>>>>> ocaml/4.12
                    [Lprim(Pgetglobal glob, [], Loc_unknown)],
                    Loc_unknown))
             subst
@@ -1389,11 +1319,7 @@ let transl_store_structure ~scopes glob map prims aliases str =
     List.fold_right (add_ident may_coerce) idlist subst
 
   and store_primitive (pos, prim) cont =
-<<<<<<< HEAD
     Lsequence(Lprim(mod_setfield pos,
-=======
-    Lsequence(Lprim(Psetfield(pos, Pointer, Root_initialization),
->>>>>>> ocaml/4.12
                     [Lprim(Pgetglobal glob, [], Loc_unknown);
                      Translprim.transl_primitive Loc_unknown
                        prim.pc_desc prim.pc_env prim.pc_type None],
@@ -1403,11 +1329,7 @@ let transl_store_structure ~scopes glob map prims aliases str =
   and store_alias (pos, env, path, cc) =
     let path_lam = transl_module_path Loc_unknown env path in
     let init_val = apply_coercion Loc_unknown Strict cc path_lam in
-<<<<<<< HEAD
     Lprim(mod_setfield pos,
-=======
-    Lprim(Psetfield(pos, Pointer, Root_initialization),
->>>>>>> ocaml/4.12
           [Lprim(Pgetglobal glob, [], Loc_unknown);
            init_val],
           Loc_unknown)
@@ -1484,25 +1406,17 @@ let transl_store_gen ~scopes module_name ({ str_items = str }, restr) topl =
   (*size, transl_label_init (transl_store_structure module_id map prims str)*)
 
 let transl_store_phrases module_name str =
-<<<<<<< HEAD
-  let scopes = [Sc_module_definition module_name] in
-=======
   let scopes =
     enter_module_definition ~scopes:empty_scopes
       (Ident.create_persistent module_name)
   in
->>>>>>> ocaml/4.12
   transl_store_gen ~scopes module_name (str,Tcoerce_none) true
 
 let transl_store_implementation module_name (str, restr) =
   let s = !transl_store_subst in
   transl_store_subst := Ident.Map.empty;
   let module_ident = Ident.create_persistent module_name in
-<<<<<<< HEAD
-  let scopes = [Sc_module_definition module_name] in
-=======
   let scopes = enter_module_definition ~scopes:empty_scopes module_ident in
->>>>>>> ocaml/4.12
   let (i, code) = transl_store_gen ~scopes module_name (str, restr) false in
   transl_store_subst := s;
   { Lambda.main_module_block_size = i;
@@ -1529,19 +1443,19 @@ let toplevel_name id =
   with Not_found -> Ident.name id
 
 let toploop_getvalue id =
-<<<<<<< HEAD
-  Lapply{ap_should_be_tailcall=false;
+  Lapply{
          ap_loc=Loc_unknown;
          ap_func=Lprim(mod_field toploop_getvalue_pos,
                        [Lprim(Pgetglobal toploop_ident, [], Loc_unknown)],
                        Loc_unknown);
          ap_args=[Lconst(Const_base(
              Const_string (toplevel_name id, Location.none,None)))];
+             ap_tailcall=Default_tailcall;
          ap_inlined=Default_inline;
          ap_specialised=Default_specialise}
 
 let toploop_setvalue id lam =
-  Lapply{ap_should_be_tailcall=false;
+  Lapply{
          ap_loc=Loc_unknown;
          ap_func=Lprim(mod_field toploop_setvalue_pos,
                        [Lprim(Pgetglobal toploop_ident, [], Loc_unknown)],
@@ -1549,36 +1463,9 @@ let toploop_setvalue id lam =
          ap_args=[Lconst(Const_base(
              Const_string (toplevel_name id, Location.none, None)));
                   lam];
+         ap_tailcall=Default_tailcall;
          ap_inlined=Default_inline;
          ap_specialised=Default_specialise}
-=======
-  Lapply{
-    ap_loc=Loc_unknown;
-    ap_func=Lprim(Pfield toploop_getvalue_pos,
-                  [Lprim(Pgetglobal toploop_ident, [], Loc_unknown)],
-                  Loc_unknown);
-    ap_args=[Lconst(Const_base(
-      Const_string (toplevel_name id, Location.none, None)))];
-    ap_tailcall=Default_tailcall;
-    ap_inlined=Default_inline;
-    ap_specialised=Default_specialise;
-  }
-
-let toploop_setvalue id lam =
-  Lapply{
-    ap_loc=Loc_unknown;
-    ap_func=Lprim(Pfield toploop_setvalue_pos,
-                  [Lprim(Pgetglobal toploop_ident, [], Loc_unknown)],
-                  Loc_unknown);
-    ap_args=
-      [Lconst(Const_base(
-         Const_string(toplevel_name id, Location.none, None)));
-       lam];
-    ap_tailcall=Default_tailcall;
-    ap_inlined=Default_inline;
-    ap_specialised=Default_specialise;
-  }
->>>>>>> ocaml/4.12
 
 let toploop_setvalue_id id = toploop_setvalue id (Lvar id)
 
@@ -1655,11 +1542,7 @@ let transl_toplevel_item ~scopes item =
           lambda_unit
       | id :: ids ->
           Lsequence(toploop_setvalue id
-<<<<<<< HEAD
                       (Lprim(mod_field pos, [Lvar mid], Loc_unknown)),
-=======
-                      (Lprim(Pfield pos, [Lvar mid], Loc_unknown)),
->>>>>>> ocaml/4.12
                     set_idents (pos + 1) ids) in
       Llet(Strict, Pgenval, mid,
            transl_module ~scopes Tcoerce_none None modl, set_idents 0 ids)
@@ -1682,11 +1565,7 @@ let transl_toplevel_item ~scopes item =
                 lambda_unit
             | id :: ids ->
                 Lsequence(toploop_setvalue id
-<<<<<<< HEAD
                             (Lprim(mod_field pos, [Lvar mid], Loc_unknown)),
-=======
-                            (Lprim(Pfield pos, [Lvar mid], Loc_unknown)),
->>>>>>> ocaml/4.12
                           set_idents (pos + 1) ids)
           in
           Llet(pure, Pgenval, mid,
@@ -1712,13 +1591,9 @@ let transl_toplevel_item_and_close ~scopes itm =
 let transl_toplevel_definition str =
   reset_labels ();
   Translprim.clear_used_primitives ();
-<<<<<<< HEAD
-  make_sequence (transl_toplevel_item_and_close ~scopes:[]) str.str_items
-=======
   make_sequence
     (transl_toplevel_item_and_close ~scopes:empty_scopes)
     str.str_items
->>>>>>> ocaml/4.12
 
 (* Compile the initialization code for a packed library *)
 
@@ -1774,11 +1649,7 @@ let transl_store_package component_names target_name coercion =
       (List.length component_names,
        make_sequence
          (fun pos id ->
-<<<<<<< HEAD
            Lprim(mod_setfield pos,
-=======
-           Lprim(Psetfield(pos, Pointer, Root_initialization),
->>>>>>> ocaml/4.12
                  [Lprim(Pgetglobal target_name, [], Loc_unknown);
                   get_component id],
                  Loc_unknown))
@@ -1795,15 +1666,9 @@ let transl_store_package component_names target_name coercion =
              apply_coercion Loc_unknown Strict coercion components,
              make_sequence
                (fun pos _id ->
-<<<<<<< HEAD
                  Lprim(mod_setfield pos,
                        [Lprim(Pgetglobal target_name, [], Loc_unknown);
                         Lprim(mod_field pos, [Lvar blk], Loc_unknown)],
-=======
-                 Lprim(Psetfield(pos, Pointer, Root_initialization),
-                       [Lprim(Pgetglobal target_name, [], Loc_unknown);
-                        Lprim(Pfield pos, [Lvar blk], Loc_unknown)],
->>>>>>> ocaml/4.12
                        Loc_unknown))
                0 pos_cc_list))
   (*

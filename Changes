@@ -1,64 +1,3 @@
-<<<<<<< HEAD
-OCaml 4.11.1 (31 August 2020)
------------------------------
-
-### Bug fixes:
-
-- #9856, #9857: Prevent polymorphic type annotations from generalizing
-  weak polymorphic variables.
-  (Leo White, review by Jacques Garrigue)
-
-- #9859, #9862: Remove an erroneous assertion when inferred function types
-  appear in the right hand side of an explicit :> coercion
-  (Florian Angeletti, review by Thomas Refis)
-
-OCaml 4.11.0 (19 August 2020)
----------------------------
-
-(Changes that can break existing programs are marked with a "*")
-
-### Runtime system:
-
-- #9096: Print function names in backtraces.
-  Old output:
-  > Called from file "foo.ml", line 16, characters 42-53
-  New output:
-  > Called from Foo.bar in file "foo.ml", line 16, characters 42-53
-  (Stephen Dolan, review by Leo White and Mark Shinwell)
-
-- #9082: The instrumented runtime now records logs in the CTF format.
-  A new API is available in the runtime to collect runtime statistics,
-  replacing the previous instrumented runtime macros.
-  Gc.eventlog_pause and Gc.eventlog_resume were added to allow user to control
-  instrumentation in a running program.
-  See the manual for more information on how to use this instrumentation mode.
-  (Enguerrand Decorne and Stephen Dolan, with help and review from
-  David Allsopp, Sébastien Hinderer, review by Anil Madhavapeddy,
-  Nicolás Ojeda Bär, Shakthi Kannan, KC Sivaramakrishnan, Gabriel Scherer,
-  Guillaume Munch-Maccagnoni, Damien Doligez, Leo White, Daniel Bünzli
-  and Xavier Leroy)
-
-=======
-OCaml 4.12, maintenance version
--------------------------------
-
-### Bug fixes:
-
-- #10107: Ensure modules compiled with -afl-instrument can still link on
-  platforms without AFL support.
-  (David Allsopp, review by Xavier Leroy)
-
-- #10294, #10295: fix an assert-failure in pattern-matching compilation
-  (Gabriel Scherer, review by Thomas Refis and Luc Maranget,
-   report by Nicolás Ojeda Bär)
-
-- #10310: configure's --enable-spacetime option now causes an error rather than
-  being silently ignored.
-  (David Allsopp, review by Gabriel Scherer)
-
-- #10351: Fix DLL loading with binutils 2.36+ on mingw-w64
-  (David Allsopp, review by Nicolás Ojeda Bär)
-
 OCaml 4.12.0 (24 February 2021)
 -------------------------------
 
@@ -297,7 +236,7 @@ OCaml 4.12.0 (24 February 2021)
   (David Allsopp, review by Guillaume Munch-Maccagnoni and
   Jacques-Henri Jourdan)
 
-- #9506: Remove support for FreeBSD prior to 4.0R, that required explicit
+- #9508: Remove support for FreeBSD prior to 4.0R, that required explicit
   floating-point initialization to behave like IEEE standard
   (Hannes Mehnert, review by David Allsopp)
 
@@ -829,7 +768,6 @@ OCaml 4.11.0 (19 August 2020)
   Guillaume Munch-Maccagnoni, Damien Doligez, Leo White, Daniel Bünzli
   and Xavier Leroy)
 
->>>>>>> ocaml/4.12
 - #9230, #9362: Memprof support for native allocations.
   (Jacques-Henri Jourdan and Stephen Dolan, review by Gabriel Scherer)
 
@@ -1052,12 +990,6 @@ OCaml 4.11.0 (19 August 2020)
 - #9482, #9492: use diversions (@file) to work around OS limitations
   on length of Sys.command argument.
   (Xavier Leroy, report by Jérémie Dimino, review by David Allsopp)
-<<<<<<< HEAD
-
-- #9552: restore ocamloptp build and installation
-  (Florian Angeletti, review by David Allsopp and Xavier Leroy)
-=======
->>>>>>> ocaml/4.12
 
 ### Manual and documentation:
 
@@ -1396,29 +1328,19 @@ OCaml 4.10 maintenance branch
   output channels would not be flushed).
   (Nicolás Ojeda Bär, review by David Allsopp)
 
-<<<<<<< HEAD
-- #9714, #9724: Use the C++ alignas keyword when compiling in C++.
-  Fixes a bug with MSVC C++ 2015/2017. Add a terminator to the
-  `caml_domain_state` structure to better ensure that members are
-  correctly spaced.
-=======
 - #9714, #9724: Use the C++ alignas keyword when compiling in C++ in MSVC.
   Fixes a bug with MSVC C++ 2015 onwards.
->>>>>>> ocaml/4.12
   (Antonin Décimo, review by David Allsopp and Xavier Leroy)
 
 - #9736, #9749: Compaction must start in a heap where all free blocks are
   blue, which was not the case with the best-fit allocator.
   (Damien Doligez, report and review by Leo White)
 
-<<<<<<< HEAD
-=======
 ### Tools:
 
 - #9552: restore ocamloptp build and installation
   (Florian Angeletti, review by David Allsopp and Xavier Leroy)
 
->>>>>>> ocaml/4.12
 OCaml 4.10.0 (21 February 2020)
 -------------------------------
 

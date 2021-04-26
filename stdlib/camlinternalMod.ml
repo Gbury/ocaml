@@ -94,13 +94,8 @@ let rec update_mod shape o n =
       && (Obj.size n = Obj.size o
           || (Sys.backend_type = Sys.Native
               && Obj.size n <= Obj.size o))
-<<<<<<< HEAD
-      then begin overwrite o n end
-      else overwrite o (Obj.repr (fun x -> (Obj.obj n : _ -> _) x))
-=======
       then begin overwrite_closure o n end
       else overwrite_closure o (Obj.repr (fun x -> (Obj.obj n : _ -> _) x))
->>>>>>> ocaml/4.12
   | Lazy ->
       if Obj.tag n = Obj.lazy_tag then
         Obj.set_field o 0 (Obj.field n 0)

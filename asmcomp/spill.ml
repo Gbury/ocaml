@@ -207,21 +207,13 @@ let rec reload env i before =
   let env = record_use env i.res in
   match i.desc with
     Iend ->
-<<<<<<< HEAD
       (i, before, env)
-  | Ireturn _ | Iop(Itailcall_ind _) | Iop(Itailcall_imm _) ->
+  | Ireturn _ | Iop Itailcall_ind | Iop(Itailcall_imm _) ->
       let env, i =
         add_reloads env (Reg.inter_set_array before i.arg) i
       in
        (i, Reg.Set.empty, env)
-  | Iop(Icall_ind _ | Icall_imm _ | Iextcall { alloc = true; }) ->
-=======
-      (i, before)
-  | Ireturn | Iop(Itailcall_ind) | Iop(Itailcall_imm _) ->
-      (add_reloads (Reg.inter_set_array before i.arg) i,
-       Reg.Set.empty)
   | Iop(Icall_ind | Icall_imm _ | Iextcall { alloc = true; }) ->
->>>>>>> ocaml/4.12
       (* All regs live across must be spilled *)
       let (new_next, finally, env) = reload env i.next i.live in
       let env, i =
@@ -494,15 +486,9 @@ let rec spill :
   = fun env i finally k ->
   match i.desc with
     Iend ->
-<<<<<<< HEAD
       k i finally
-  | Ireturn _ | Iop(Itailcall_ind _) | Iop(Itailcall_imm _) ->
+  | Ireturn _ | Iop Itailcall_ind | Iop(Itailcall_imm _) ->
       k i Reg.Set.empty
-=======
-      (i, finally)
-  | Ireturn | Iop(Itailcall_ind) | Iop(Itailcall_imm _) ->
-      (i, Reg.Set.empty)
->>>>>>> ocaml/4.12
   | Iop Ireload ->
     spill env i.next finally (fun new_next after ->
       let before1 = Reg.diff_set_array after i.res in
@@ -513,15 +499,9 @@ let rec spill :
       let before1 = Reg.diff_set_array after i.res in
       let before =
         match i.desc with
-<<<<<<< HEAD
-          Iop Icall_ind _ | Iop(Icall_imm _) | Iop(Iextcall _) | Iop(Ialloc _)
-        | Iop(Iintop (Icheckbound _)) | Iop(Iintop_imm((Icheckbound _), _)) ->
+          Iop Icall_ind | Iop(Icall_imm _) | Iop(Iextcall _) | Iop(Ialloc _)
+        | Iop(Iintop Icheckbound) | Iop(Iintop_imm(Icheckbound, _)) ->
             Reg.Set.union before1 env.at_raise
-=======
-          Iop(Icall_ind) | Iop(Icall_imm _) | Iop(Iextcall _) | Iop(Ialloc _)
-        | Iop(Iintop (Icheckbound)) | Iop(Iintop_imm(Icheckbound, _)) ->
-            Reg.Set.union before1 !spill_at_raise
->>>>>>> ocaml/4.12
         | _ ->
             before1 in
       k (instr_cons_debug i.desc i.arg i.res i.dbg

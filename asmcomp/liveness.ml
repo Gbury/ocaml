@@ -96,11 +96,7 @@ let rec live env i finally =
     Iend ->
       i.live <- finally;
       finally
-<<<<<<< HEAD
-  | Ireturn _ | Iop(Itailcall_ind _) | Iop(Itailcall_imm _) ->
-=======
-  | Ireturn | Iop(Itailcall_ind) | Iop(Itailcall_imm _) ->
->>>>>>> ocaml/4.12
+  | Ireturn _ | Iop(Itailcall_ind) | Iop(Itailcall_imm _) ->
       i.live <- Reg.Set.empty; (* no regs are live across *)
       Reg.set_of_array i.arg
   | Iop op ->
@@ -117,16 +113,11 @@ let rec live env i finally =
         let across_after = Reg.diff_set_array after i.res in
         let across =
           match op with
-<<<<<<< HEAD
           | Iextcall { returns = false; _ } ->
               (* extcalls that never return can raise an exception *)
               env.at_raise
-          | Icall_ind _ | Icall_imm _ | Iextcall _ | Ialloc _
-          | Iintop (Icheckbound _) | Iintop_imm(Icheckbound _, _) ->
-=======
           | Icall_ind | Icall_imm _ | Iextcall _ | Ialloc _
           | Iintop (Icheckbound) | Iintop_imm(Icheckbound, _) ->
->>>>>>> ocaml/4.12
               (* The function call may raise an exception, branching to the
                  nearest enclosing try ... with. Similarly for bounds checks
                  and allocation (for the latter: finalizers may throw
@@ -153,17 +144,10 @@ let rec live env i finally =
         at_fork := Reg.Set.union !at_fork (live env cases.(i) at_join)
       done;
       i.live <- !at_fork;
-<<<<<<< HEAD
-      Reg.add_set_array !at_fork arg
+      Reg.add_set_array !at_fork i.arg
   | Icatch(rec_flag, ts, handlers, body) ->
       let at_join = live (env_from_trap_stack env ts) i.next finally in
       let aux env (nfail, ts, handler) (nfail', before_handler) =
-=======
-      Reg.add_set_array !at_fork i.arg
-  | Icatch(rec_flag, handlers, body) ->
-      let at_join = live i.next finally in
-      let aux (nfail,handler) (nfail', before_handler) =
->>>>>>> ocaml/4.12
         assert(nfail = nfail');
         let env = env_from_trap_stack env ts in
         let free_conts = Numbers.Int.Map.find nfail env.free_conts_for_handlers in
@@ -238,27 +222,13 @@ let rec live env i finally =
       i.live <- before_body;
       before_body
   | Iraise _ ->
-<<<<<<< HEAD
       i.live <- env.at_raise;
-      Reg.add_set_array env.at_raise arg
+      Reg.add_set_array env.at_raise i.arg
 
 let fundecl f =
   reset_cache ();
   let initially_live = live (initial_env f) f.fun_body Reg.Set.empty in
-  (* Sanity check: only function parameters (and the Spacetime node hole
-     register, if profiling) can be live at entrypoint *)
-=======
-      i.live <- !live_at_raise;
-      Reg.add_set_array !live_at_raise i.arg
-
-let reset () =
-  live_at_raise := Reg.Set.empty;
-  live_at_exit := []
-
-let fundecl f =
-  let initially_live = live f.fun_body Reg.Set.empty in
   (* Sanity check: only function parameters can be live at entrypoint *)
->>>>>>> ocaml/4.12
   let wrong_live = Reg.Set.diff initially_live (Reg.set_of_array f.fun_args) in
   if not (Reg.Set.is_empty wrong_live) then begin
     Misc.fatal_errorf "@[Liveness.fundecl:@\n%a@]"

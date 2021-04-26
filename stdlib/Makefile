@@ -25,15 +25,9 @@ COMPFLAGS=-strict-sequence -absname -w +a-4-9-41-42-44-45-48 \
           -g -warn-error A -bin-annot -nostdlib -principal \
           -safe-string -strict-formats
 ifeq "$(FLAMBDA)" "true"
-<<<<<<< HEAD
-OPTCOMPFLAGS+=
-endif
-OPTCOMPILER=$(ROOTDIR)/ocamlopt
-=======
-OPTCOMPFLAGS += -O3
+OPTCOMPFLAGS +=
 endif
 OPTCOMPILER=$(ROOTDIR)/ocamlopt$(EXE)
->>>>>>> ocaml/4.12
 CAMLOPT=$(CAMLRUN) $(OPTCOMPILER)
 CAMLDEP=$(BOOT_OCAMLC) -depend
 DEPFLAGS=-slash

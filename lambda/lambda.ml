@@ -422,14 +422,11 @@ type function_attribute = {
 
 type scoped_location = Debuginfo.Scoped_location.t
 
-<<<<<<< HEAD
 let print_scoped_location ppf loc =
   match (loc : scoped_location) with
   | Loc_unknown -> Format.pp_print_string ppf "Unknown"
   | Loc_known { loc; _ } -> Location.print_loc ppf loc
 
-=======
->>>>>>> ocaml/4.12
 type lambda =
     Lvar of Ident.t
   | Lconst of structured_constant
@@ -465,11 +462,7 @@ and lambda_apply =
   { ap_func : lambda;
     ap_args : lambda list;
     ap_loc : scoped_location;
-<<<<<<< HEAD
-    ap_should_be_tailcall : bool;
-=======
     ap_tailcall : tailcall_attribute;
->>>>>>> ocaml/4.12
     ap_inlined : inline_attribute;
     ap_specialised : specialise_attribute; }
 
@@ -895,17 +888,10 @@ let subst update_env ?(freshen_bound_variables = false) s input_lam =
         Lletrec(List.map (subst_decl s l') decl, subst s l' body)
     | Lprim(p, args, loc) -> Lprim(p, subst_list s l args, loc)
     | Lswitch(arg, sw, loc) ->
-<<<<<<< HEAD
-        Lswitch(subst s arg,
-                {sw with sw_consts = List.map (subst_case s) sw.sw_consts;
-                        sw_blocks = List.map (subst_case' s) sw.sw_blocks;
-                        sw_failaction = subst_opt s sw.sw_failaction; },
-=======
         Lswitch(subst s l arg,
                 {sw with sw_consts = List.map (subst_case s l) sw.sw_consts;
-                        sw_blocks = List.map (subst_case s l) sw.sw_blocks;
+                        sw_blocks = List.map (subst_case' s l) sw.sw_blocks;
                         sw_failaction = subst_opt s l sw.sw_failaction; },
->>>>>>> ocaml/4.12
                 loc)
     | Lstringswitch (arg,cases,default,loc) ->
         Lstringswitch
@@ -959,16 +945,6 @@ let subst update_env ?(freshen_bound_variables = false) s input_lam =
         let new_env =
           Ident.Map.fold (fun _id update env -> update env) env_updates old_env
         in
-<<<<<<< HEAD
-        Levent (subst s lam, { evt with lev_env })
-    | Lifused (v, e) -> Lifused (v, subst s e)
-  and subst_list s l = List.map (subst s) l
-  and subst_decl s (id, exp) = (id, subst s exp)
-  and subst_case s (key, case) = (key, subst s case)
-  and subst_case' s (key, case) = (key, subst s case)
-  and subst_strcase s (key, case) = (key, subst s case)
-  and subst_opt s = function
-=======
         Levent (subst s l lam, { evt with lev_env = new_env })
     | Lifused (id, e) ->
         let id = try Ident.Map.find id l with Not_found -> id in
@@ -976,9 +952,9 @@ let subst update_env ?(freshen_bound_variables = false) s input_lam =
   and subst_list s l li = List.map (subst s l) li
   and subst_decl s l (id, exp) = (id, subst s l exp)
   and subst_case s l (key, case) = (key, subst s l case)
+  and subst_case' s l (key, case) = (key, subst s l case)
   and subst_strcase s l (key, case) = (key, subst s l case)
   and subst_opt s l = function
->>>>>>> ocaml/4.12
     | None -> None
     | Some e -> Some (subst s l e)
   in
@@ -1191,14 +1167,12 @@ let function_is_curried func =
   | Curried -> true
   | Tupled -> false
 
-<<<<<<< HEAD
 let size_of_lambda lam = size_of_lambda' Ident.empty lam
-=======
+
 let max_arity () =
   if !Clflags.native_code then 126 else max_int
   (* 126 = 127 (the maximal number of parameters supported in C--)
            - 1 (the hidden parameter containing the environment) *)
->>>>>>> ocaml/4.12
 
 let reset () =
   raise_count := 0

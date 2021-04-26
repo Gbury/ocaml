@@ -280,7 +280,6 @@ let mk_not dbg cmm =
       (* 1 -> 3, 3 -> 1 *)
       Cop(Csubi, [Cconst_int (4, dbg); c], dbg)
 
-<<<<<<< HEAD
 let mk_compare_ints_untagged dbg a1 a2 =
   bind "int_cmp" a1 (fun a1 ->
     bind "int_cmp" a2 (fun a2 ->
@@ -288,8 +287,6 @@ let mk_compare_ints_untagged dbg a1 a2 =
       let op2 = Cop(Ccmpi(Clt), [a1; a2], dbg) in
       sub_int op1 op2 dbg))
 
-=======
->>>>>>> ocaml/4.12
 let mk_compare_ints dbg a1 a2 =
   match (a1,a2) with
   | Cconst_int (c1, _), Cconst_int (c2, _) ->
@@ -300,7 +297,6 @@ let mk_compare_ints dbg a1 a2 =
      int_const dbg Nativeint.(compare (of_int c1) c2)
   | Cconst_natint (c1, _), Cconst_int (c2, _) ->
      int_const dbg Nativeint.(compare c1 (of_int c2))
-<<<<<<< HEAD
   | a1, a2 -> tag_int (mk_compare_ints_untagged dbg a1 a2) dbg
 
 let mk_compare_floats_untagged dbg a1 a2 =
@@ -321,15 +317,6 @@ let mk_compare_floats_untagged dbg a1 a2 =
          and op4 is 0 if and only if a2 is NaN.
          See also caml_float_compare_unboxed in runtime/floats.c  *)
       add_int (sub_int op1 op2 dbg) (sub_int op3 op4 dbg) dbg))
-=======
-  | a1, a2 -> begin
-      bind "int_cmp" a1 (fun a1 ->
-        bind "int_cmp" a2 (fun a2 ->
-          let op1 = Cop(Ccmpi(Cgt), [a1; a2], dbg) in
-          let op2 = Cop(Ccmpi(Clt), [a1; a2], dbg) in
-          tag_int(sub_int op1 op2 dbg) dbg))
-    end
->>>>>>> ocaml/4.12
 
 let mk_compare_floats dbg a1 a2 =
   bind "float_cmp" a1 (fun a1 ->
@@ -644,15 +631,9 @@ let rec remove_unit = function
       Clet(id, c1, remove_unit c2)
   | Cop(Capply _mty, args, dbg) ->
       Cop(Capply typ_void, args, dbg)
-<<<<<<< HEAD
-  | Cop(Cextcall { func; ty = _; alloc; label_after; returns; }, args, dbg) ->
-    Cop(Cextcall { func; ty = typ_void; alloc; label_after; returns; }, args, dbg)
+  | Cop(Cextcall { func; ty = _; alloc; ty_args; returns; }, args, dbg) ->
+    Cop(Cextcall { func; ty = typ_void; alloc; ty_args; returns; }, args, dbg)
   | Cexit (_,_,_) as c -> c
-=======
-  | Cop(Cextcall(proc, _ty_res, ty_args, alloc), args, dbg) ->
-      Cop(Cextcall(proc, typ_void, ty_args, alloc), args, dbg)
-  | Cexit (_,_) as c -> c
->>>>>>> ocaml/4.12
   | Ctuple [] as c -> c
   | c -> Csequence(c, Ctuple [])
 
@@ -773,19 +754,12 @@ let float_array_ref arr ofs dbg =
   box_float dbg (unboxed_float_array_ref arr ofs dbg)
 
 let addr_array_set arr ofs newval dbg =
-<<<<<<< HEAD
   Cop(Cextcall { func = "caml_modify"; ty = typ_void;
-                 alloc = false; label_after = None; returns = true; },
+                 alloc = false; ty_args = []; returns = true; },
       [array_indexing log2_size_addr arr ofs dbg; newval], dbg)
 let addr_array_initialize arr ofs newval dbg =
   Cop(Cextcall { func = "caml_initialize"; ty = typ_void;
-                 alloc =false; label_after = None; returns = true; },
-=======
-  Cop(Cextcall("caml_modify", typ_void, [], false),
-      [array_indexing log2_size_addr arr ofs dbg; newval], dbg)
-let addr_array_initialize arr ofs newval dbg =
-  Cop(Cextcall("caml_initialize", typ_void, [], false),
->>>>>>> ocaml/4.12
+                 alloc =false; ty_args = []; returns = true; },
       [array_indexing log2_size_addr arr ofs dbg; newval], dbg)
 let int_array_set arr ofs newval dbg =
   Cop(Cstore (Word_int, Lambda.Assignment),
@@ -832,12 +806,8 @@ let bigstring_length ba dbg =
 
 let lookup_tag obj tag dbg =
   bind "tag" tag (fun tag ->
-<<<<<<< HEAD
     Cop(Cextcall { func = "caml_get_public_method"; ty = typ_val;
-                   alloc = false; label_after = None; returns = true; },
-=======
-    Cop(Cextcall("caml_get_public_method", typ_val, [], false),
->>>>>>> ocaml/4.12
+                   alloc = false; ty_args = []; returns = true; },
         [obj; tag],
         dbg))
 
@@ -869,24 +839,16 @@ let make_alloc_generic set_fn dbg tag wordsize args =
     | e1::el -> Csequence(set_fn (Cvar id) (Cconst_int (idx, dbg)) e1 dbg,
                           fill_fields (idx + 2) el) in
     Clet(VP.create id,
-<<<<<<< HEAD
          Cop(Cextcall { func = "caml_alloc"; ty = typ_val;
-                        alloc = true; label_after = None; returns = true; },
-=======
-         Cop(Cextcall("caml_alloc", typ_val, [], true),
->>>>>>> ocaml/4.12
+                        alloc = true; ty_args = []; returns = true; },
                  [Cconst_int (wordsize, dbg); Cconst_int (tag, dbg)], dbg),
          fill_fields 1 args)
   end
 
 let make_alloc dbg tag args =
   let addr_array_init arr ofs newval dbg =
-<<<<<<< HEAD
     Cop(Cextcall { func = "caml_initialize"; ty = typ_void;
-                   alloc = false; label_after = None; returns = true; },
-=======
-    Cop(Cextcall("caml_initialize", typ_void, [], false),
->>>>>>> ocaml/4.12
+                   alloc = false; ty_args = []; returns = true; },
         [array_indexing log2_size_addr arr ofs dbg; newval], dbg)
   in
   make_alloc_generic addr_array_init dbg tag (List.length args) args
@@ -2228,24 +2190,15 @@ let bbswap bi arg dbg =
     | Pint32 -> "int32", XInt32
     | Pint64 -> "int64", XInt64
   in
-<<<<<<< HEAD
   Cop(Cextcall {
     func = Printf.sprintf "caml_%s_direct_bswap" prim;
-    ty = typ_int; alloc = false; label_after = None; returns = true; },
-=======
-  Cop(Cextcall(Printf.sprintf "caml_%s_direct_bswap" prim,
-               typ_int, [tyarg], false),
->>>>>>> ocaml/4.12
+    ty = typ_int; alloc = false; ty_args = [tyarg]; returns = true; },
       [arg],
       dbg)
 
 let bswap16 arg dbg =
-<<<<<<< HEAD
   (Cop(Cextcall { func = "caml_bswap16_direct"; ty = typ_int;
-                  alloc = false; label_after = None; returns = true; },
-=======
-  (Cop(Cextcall("caml_bswap16_direct", typ_int, [], false),
->>>>>>> ocaml/4.12
+                  alloc = false; ty_args = []; returns = true; },
        [arg],
        dbg))
 
@@ -2270,29 +2223,17 @@ let assignment_kind
 let setfield n ptr init arg1 arg2 dbg =
   match assignment_kind ptr init with
   | Caml_modify ->
-<<<<<<< HEAD
     return_unit dbg (Cop(Cextcall { func ="caml_modify"; ty = typ_void;
-                                    alloc = false; label_after = None; returns = true; },
+                                    alloc = false; ty_args = []; returns = true; },
                       [field_address arg1 n dbg;
                        arg2],
                       dbg))
   | Caml_initialize ->
     return_unit dbg (Cop(Cextcall { func = "caml_initialize"; ty = typ_void;
-                                    alloc = false; label_after = None; returns = true; },
+                                    alloc = false; ty_args = []; returns = true; },
                       [field_address arg1 n dbg;
                        arg2],
                       dbg))
-=======
-      return_unit dbg
-        (Cop(Cextcall("caml_modify", typ_void, [], false),
-             [field_address arg1 n dbg; arg2],
-             dbg))
-  | Caml_initialize ->
-      return_unit dbg
-        (Cop(Cextcall("caml_initialize", typ_void, [], false),
-             [field_address arg1 n dbg; arg2],
-             dbg))
->>>>>>> ocaml/4.12
   | Simple ->
       return_unit dbg (set_field arg1 n arg2 init dbg)
 

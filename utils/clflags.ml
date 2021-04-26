@@ -464,7 +464,6 @@ let error_style_reader = {
 
 let unboxed_types = ref false
 
-<<<<<<< HEAD
 module Flambda = struct
   let join_points = ref true
   let unbox_along_intra_function_control_flow = ref true
@@ -516,8 +515,8 @@ module Flambda = struct
     Expert.fallback_inlining_heuristic := false;
     backend_cse_at_toplevel := false;
     ()
+end
 
-=======
 (* This is used by the -save-ir-after option. *)
 module Compiler_ir = struct
   type t = Linear
@@ -558,7 +557,6 @@ module Compiler_ir = struct
       | None -> None
       | Some ir -> Some (ir, drop_prefix ir)
     end
->>>>>>> ocaml/4.12
 end
 
 (* This is used by the -stop-after option. *)

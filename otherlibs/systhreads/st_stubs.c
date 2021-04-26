@@ -93,11 +93,7 @@ struct caml_thread_struct {
   int backtrace_pos; /* Saved Caml_state->backtrace_pos */
   backtrace_slot * backtrace_buffer; /* Saved Caml_state->backtrace_buffer */
   value backtrace_last_exn;  /* Saved Caml_state->backtrace_last_exn (root) */
-<<<<<<< HEAD
-  struct caml_memprof_th_ctx memprof_ctx;
-=======
   struct caml_memprof_th_ctx *memprof_ctx;
->>>>>>> ocaml/4.12
 };
 
 typedef struct caml_thread_struct * caml_thread_t;
@@ -197,11 +193,7 @@ Caml_inline void caml_thread_save_runtime_state(void)
   curr_thread->backtrace_pos = Caml_state->backtrace_pos;
   curr_thread->backtrace_buffer = Caml_state->backtrace_buffer;
   curr_thread->backtrace_last_exn = Caml_state->backtrace_last_exn;
-<<<<<<< HEAD
-  caml_memprof_save_th_ctx(&curr_thread->memprof_ctx);
-=======
   caml_memprof_leave_thread();
->>>>>>> ocaml/4.12
 }
 
 Caml_inline void caml_thread_restore_runtime_state(void)
@@ -224,11 +216,7 @@ Caml_inline void caml_thread_restore_runtime_state(void)
   Caml_state->backtrace_pos = curr_thread->backtrace_pos;
   Caml_state->backtrace_buffer = curr_thread->backtrace_buffer;
   Caml_state->backtrace_last_exn = curr_thread->backtrace_last_exn;
-<<<<<<< HEAD
-  caml_memprof_restore_th_ctx(&curr_thread->memprof_ctx);
-=======
   caml_memprof_enter_thread(curr_thread->memprof_ctx);
->>>>>>> ocaml/4.12
 }
 
 /* Hooks for caml_enter_blocking_section and caml_leave_blocking_section */
@@ -358,11 +346,7 @@ static caml_thread_t caml_thread_new_info(void)
   th->backtrace_pos = 0;
   th->backtrace_buffer = NULL;
   th->backtrace_last_exn = Val_unit;
-<<<<<<< HEAD
-  caml_memprof_init_th_ctx(&th->memprof_ctx);
-=======
   th->memprof_ctx = caml_memprof_new_th_ctx();
->>>>>>> ocaml/4.12
   return th;
 }
 
@@ -510,11 +494,7 @@ static void caml_thread_stop(void)
      below uses accurate information. */
   caml_thread_save_runtime_state();
   /* Tell memprof that this thread is terminating. */
-<<<<<<< HEAD
-  caml_memprof_stop_th_ctx(&curr_thread->memprof_ctx);
-=======
   caml_memprof_delete_th_ctx(curr_thread->memprof_ctx);
->>>>>>> ocaml/4.12
   /* Signal that the thread has terminated */
   caml_threadstatus_terminate(Terminated(curr_thread->descr));
   /* Remove th from the doubly-linked list of threads and free its info block */

@@ -255,45 +255,6 @@ ocamltest_unix.ml: ocamltest_unix_$(ocamltest_unix).ml
 	cat $^ >> $@
 
 ocamltest_config.ml: ocamltest_config.ml.in Makefile ../Makefile.config
-<<<<<<< HEAD
-	sed \
-	  -e 's|@@AFL_INSTRUMENT@@|$(AFL_INSTRUMENT)|' \
-	  -e 's|@@RUNTIMEI@@|$(RUNTIMEI)|' \
-	  -e 's|@@ARCH@@|$(ARCH)|' \
-	  -e 's|@@SHARED_LIBRARIES@@|$(SUPPORTS_SHARED_LIBRARIES)|' \
-	  -e 's|@@UNIX@@|$(unix)|' \
-	  -e 's|@@SYSTHREADS@@|$(systhreads)|' \
-	  -e 's|@@STR@@|$(str)|' \
-	  -e 's|@@SYSTEM@@|$(SYSTEM)|' \
-	  -e 's|@@CPP@@|$(CPP)|' \
-	  -e 's|@@OCAMLCDEFAULTFLAGS@@|$(ocamlcdefaultflags)|' \
-	  -e 's|@@OCAMLOPTDEFAULTFLAGS@@|$(ocamloptdefaultflags)|' \
-	  -e 's|@@OCAMLSRCDIR@@|$(ocamlsrcdir)|' \
-	  -e 's|@@FLAMBDA@@|$(FLAMBDA)|' \
-	  -e 's|@@SPACETIME@@|$(WITH_SPACETIME)|' \
-	  -e 's|@@FORCE_SAFE_STRING@@|$(FORCE_SAFE_STRING)|' \
-	  -e 's|@@FLAT_FLOAT_ARRAY@@|$(FLAT_FLOAT_ARRAY)|' \
-	  -e 's|@@OCAMLDOC@@|$(WITH_OCAMLDOC)|' \
-	  -e 's|@@OCAMLDEBUG@@|$(WITH_OCAMLDEBUG)|' \
-	  -e 's|@@OBJEXT@@|$(O)|' \
-	  -e 's|@@ASMEXT@@|$(S)|' \
-	  -e 's|@@NATIVE_DYNLINK@@|$(NATDYNLINK)|' \
-	  -e 's|@@SHARED_LIBRARY_CFLAGS@@|$(SHAREDLIB_CFLAGS)|' \
-	  -e 's|@@SHAREDOBJEXT@@|$(SO)|' \
-	  -e 's|@@CSC@@|$(CSC)|' \
-	  -e 's|@@CSCFLAGS@@|$(CSCFLAGS)|' \
-	  -e 's|@@MKDLL@@|$(MKDLL)|' \
-	  -e 's|@@MKEXE@@|$(mkexe)|' \
-	  -e 's|@@BYTECCLIBS@@|$(BYTECCLIBS)|' \
-	  -e 's|@@NATIVECCLIBS@@|$(NATIVECCLIBS)|' \
-	  -e 's|@@ASM@@|$(ASM)|' \
-	  -e 's|@@CC@@|$(CC)|' \
-	  -e 's|@@CFLAGS@@|$(OC_CFLAGS)|' \
-	  -e 's|@@CCOMPTYPE@@|$(CCOMPTYPE)|' \
-	  -e 's|@@WINDOWS_UNICODE@@|$(WINDOWS_UNICODE)|' \
-	  -e 's|@@FUNCTION_SECTIONS@@|$(FUNCTION_SECTIONS)|' \
-	  $< > $@
-=======
 	sed $(call SUBST,AFL_INSTRUMENT) \
 	    $(call SUBST,RUNTIMEI) \
 	    $(call SUBST,ARCH) \
@@ -332,7 +293,6 @@ ocamltest_config.ml: ocamltest_config.ml.in Makefile ../Makefile.config
 	    $(call SUBST,FUNCTION_SECTIONS) \
 	    $(call SUBST,NAKED_POINTERS) \
 	    $< > $@
->>>>>>> ocaml/4.12
 
 # Manual
 

@@ -119,7 +119,6 @@ let _ =
   test 53 eqtrue (testcmpfloat 0.0 0.0);
   test 54 eqtrue (testcmpfloat 1.0 0.0);
   test 55 eqtrue (testcmpfloat 0.0 1.0);
-<<<<<<< HEAD
 
   (* Prevent inlining of these functions to force evaluation of the comparisons
      at runtime and test the corresponding code generation. *)
@@ -156,27 +155,27 @@ let _ =
   test 63 eqtrue (testcmpfloat 0.0 nan);
   test 64 eqtrue (testcmpfloat 0.0 0.0);
   test 65 eqtrue (testcmpfloat 1.0 0.0);
-  test 66 eqtrue (testcmpfloat 0.0 1.0)
-=======
-  test 56 eqfun (fun () -> compare (fun x -> x) (fun x -> x));
-  test 57 eqfun (fun () ->
-    (* #9521 *)
-    let rec f x = g x and g x = f x in compare f g);
+  test 66 eqtrue (testcmpfloat 0.0 1.0);
+  
+  test 67 eqfun (fun () -> compare (fun x -> x) (fun x -> x));
+  test 68 eqfun (fun () ->
+   
+  (* #9521 *)
+  let rec f x = g x and g x = f x in compare f g);
 
   (* this is the current behavior of comparison
      with values of incoherent types (packed below
      an existential), but it may not be the only specification. *)
-  test 58 eqm1
+  test 69 eqm1
     (compare (Any 0) (Any 2));
   begin
     (* comparing two function fails *)
-    test 59 eqfun (fun () ->
+    test 70 eqfun (fun () ->
       compare (Any (fun x -> x)) (Any (fun x -> x + 1)));
     (* comparing a function and a non-function succeeds *)
-    test 60 (Fun.negate eq0)
+    test 71 (Fun.negate eq0)
       (compare (Any (fun x -> x)) (Any 0));
-    test 61 (Fun.negate eq0)
+    test 72 (Fun.negate eq0)
       (compare (Any 0) (Any (fun x -> x)));
   end;
   ()
->>>>>>> ocaml/4.12

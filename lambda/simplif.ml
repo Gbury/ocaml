@@ -617,13 +617,6 @@ let rec emit_tail_infos is_tail lambda =
   | Lvar _ -> ()
   | Lconst _ -> ()
   | Lapply ap ->
-<<<<<<< HEAD
-      if ap.ap_should_be_tailcall
-      && not is_tail
-      && Warnings.is_active Warnings.Expect_tailcall
-        then Location.prerr_warning (to_location ap.ap_loc)
-               Warnings.Expect_tailcall;
-=======
       begin
         (* Note: is_tail does not take backend-specific logic into
            account (maximum number of parameters, etc.)  so it may
@@ -641,7 +634,6 @@ let rec emit_tail_infos is_tail lambda =
         | Tailcall_expectation expect_tail ->
             maybe_warn ~is_tail ~expect_tail
       end;
->>>>>>> ocaml/4.12
       emit_tail_infos false ap.ap_func;
       list_emit_tail_infos false ap.ap_args
   | Lfunction {body = lam} ->
@@ -759,11 +751,7 @@ let split_default_wrapper ~id:fun_id ~kind ~params ~return ~body ~attr ~loc =
             ap_func = Lvar inner_id;
             ap_args = args;
             ap_loc = Loc_unknown;
-<<<<<<< HEAD
-            ap_should_be_tailcall = false;
-=======
             ap_tailcall = Default_tailcall;
->>>>>>> ocaml/4.12
             ap_inlined = Default_inline;
             ap_specialised = Default_specialise;
           }

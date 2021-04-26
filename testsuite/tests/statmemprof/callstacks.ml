@@ -1,9 +1,5 @@
 (* TEST
    flags = "-g -w -5"
-<<<<<<< HEAD
-   compare_programs = "false"
-=======
->>>>>>> ocaml/4.12
 
    * flat-float-array
      reference = "${test_source_directory}/callstacks.flat-float-array.reference"

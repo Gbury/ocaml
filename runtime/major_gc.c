@@ -35,15 +35,6 @@
 #include "caml/weak.h"
 #include "caml/memprof.h"
 #include "caml/eventlog.h"
-<<<<<<< HEAD
-
-#if defined (NATIVE_CODE) && defined (NO_NAKED_POINTERS)
-#define NATIVE_CODE_AND_NO_NAKED_POINTERS
-#else
-#undef NATIVE_CODE_AND_NO_NAKED_POINTERS
-#endif
-=======
->>>>>>> ocaml/4.12
 
 #ifdef _MSC_VER
 Caml_inline double fmin(double a, double b) {
@@ -397,16 +388,6 @@ static void start_cycle (void)
 #endif
 }
 
-<<<<<<< HEAD
-/* We may stop the slice inside values, in order to avoid large latencies
-   on large arrays. In this case, [current_value] is the partially-marked
-   value and [current_index] is the index of the next field to be marked.
-*/
-static value current_value = 0;
-static mlsize_t current_index = 0;
-
-=======
->>>>>>> ocaml/4.12
 static void init_sweep_phase(void)
 {
   /* Phase_clean is done. */
@@ -582,10 +563,7 @@ static void mark_slice (intnat work)
   int slice_fields = 0; /** eventlog counters */
 #endif /*CAML_INSTR*/
   int slice_pointers = 0;
-<<<<<<< HEAD
-=======
   struct mark_stack* stk = Caml_state->mark_stack;
->>>>>>> ocaml/4.12
 
   caml_gc_message (0x40, "Marking %"ARCH_INTNAT_PRINTF_FORMAT"d words\n", work);
   caml_gc_message (0x40, "Subphase = %d\n", caml_gc_subphase);
@@ -603,45 +581,6 @@ static void mark_slice (intnat work)
     } else {
       can_mark = 1;
     }
-<<<<<<< HEAD
-    if (v != 0){
-      hd = Hd_val(v);
-      CAMLassert (Is_gray_hd (hd));
-      size = Wosize_hd (hd);
-      end = start + work;
-      if (Tag_hd (hd) < No_scan_tag){
-        start = size < start ? size : start;
-        end = size < end ? size : end;
-        CAMLassert (end >= start);
-        CAML_EVENTLOG_DO({
-          slice_fields += end - start;
-          if (size > end)
-            CAML_EV_COUNTER (EV_C_MAJOR_MARK_SLICE_REMAIN, size - end);
-        });
-        for (i = start; i < end; i++){
-          gray_vals_ptr = mark_slice_darken(gray_vals_ptr,v,i,
-                                            /*in_ephemeron=*/ 0,
-                                            &slice_pointers);
-        }
-        if (end < size){
-          work = 0;
-          start = end;
-          /* [v] doesn't change. */
-          CAMLassert (Is_gray_val (v));
-        }else{
-          CAMLassert (end == size);
-          Hd_val (v) = Blackhd_hd (hd);
-          work -= Whsize_wosize(end - start);
-          start = 0;
-          v = 0;
-        }
-      }else{
-        /* The block doesn't contain any pointers. */
-        CAMLassert (start == 0);
-        Hd_val (v) = Blackhd_hd (hd);
-        work -= Whsize_wosize(size);
-        v = 0;
-=======
 
     if (work <= 0) {
       if( can_mark ) {
@@ -649,7 +588,6 @@ static void mark_slice (intnat work)
         CAML_EVENTLOG_DO({
           CAML_EV_COUNTER(EV_C_MAJOR_MARK_SLICE_REMAIN, me_end - me.offset);
         });
->>>>>>> ocaml/4.12
       }
       break;
     }
@@ -679,13 +617,7 @@ static void mark_slice (intnat work)
       }
     } else if (caml_gc_subphase == Subphase_mark_roots) {
       CAML_EV_BEGIN(EV_MAJOR_MARK_ROOTS);
-<<<<<<< HEAD
-      gray_vals_cur = gray_vals_ptr;
       work = caml_darken_all_roots_slice (work);
-      gray_vals_ptr = gray_vals_cur;
-=======
-      work = caml_darken_all_roots_slice (work);
->>>>>>> ocaml/4.12
       CAML_EV_END(EV_MAJOR_MARK_ROOTS);
       if (work > 0){
         caml_gc_subphase = Subphase_mark_main;
@@ -703,10 +635,6 @@ static void mark_slice (intnat work)
           /* Subphase_mark_main is done.
              Mark finalised values. */
           CAML_EV_BEGIN(EV_MAJOR_MARK_MAIN);
-<<<<<<< HEAD
-          gray_vals_cur = gray_vals_ptr;
-=======
->>>>>>> ocaml/4.12
           caml_final_update_mark_phase ();
           /* Complete the marking */
           ephes_to_check = ephes_checked_if_pure;
@@ -736,12 +664,6 @@ static void mark_slice (intnat work)
       }
     }
   }
-<<<<<<< HEAD
-  gray_vals_cur = gray_vals_ptr;
-  current_value = v;
-  current_index = start;
-=======
->>>>>>> ocaml/4.12
   CAML_EV_COUNTER(EV_C_MAJOR_MARK_SLICE_FIELDS, slice_fields);
   CAML_EV_COUNTER(EV_C_MAJOR_MARK_SLICE_POINTERS, slice_pointers);
 }

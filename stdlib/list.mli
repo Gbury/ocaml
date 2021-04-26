@@ -64,13 +64,6 @@ val cons : 'a -> 'a list -> 'a list
 
 val hd : 'a list -> 'a
 (** Return the first element of the given list.
-<<<<<<< HEAD
-    @raise Failure if the list is empty. *)
-
-val tl : 'a list -> 'a list
-(** Return the given list without its first element.
-    @raise Failure if the list is empty. *)
-=======
    @raise Failure if the list is empty.
  *)
 
@@ -78,18 +71,13 @@ val tl : 'a list -> 'a list
 (** Return the given list without its first element.
    @raise Failure if the list is empty.
  *)
->>>>>>> ocaml/4.12
 
 val nth : 'a list -> int -> 'a
 (** Return the [n]-th element of the given list.
    The first element (head of the list) is at position 0.
    @raise Failure if the list is too short.
-<<<<<<< HEAD
-   @raise Invalid_argument if [n] is negative. *)
-=======
    @raise Invalid_argument if [n] is negative.
  *)
->>>>>>> ocaml/4.12
 
 val nth_opt : 'a list -> int -> 'a option
 (** Return the [n]-th element of the given list.
@@ -238,23 +226,15 @@ val iter2 : ('a -> 'b -> unit) -> 'a list -> 'b list -> unit
 (** [iter2 f [a1; ...; an] [b1; ...; bn]] calls in turn
    [f a1 b1; ...; f an bn].
    @raise Invalid_argument if the two lists are determined
-<<<<<<< HEAD
-   to have different lengths. *)
-=======
    to have different lengths.
  *)
->>>>>>> ocaml/4.12
 
 val map2 : ('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
 (** [map2 f [a1; ...; an] [b1; ...; bn]] is
    [[f a1 b1; ...; f an bn]].
    @raise Invalid_argument if the two lists are determined
-<<<<<<< HEAD
-   to have different lengths.  Not tail-recursive. *)
-=======
    to have different lengths. Not tail-recursive.
  *)
->>>>>>> ocaml/4.12
 
 val rev_map2 : ('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
 (** [rev_map2 f l1 l2] gives the same result as
@@ -262,19 +242,6 @@ val rev_map2 : ('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
    more efficient.
  *)
 
-<<<<<<< HEAD
-val fold_left2 : ('a -> 'b -> 'c -> 'a) -> 'a -> 'b list -> 'c list -> 'a
-(** [List.fold_left2 f a [b1; ...; bn] [c1; ...; cn]] is
-   [f (... (f (f a b1 c1) b2 c2) ...) bn cn].
-   @raise Invalid_argument if the two lists are determined
-   to have different lengths. *)
-
-val fold_right2 : ('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c
-(** [List.fold_right2 f [a1; ...; an] [b1; ...; bn] c] is
-   [f a1 b1 (f a2 b2 (... (f an bn c) ...))].
-   @raise Invalid_argument if the two lists are determined
-   to have different lengths.  Not tail-recursive. *)
-=======
 val fold_left2 :
   ('a -> 'b -> 'c -> 'a) -> 'a -> 'b list -> 'c list -> 'a
 (** [fold_left2 f init [a1; ...; an] [b1; ...; bn]] is
@@ -290,7 +257,6 @@ val fold_right2 :
    @raise Invalid_argument if the two lists are determined
    to have different lengths. Not tail-recursive.
  *)
->>>>>>> ocaml/4.12
 
 
 (** {1 List scanning} *)
@@ -311,16 +277,6 @@ val exists : ('a -> bool) -> 'a list -> bool
  *)
 
 val for_all2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
-<<<<<<< HEAD
-(** Same as {!List.for_all}, but for a two-argument predicate.
-   @raise Invalid_argument if the two lists are determined
-   to have different lengths. *)
-
-val exists2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
-(** Same as {!List.exists}, but for a two-argument predicate.
-   @raise Invalid_argument if the two lists are determined
-   to have different lengths. *)
-=======
 (** Same as {!for_all}, but for a two-argument predicate.
    @raise Invalid_argument if the two lists are determined
    to have different lengths.
@@ -331,7 +287,6 @@ val exists2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
    @raise Invalid_argument if the two lists are determined
    to have different lengths.
  *)
->>>>>>> ocaml/4.12
 
 val mem : 'a -> 'a list -> bool
 (** [mem a set] is true if and only if [a] is equal
@@ -348,20 +303,6 @@ val memq : 'a -> 'a list -> bool
 
 
 val find : ('a -> bool) -> 'a list -> 'a
-<<<<<<< HEAD
-(** [find p l] returns the first element of the list [l]
-   that satisfies the predicate [p].
-   @raise Not_found if there is no value that satisfies [p] in the
-   list [l]. *)
-
-val find_opt: ('a -> bool) -> 'a list -> 'a option
-(** [find_opt p l] returns the first element of the list [l] that
-    satisfies the predicate [p], or [None] if there is no value that
-    satisfies [p] in the list [l].
-    @since 4.05 *)
-
-val find_map: ('a -> 'b option) -> 'a list -> 'b option
-=======
 (** [find f l] returns the first element of the list [l]
    that satisfies the predicate [f].
    @raise Not_found if there is no value that satisfies [f] in the
@@ -377,7 +318,6 @@ val find_opt : ('a -> bool) -> 'a list -> 'a option
  *)
 
 val find_map : ('a -> 'b option) -> 'a list -> 'b option
->>>>>>> ocaml/4.12
 (** [find_map f l] applies [f] to the elements of [l] in order,
     and returns the first result of the form [Some v], or [None]
     if none exist.
@@ -434,12 +374,8 @@ val assoc : 'a -> ('a * 'b) list -> 'b
    [assoc a [ ...; (a,b); ...] = b]
    if [(a,b)] is the leftmost binding of [a] in list [l].
    @raise Not_found if there is no value associated with [a] in the
-<<<<<<< HEAD
-   list [l]. *)
-=======
    list [l].
  *)
->>>>>>> ocaml/4.12
 
 val assoc_opt : 'a -> ('a * 'b) list -> 'b option
 (** [assoc_opt a l] returns the value associated with key [a] in the list of
@@ -498,12 +434,8 @@ val combine : 'a list -> 'b list -> ('a * 'b) list
    [combine [a1; ...; an] [b1; ...; bn]] is
    [[(a1,b1); ...; (an,bn)]].
    @raise Invalid_argument if the two lists
-<<<<<<< HEAD
-   have different lengths.  Not tail-recursive. *)
-=======
    have different lengths. Not tail-recursive.
  *)
->>>>>>> ocaml/4.12
 
 
 (** {1 Sorting} *)

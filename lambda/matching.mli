@@ -25,11 +25,7 @@ val for_function:
         int ref option -> lambda -> (pattern * lambda) list -> partial ->
         lambda
 val for_trywith:
-<<<<<<< HEAD
-        scopes:scopes ->
-=======
         scopes:scopes -> Location.t ->
->>>>>>> ocaml/4.12
         lambda -> (pattern * lambda) list ->
         lambda
 val for_let:

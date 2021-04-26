@@ -433,6 +433,8 @@ end) = struct
     in
     aux [t]
 
+  let to_rev_seq _ = Misc.fatal_error "to_rev_seq not yet implemented"
+
   let to_seq_from _ _ = Misc.fatal_error "to_seq_from not yet implemented"
 
   let add_seq _ _ = Misc.fatal_error "add_seq not yet implemented"
@@ -1064,6 +1066,8 @@ struct
         end
     in
     aux [t]
+
+  let to_rev_seq _ = Misc.fatal_error "to_rev_seq not yet implemented"
 
   let to_seq_from _ _ = Misc.fatal_error "to_seq_from not yet implemented"
 

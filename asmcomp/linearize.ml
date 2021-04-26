@@ -158,17 +158,9 @@ let linear i n contains_calls =
   let rec linear env i n =
     match i.Mach.desc with
       Iend -> n
-<<<<<<< HEAD
-    | Iop(Itailcall_ind _ | Itailcall_imm _ as op)
+    | Iop(Itailcall_ind | Itailcall_imm _ as op)
     | Iop((Iextcall { returns = false; _ }) as op) ->
-        if not Config.spacetime then
-          copy_instr (Lop op) i (discard_dead_code n)
-        else
-          copy_instr (Lop op) i (linear env i.Mach.next n)
-=======
-    | Iop(Itailcall_ind | Itailcall_imm _ as op) ->
-        copy_instr (Lop op) i (discard_dead_code n)
->>>>>>> ocaml/4.12
+        copy_instr (Lop op) i (discard_dead_code n)        
     | Iop(Imove | Ireload | Ispill)
       when i.Mach.arg.(0).loc = i.Mach.res.(0).loc ->
         linear env i.Mach.next n
@@ -303,12 +295,7 @@ let linear i n contains_calls =
         let env_body =
           { env with trap_stack = Mach.Generic_trap env.trap_stack; }
         in
-<<<<<<< HEAD
-        assert (i.Mach.arg = [| |] || Config.spacetime);
-=======
-        incr try_depth;
         assert (i.Mach.arg = [| |]);
->>>>>>> ocaml/4.12
         let n3 = cons_instr (Lpushtrap { lbl_handler; })
                    (linear env_body body
                       (cons_instr

@@ -45,27 +45,8 @@ let rec simplify_expr dacc expr ~down_to_up =
 
 and simplify_toplevel dacc expr ~return_continuation
       ~return_arity exn_continuation ~return_cont_scope ~exn_cont_scope =
-  (* The usage analysis needs a continuation whose handler holds the toplevel
-     code of the function.  Since such a continuation does not exist, we
-     create a dummy one here. *)
-  let dummy_toplevel_cont =
-    Continuation.create ~name:"dummy_toplevel_continuation" ()
-  in
-  let dacc =
-    DA.map_data_flow dacc ~f:(Data_flow.init_toplevel dummy_toplevel_cont [])
-  in
   let expr, uacc =
     simplify_expr dacc expr ~down_to_up:(fun dacc ~rebuild ->
-      let dacc =
-        DA.map_data_flow dacc ~f:(
-          Data_flow.exit_continuation dummy_toplevel_cont
-        )
-      in
-      let data_flow = DA.data_flow dacc in
-      let { required_variables; } : Data_flow.result =
-        Data_flow.analyze data_flow ~return_continuation
-          ~exn_continuation:(Exn_continuation.exn_handler exn_continuation)
-      in
       let uenv =
         UE.add_return_continuation UE.empty return_continuation
           return_cont_scope return_arity
@@ -73,7 +54,7 @@ and simplify_toplevel dacc expr ~return_continuation
       let uenv =
         UE.add_exn_continuation uenv exn_continuation exn_cont_scope
       in
-      let uacc = UA.create ~required_variables uenv dacc in
+      let uacc = UA.create uenv dacc in
       rebuild uacc ~after_rebuild:(fun expr uacc -> expr, uacc))
   in
   (* We don't check occurrences of variables or symbols here because the check

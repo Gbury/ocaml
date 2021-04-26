@@ -738,118 +738,7 @@ let prove_strings env t : String_info.Set.t proof =
   | Naked_immediate _ | Naked_float _ | Naked_int32 _ | Naked_int64 _
   | Naked_nativeint _ -> wrong_kind ()
 
-type prove_tagging_function =
-  | Prove_could_be_tagging_of_simple
-  | Prove_is_always_tagging_of_simple
-
-let prove_is_tagging_of_simple
-    ~prove_function env ~min_name_mode t : Simple.t proof =
-  let wrong_kind () =
-    Misc.fatal_errorf "Kind error: expected [Value]:@ %a" print t
-  in
-  match expand_head t env with
-  | Const (Tagged_immediate imm) ->
-    Proved (Simple.const (Reg_width_const.naked_immediate imm))
-  | Value (Ok (Variant { immediates; blocks; is_unique = _; })) ->
-    begin match blocks with
-    | Unknown -> Unknown
-    | Known blocks ->
-      match prove_function with
-      | Prove_is_always_tagging_of_simple
-        when not (Row_like.For_blocks.is_bottom blocks) ->
-        Unknown
-      | Prove_is_always_tagging_of_simple
-        (* when (Row_like.For_blocks.is_bottom blocks) *)
-      | Prove_could_be_tagging_of_simple ->
-        match immediates with
-        | Unknown -> Unknown
-        | Known t ->
-          let from_alias =
-            match
-              Typing_env.get_canonical_simple_exn
-                env ~min_name_mode (get_alias_exn t)
-            with
-            | simple -> Some simple
-            | exception Not_found -> None
-          in
-          match from_alias with
-          | Some simple -> Proved simple
-          | None ->
-            match prove_naked_immediates env t with
-            | Unknown -> Unknown
-            | Invalid -> Invalid
-            | Proved imms ->
-              match Target_imm.Set.get_singleton imms with
-              | Some imm ->
-                Proved (Simple.const (Reg_width_const.naked_immediate imm))
-              | None -> Unknown
-    end
-  | Value Unknown -> Unknown
-  | Value _ -> Invalid
-  | Const _ | Naked_immediate _ | Naked_float _ | Naked_int32 _
-  | Naked_int64 _ | Naked_nativeint _ -> wrong_kind ()
-
-let prove_is_always_tagging_of_simple =
-  prove_is_tagging_of_simple
-    ~prove_function:Prove_is_always_tagging_of_simple
-
-let prove_could_be_tagging_of_simple =
-  prove_is_tagging_of_simple
-    ~prove_function:Prove_could_be_tagging_of_simple
-
-let [@inline always] prove_boxed_number_containing_simple
-      ~contents_of_boxed_number env ~min_name_mode t : Simple.t proof =
-  match expand_head t env with
-  | Value (Ok ty_value) ->
-    begin match contents_of_boxed_number ty_value with
-    | None -> Invalid
-    | Some ty ->
-      match
-        Typing_env.get_canonical_simple_exn
-          env ~min_name_mode (get_alias_exn ty)
-      with
-      | simple -> Proved simple
-      | exception Not_found -> Unknown
-    end
-  | Value Unknown -> Unknown
-  | Value Bottom -> Invalid
-  | Const _ | Naked_immediate _ | Naked_float _ | Naked_int32 _
-  | Naked_int64 _ | Naked_nativeint _ ->
-    Misc.fatal_errorf "Kind error: expected [Value]:@ %a" print t
-
-let prove_boxed_float_containing_simple =
-  prove_boxed_number_containing_simple
-    ~contents_of_boxed_number:(fun (ty_value : Type_of_kind_value0.t) ->
-      match ty_value with
-      | Boxed_float ty -> Some ty
-      | Variant _ | Boxed_int32 _ | Boxed_int64 _ | Boxed_nativeint _
-      | Closures _ | String _ | Array _ -> None)
-
-let prove_boxed_int32_containing_simple =
-  prove_boxed_number_containing_simple
-    ~contents_of_boxed_number:(fun (ty_value : Type_of_kind_value0.t) ->
-      match ty_value with
-      | Boxed_int32 ty -> Some ty
-      | Variant _ | Boxed_float _ | Boxed_int64 _ | Boxed_nativeint _
-      | Closures _ | String _ | Array _ -> None)
-
-let prove_boxed_int64_containing_simple =
-  prove_boxed_number_containing_simple
-    ~contents_of_boxed_number:(fun (ty_value : Type_of_kind_value0.t) ->
-      match ty_value with
-      | Boxed_int64 ty -> Some ty
-      | Variant _ | Boxed_float _ | Boxed_int32 _ | Boxed_nativeint _
-      | Closures _ | String _ | Array _ -> None)
-
-let prove_boxed_nativeint_containing_simple =
-  prove_boxed_number_containing_simple
-    ~contents_of_boxed_number:(fun (ty_value : Type_of_kind_value0.t) ->
-      match ty_value with
-      | Boxed_nativeint ty -> Some ty
-      | Variant _ | Boxed_float _ | Boxed_int32 _ | Boxed_int64 _
-      | Closures _ | String _ | Array _ -> None)
-
-let[@inline] prove_block_field_simple_aux env ~min_name_mode t get_field : Simple.t proof =
+let prove_block_field_simple env ~min_name_mode t field_index : Simple.t proof =
   let wrong_kind () =
     Misc.fatal_errorf "Kind error: expected [Value]:@ %a" print t
   in
@@ -868,7 +757,7 @@ let[@inline] prove_block_field_simple_aux env ~min_name_mode t get_field : Simpl
         else if not (is_obviously_bottom imms) then
           Unknown
         else
-          begin match (get_field blocks : _ Or_unknown_or_bottom.t) with
+          begin match Row_like.For_blocks.get_field blocks field_index with
           | Bottom -> Invalid
           | Unknown -> Unknown
           | Ok ty ->
@@ -890,16 +779,6 @@ let[@inline] prove_block_field_simple_aux env ~min_name_mode t get_field : Simpl
   | Value Bottom -> Invalid
   | Naked_immediate _ | Naked_float _ | Naked_int32 _ | Naked_int64 _
   | Naked_nativeint _ -> wrong_kind ()
-
-let prove_block_field_simple env ~min_name_mode t field_index =
-  let[@inline] get blocks = Row_like.For_blocks.get_field blocks field_index in
-  (prove_block_field_simple_aux[@inlined]) env ~min_name_mode t get
-
-let prove_variant_field_simple env ~min_name_mode t variant_tag field_index =
-  let[@inline] get blocks =
-    Row_like.For_blocks.get_variant_field blocks variant_tag field_index
-  in
-  (prove_block_field_simple_aux[@inlined]) env ~min_name_mode t get
 
 let prove_project_var_simple env ~min_name_mode t env_var : Simple.t proof =
   let wrong_kind () =

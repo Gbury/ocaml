@@ -118,12 +118,8 @@ module type S =
        @before 4.03 Physical equality was not ensured. *)
 
     val merge:
-<<<<<<< HEAD
-         (key -> 'a option -> 'b option -> 'c option) -> 'a t -> 'b t -> 'c t
-=======
          (key -> 'a option -> 'b option -> 'c option) ->
          'a t -> 'b t -> 'c t
->>>>>>> ocaml/4.12
     (** [merge f m1 m2] computes a map whose keys are a subset of the keys of
         [m1] and of [m2]. The presence of each such binding, and the
         corresponding value, is determined with the function [f].
@@ -181,13 +177,8 @@ module type S =
      *)
 
     val filter: (key -> 'a -> bool) -> 'a t -> 'a t
-<<<<<<< HEAD
-    (** [filter p m] returns the map with all the bindings in [m]
-        that satisfy predicate [p]. If every binding in [m] satisfies [p],
-=======
     (** [filter f m] returns the map with all the bindings in [m]
         that satisfy predicate [p]. If every binding in [m] satisfies [f],
->>>>>>> ocaml/4.12
         [m] is returned unchanged (the result of the function is then
         physically equal to [m])
         @since 3.12.0
@@ -215,17 +206,10 @@ module type S =
      *)
 
     val partition: (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
-<<<<<<< HEAD
-    (** [partition p m] returns a pair of maps [(m1, m2)], where
-        [m1] contains all the bindings of [m] that satisfy the
-        predicate [p], and [m2] is the map with all the bindings of
-        [m] that do not satisfy [p].
-=======
     (** [partition f m] returns a pair of maps [(m1, m2)], where
         [m1] contains all the bindings of [m] that satisfy the
         predicate [f], and [m2] is the map with all the bindings of
         [m] that do not satisfy [f].
->>>>>>> ocaml/4.12
         @since 3.12.0
      *)
 

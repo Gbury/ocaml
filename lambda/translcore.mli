@@ -25,11 +25,7 @@ val pure_module : module_expr -> let_kind
 
 val transl_exp: scopes:scopes -> expression -> lambda
 val transl_apply: scopes:scopes
-<<<<<<< HEAD
-                  -> ?should_be_tailcall:bool
-=======
                   -> ?tailcall:tailcall_attribute
->>>>>>> ocaml/4.12
                   -> ?inlined:inline_attribute
                   -> ?specialised:specialise_attribute
                   -> lambda -> (arg_label * expression option) list

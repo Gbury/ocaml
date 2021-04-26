@@ -50,28 +50,17 @@ let lapply ap =
       Lapply ap
 
 let mkappl (func, args) =
-<<<<<<< HEAD
-  Lapply {ap_should_be_tailcall=false;
+  Lapply {
           ap_loc=Loc_unknown;
           ap_func=func;
           ap_args=args;
+          ap_tailcall=Default_tailcall;
           ap_inlined=Default_inline;
           ap_specialised=Default_specialise};;
-=======
-  Lapply {
-    ap_loc=Loc_unknown;
-    ap_func=func;
-    ap_args=args;
-    ap_tailcall=Default_tailcall;
-    ap_inlined=Default_inline;
-    ap_specialised=Default_specialise;
-  };;
->>>>>>> ocaml/4.12
 
 let lsequence l1 l2 =
   if l2 = lambda_unit then l1 else Lsequence(l1, l2)
 
-<<<<<<< HEAD
 let lfield v i bi =
   let field_info = {
     index = i;
@@ -79,9 +68,6 @@ let lfield v i bi =
   }
   in
   Lprim(Pfield (field_info, Reads_vary), [Lvar v], Loc_unknown)
-=======
-let lfield v i = Lprim(Pfield i, [Lvar v], Loc_unknown)
->>>>>>> ocaml/4.12
 
 let transl_label l = share (Const_immstring l)
 
@@ -297,7 +283,6 @@ let rec index a = function
 
 let bind_id_as_val (id, _) = ("", id)
 
-<<<<<<< HEAD
 let class_field i =
   let field_info = {
     index = i;
@@ -306,8 +291,6 @@ let class_field i =
   in
   Pfield (field_info, Reads_vary)
 
-=======
->>>>>>> ocaml/4.12
 let rec build_class_init ~scopes cla cstr super inh_init cl_init msubst top cl =
   match cl.cl_desc with
   | Tcl_ident _ ->
@@ -315,13 +298,8 @@ let rec build_class_init ~scopes cla cstr super inh_init cl_init msubst top cl =
       | (_, path_lam, obj_init)::inh_init ->
           (inh_init,
            Llet (Strict, Pgenval, obj_init,
-<<<<<<< HEAD
                  mkappl(Lprim(class_field 1, [path_lam], Loc_unknown), Lvar cla ::
                         if top then [Lprim(class_field 3, [path_lam], Loc_unknown)]
-=======
-                 mkappl(Lprim(Pfield 1, [path_lam], Loc_unknown), Lvar cla ::
-                        if top then [Lprim(Pfield 3, [path_lam], Loc_unknown)]
->>>>>>> ocaml/4.12
                         else []),
                  bind_super cla super cl_init))
       | _ ->
@@ -425,13 +403,8 @@ let rec build_class_init ~scopes cla cstr super inh_init cl_init msubst top cl =
            Llet (Strict, Pgenval, inh,
                  mkappl(oo_prim "inherits", narrow_args @
                         [path_lam;
-<<<<<<< HEAD
-                         Lconst(Const_pointer(if top then 1 else 0))]),
-                 Llet(StrictOpt, Pgenval, obj_init, lfield inh 0 bi, cl_init)))
-=======
                          Lconst(const_int (if top then 1 else 0))]),
-                 Llet(StrictOpt, Pgenval, obj_init, lfield inh 0, cl_init)))
->>>>>>> ocaml/4.12
+                 Llet(StrictOpt, Pgenval, obj_init, lfield inh 0 bi, cl_init)))
       | _ ->
           let core cl_init =
             build_class_init
@@ -538,23 +511,13 @@ let transl_class_rebind ~scopes cl vf =
     let obj_init = Ident.create_local "obj_init"
     and self = Ident.create_local "self" in
     let obj_init0 =
-<<<<<<< HEAD
-      lapply {ap_should_be_tailcall=false;
+      lapply {
               ap_loc=Loc_unknown;
               ap_func=Lvar obj_init;
               ap_args=[Lvar self];
+              ap_tailcall=Default_tailcall;
               ap_inlined=Default_inline;
               ap_specialised=Default_specialise}
-=======
-      lapply {
-        ap_loc=Loc_unknown;
-        ap_func=Lvar obj_init;
-        ap_args=[Lvar self];
-        ap_tailcall=Default_tailcall;
-        ap_inlined=Default_inline;
-        ap_specialised=Default_specialise;
-      }
->>>>>>> ocaml/4.12
     in
     let _, path_lam, obj_init' =
       transl_class_rebind_0 ~scopes self obj_init0 cl vf in
@@ -579,13 +542,8 @@ let transl_class_rebind ~scopes cl vf =
                    lfunction [envs, Pgenval]
                      (mkappl(Lvar new_init,
                              [mkappl(Lvar env_init, [Lvar envs])]))));
-<<<<<<< HEAD
            lfield cla 2 bi;
            lfield cla 3 bi],
-=======
-           lfield cla 2;
-           lfield cla 3],
->>>>>>> ocaml/4.12
           Loc_unknown)))
   with Exit ->
     lambda_unit
@@ -614,13 +572,8 @@ let rec builtin_meths self env env2 body =
     | p when const_path p -> "const", [p]
     | Lprim(Parrayrefu _, [Lvar s; Lvar n], _) when List.mem s self ->
         "var", [Lvar n]
-<<<<<<< HEAD
     | Lprim(Pfield ({index = n; _ }, _), [Lvar e], _) when Ident.same e env ->
-        "env", [Lvar env2; Lconst(Const_pointer n)]
-=======
-    | Lprim(Pfield n, [Lvar e], _) when Ident.same e env ->
         "env", [Lvar env2; Lconst(const_int n)]
->>>>>>> ocaml/4.12
     | Lsend(Self, met, Lvar s, [], _) when List.mem s self ->
         "meth", [met]
     | _ -> raise Not_found
@@ -919,12 +872,8 @@ let transl_class ~scopes ids cl_id pub_meths cl vflag =
           Loc_unknown)
   and linh_envs =
     List.map
-<<<<<<< HEAD
       (fun (_, path_lam, _) ->
         Lprim(class_field 3, [path_lam], Loc_unknown))
-=======
-      (fun (_, path_lam, _) -> Lprim(Pfield 3, [path_lam], Loc_unknown))
->>>>>>> ocaml/4.12
       (List.rev inh_init)
   in
   let make_envs lam =
@@ -944,12 +893,8 @@ let transl_class ~scopes ids cl_id pub_meths cl vflag =
   in
   let inh_keys =
     List.map
-<<<<<<< HEAD
       (fun (_, path_lam, _) ->
         Lprim(class_field 1, [path_lam], Loc_unknown))
-=======
-      (fun (_, path_lam, _) -> Lprim(Pfield 1, [path_lam], Loc_unknown))
->>>>>>> ocaml/4.12
       inh_paths
   in
   let lclass lam =
@@ -967,12 +912,8 @@ let transl_class ~scopes ids cl_id pub_meths cl vflag =
                                     inh_keys, Loc_unknown)]),
          lam)
   and lset cached i lam =
-<<<<<<< HEAD
     let field_info = { index = i; block_info = { tag = 0; size  = Unknown; }; } in
     Lprim(Psetfield(field_info, Pointer, Assignment),
-=======
-    Lprim(Psetfield(i, Pointer, Assignment),
->>>>>>> ocaml/4.12
           [Lvar cached; lam], Loc_unknown)
   in
   let ldirect () =
@@ -1020,11 +961,7 @@ let transl_class ~scopes ids cl_id pub_meths cl vflag =
            lfield cached 1 cached_bi;
            lfield cached 0 cached_bi;
            lenvs]
-<<<<<<< HEAD
         else [lambda_unit; lfield cached 0 cached_bi; lambda_unit; lenvs]),
-=======
-        else [lambda_unit; lfield cached 0; lambda_unit; lenvs]),
->>>>>>> ocaml/4.12
         Loc_unknown
        )))))
 

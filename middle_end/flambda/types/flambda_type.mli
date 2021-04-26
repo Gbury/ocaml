@@ -595,63 +595,10 @@ val prove_single_closures_entry'
 
 val prove_strings : Typing_env.t -> t -> String_info.Set.t proof
 
-(** Attempt to show that the provided type describes the tagged version of
-    a unique naked immediate [Simple].
-    This function will return [Unknown] if values of the provided type might
-    sometimes, but not always, be a tagged immediate (for example if it is a
-    variant type involving blocks). *)
-val prove_is_always_tagging_of_simple
-   : Typing_env.t
-  -> min_name_mode:Name_mode.t
-  -> t
-  -> Simple.t proof
-
-(** Attempt to show that the provided type _can_ describe, but might not
-    always describe, the tagged version of a unique naked immediate [Simple].
-    It is guaranteed that if a [Simple] is returned, the type does not
-    describe any other tagged immediate. *)
-val prove_could_be_tagging_of_simple
-   : Typing_env.t
-  -> min_name_mode:Name_mode.t
-  -> t
-  -> Simple.t proof
-
-val prove_boxed_float_containing_simple
-   : Typing_env.t
-  -> min_name_mode:Name_mode.t
-  -> t
-  -> Simple.t proof
-
-val prove_boxed_int32_containing_simple
-   : Typing_env.t
-  -> min_name_mode:Name_mode.t
-  -> t
-  -> Simple.t proof
-
-val prove_boxed_int64_containing_simple
-   : Typing_env.t
-  -> min_name_mode:Name_mode.t
-  -> t
-  -> Simple.t proof
-
-val prove_boxed_nativeint_containing_simple
-   : Typing_env.t
-  -> min_name_mode:Name_mode.t
-  -> t
-  -> Simple.t proof
-
 val prove_block_field_simple
    : Typing_env.t
   -> min_name_mode:Name_mode.t
   -> t
-  -> Target_imm.t
-  -> Simple.t proof
-
-val prove_variant_field_simple
-   : Typing_env.t
-  -> min_name_mode:Name_mode.t
-  -> t
-  -> Tag.t
   -> Target_imm.t
   -> Simple.t proof
 

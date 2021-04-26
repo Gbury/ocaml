@@ -34,13 +34,13 @@ let rec struct_const ppf = function
   | Const_block(tag, sc1::scl) ->
       let sconsts ppf scl =
         List.iter (fun sc -> fprintf ppf "@ %a" struct_const sc) scl in
-      fprintf ppf "@[<1>[%i:@ @[%a%a@]]@]" tag struct_const sc1 sconsts scl
+      fprintf ppf "@[<1>[%i:@ @[%a%a@]]@]" tag struct_const sc1 sconsts scl  
   | Const_float_block [] ->
-      fprintf ppf "[|b |]"
+    fprintf ppf "[|b |]"
   | Const_float_block (f1 :: fl) ->
-      let floats ppf fl =
-        List.iter (fun f -> fprintf ppf "@ %s" f) fl in
-      fprintf ppf "@[<1>[|b@[%s%a@]|]@]" f1 floats fl
+    let floats ppf fl =
+      List.iter (fun f -> fprintf ppf "@ %s" f) fl in
+    fprintf ppf "@[<1>[|b@[%s%a@]|]@]" f1 floats fl
   | Const_float_array [] ->
       fprintf ppf "[| |]"
   | Const_float_array (f1 :: fl) ->
@@ -65,7 +65,7 @@ let value_kind ppf = function
   | Pfloatval -> fprintf ppf "[float]"
   | Pboxedintval bi -> fprintf ppf "[%s]" (boxed_integer_name bi)
 
-let value_kind' ppf = function
+  let value_kind' ppf = function
   | Pgenval -> fprintf ppf "[val]"
   | Pintval -> fprintf ppf "[int]"
   | Pfloatval -> fprintf ppf "[float]"
@@ -162,7 +162,7 @@ let field_read_semantics ppf sem =
   match sem with
   | Reads_agree -> ()
   | Reads_vary -> fprintf ppf "_mut"
-
+  
 let primitive ppf = function
   | Pidentity -> fprintf ppf "id"
   | Pbytes_to_string -> fprintf ppf "bytes_to_string"
@@ -175,7 +175,7 @@ let primitive ppf = function
   | Pmakeblock(tag, Immutable, shape) ->
       fprintf ppf "makeblock %i%a" tag block_shape shape
   | Pmakeblock(tag, Immutable_unique, shape) ->
-      fprintf ppf "makeblock_unique %i%a" tag block_shape shape
+    fprintf ppf "makeblock_unique %i%a" tag block_shape shape
   | Pmakeblock(tag, Mutable, shape) ->
       fprintf ppf "makemutable %i%a" tag block_shape shape
   | Pmakefloatblock Immutable -> fprintf ppf "makefloatblock Immutable"
@@ -386,8 +386,8 @@ let name_of_primitive = function
   | Pmakeblock _ -> "Pmakeblock"
   | Pmakefloatblock _ -> "Pmakefloatblock"
   | Pfield _ -> "Pfield"
-  | Pfield_computed _ -> "Pfield_computed"
   | Psetfield _ -> "Psetfield"
+  | Pfield_computed _ -> "Pfield_computed"
   | Psetfield_computed _ -> "Psetfield_computed"
   | Pfloatfield _ -> "Pfloatfield"
   | Psetfloatfield _ -> "Psetfloatfield"
@@ -441,9 +441,9 @@ let name_of_primitive = function
   | Parraysets _ -> "Parraysets"
   | Pctconst _ -> "Pctconst"
   | Pisint -> "Pisint"
+  | Pisout -> "Pisout"
   | Pflambda_isint -> "Pflambda_isint"
   | Pgettag -> "Pgettag"
-  | Pisout -> "Pisout"
   | Pbintofint _ -> "Pbintofint"
   | Pintofbint _ -> "Pintofbint"
   | Pcvtbint _ -> "Pcvtbint"
@@ -592,12 +592,12 @@ let rec lam ppf = function
       let switch ppf sw =
         let spc = ref false in
         List.iter
-         (fun (n, l) ->
+        (fun (n, l) ->
            if !spc then fprintf ppf "@ " else spc := true;
-           fprintf ppf "@[<hv 1>case int %i:@ %a@]" n lam l)
+           fprintf ppf "@[<hv 1>case tag %i:@ %a@]" n lam l)
          sw.sw_consts;
         List.iter
-          (fun ({ sw_tag = tag; sw_size = _; }, l) ->
+            (fun ({ sw_tag = tag; sw_size = _; }, l) ->
             if !spc then fprintf ppf "@ " else spc := true;
             fprintf ppf "@[<hv 1>case tag %i:@ %a@]" tag lam l)
           sw.sw_blocks ;

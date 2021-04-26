@@ -296,11 +296,6 @@ clean::
 
 # Eventlog metadata file
 
-<<<<<<< HEAD
-# Eventlog metadata file
-
-=======
->>>>>>> ocaml/4.12
 install::
 	$(INSTALL_DATA) \
 	  eventlog_metadata \
@@ -322,14 +317,6 @@ CMPBYT=$(ROOTDIR)/compilerlibs/ocamlcommon.cma \
 
 $(call byte_and_opt,cmpbyt,$(CMPBYT),)
 
-<<<<<<< HEAD
-CAMLTEX= $(ROOTDIR)/compilerlibs/ocamlcommon.cma \
-	$(ROOTDIR)/compilerlibs/ocamlbytecomp.cma \
-	$(ROOTDIR)/compilerlibs/ocamltoplevel.cma \
-	$(ROOTDIR)/otherlibs/str/str.cma \
-	$(ROOTDIR)/otherlibs/$(UNIXLIB)/unix.cma \
-	caml_tex.ml
-=======
 caml_tex_files := \
   $(ROOTDIR)/compilerlibs/ocamlcommon.cma \
   $(ROOTDIR)/compilerlibs/ocamlbytecomp.cma \
@@ -337,7 +324,6 @@ caml_tex_files := \
   $(ROOTDIR)/otherlibs/str/str.cma \
   $(ROOTDIR)/otherlibs/$(UNIXLIB)/unix.cma \
   caml_tex.ml
->>>>>>> ocaml/4.12
 
 #Scan latex files, and run ocaml code examples
 

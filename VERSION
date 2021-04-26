@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-4.11.1+flambda2+dev
-=======
-4.12.1+dev0-2021-02-24
->>>>>>> ocaml/4.12
+4.12.0+flambda2+dev
 
 # The version string is the first line of this file.
 # It must be in the format described in stdlib/sys.mli

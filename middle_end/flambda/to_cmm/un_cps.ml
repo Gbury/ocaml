@@ -117,7 +117,10 @@ let simple env s =
     ~name:(fun n -> name env n)
     ~const:(fun c -> const env c, env, Ece.pure)
 
-(* Arithmetic primitives *)
+let unsupported_32_bits () = 
+  Misc.fatal_errorf "32 bits is currently unsupported in Flambda." 
+
+  (* Arithmetic primitives *)
 
 let primitive_boxed_int_of_standard_int x =
   match (x : Flambda_kind.Standard_int.t) with
@@ -138,8 +141,7 @@ let unary_int_arith_primitive _env dbg kind op arg =
     C.tag_int swapped dbg
   | Naked_immediate, Swap_byte_endianness -> C.bswap16 arg dbg
   (* Special case for manipulating int64 on 32-bit hosts *)
-  | Naked_int64, Neg when C.arch32 ->
-    C.extcall ~alloc:false ~returns:true "caml_int64_neg_native" typ_int64 [arg]
+  | Naked_int64, Neg when C.arch32 -> unsupported_32_bits ()
   (* General case (including byte swap for 64-bit on 32-bit archi) *)
   | _, Neg -> C.sub_int (C.int 0) arg dbg
   | _, Swap_byte_endianness ->
@@ -155,26 +157,15 @@ let arithmetic_conversion dbg src dst arg =
   let open Flambda_kind.Standard_int_or_float in
   match src, dst with
   (* 64-bit on 32-bit host specific cases *)
-  | Naked_int64, Tagged_immediate when C.arch32 ->
-    None, C.extcall ~alloc:false ~returns:true "caml_int64_to_int" typ_int [arg]
-  | Naked_int64, Naked_int32 when C.arch32 ->
-    None, C.extcall ~alloc:false ~returns:true "caml_int64_to_int32" typ_int [arg]
-  | Naked_int64, (Naked_nativeint | Naked_immediate) when C.arch32 ->
-    None, C.extcall ~alloc:false ~returns:true "caml_int64_to_nativeint" typ_int [arg]
-  | Naked_int64, Naked_float when C.arch32 ->
-    None, C.extcall ~alloc:false ~returns:true "caml_int64_to_float_unboxed" typ_float [arg]
-  | Tagged_immediate, Naked_int64 when C.arch32 ->
-    None, C.extcall ~alloc:true ~returns:true "caml_int64_of_int" typ_val [arg]
-          |> C.unbox_number ~dbg Flambda_kind.Boxable_number.Naked_int64
-  | Naked_int32, Naked_int64 when C.arch32 ->
-    None, C.extcall ~alloc:true ~returns:true "caml_int64_of_int32" typ_val [arg]
-          |> C.unbox_number ~dbg Flambda_kind.Boxable_number.Naked_int64
-  | (Naked_nativeint | Naked_immediate), Naked_int64 when C.arch32 ->
-    None, C.extcall ~alloc:true ~returns:true "caml_int64_of_nativeint" typ_val [arg]
-          |> C.unbox_number ~dbg Flambda_kind.Boxable_number.Naked_int64
+  | Naked_int64, Tagged_immediate
+  | Naked_int64, Naked_int32
+  | Naked_int64, (Naked_nativeint | Naked_immediate)
+  | Naked_int64, Naked_float
+  | Tagged_immediate, Naked_int64
+  | Naked_int32, Naked_int64
+  | (Naked_nativeint | Naked_immediate), Naked_int64
   | Naked_float, Naked_int64 when C.arch32 ->
-    None, C.extcall ~alloc:true ~returns:true "caml_int64_of_float_unboxed" typ_val [arg]
-          |> C.unbox_number ~dbg Flambda_kind.Boxable_number.Naked_int64
+    unsupported_32_bits ()
   (* Identity on floats *)
   | Naked_float, Naked_float -> None, arg
   (* Conversions to and from tagged ints  *)
@@ -213,16 +204,9 @@ let binary_phys_comparison _env dbg kind op x y =
   match (kind : Flambda_kind.t),
         (op : Flambda_primitive.equality_comparison) with
   (* int64 special case *)
-  | Naked_number Naked_int64, Eq when C.arch32 ->
-    C.untag_int
-      (C.extcall ~alloc:true ~returns:true "caml_equal" typ_int
-         [C.box_int64 ~dbg x; C.box_int64 ~dbg y])
-      dbg
+  | Naked_number Naked_int64, Eq
   | Naked_number Naked_int64, Neq when C.arch32 ->
-    C.untag_int
-      (C.extcall ~alloc:true ~returns:true "caml_notequal" typ_int
-         [C.box_int64 ~dbg x; C.box_int64 ~dbg y])
-      dbg
+    unsupported_32_bits ()
   (* General case *)
   | _, Eq -> C.eq ~dbg x y
   | _, Neq -> C.neq ~dbg x y
@@ -231,22 +215,15 @@ let binary_int_arith_primitive _env dbg kind op x y =
   match (kind : Flambda_kind.Standard_int.t),
         (op : Flambda_primitive.binary_int_arith_op) with
   (* Int64 bits ints on 32-bit archs *)
-  | Naked_int64, Add when C.arch32 ->
-    C.extcall ~alloc:false ~returns:true "caml_int64_add_native" typ_int64 [x; y]
-  | Naked_int64, Sub when C.arch32 ->
-    C.extcall ~alloc:false ~returns:true "caml_int64_sub_native" typ_int64 [x; y]
-  | Naked_int64, Mul when C.arch32 ->
-    C.extcall ~alloc:false ~returns:true "caml_int64_mul_native" typ_int64 [x; y]
-  | Naked_int64, Div when C.arch32 ->
-    C.extcall ~alloc:true ~returns:true "caml_int64_div_native" typ_int64 [x; y]
-  | Naked_int64, Mod when C.arch32 ->
-    C.extcall ~alloc:true ~returns:true "caml_int64_mod_native" typ_int64 [x; y]
-  | Naked_int64, And when C.arch32 ->
-    C.extcall ~alloc:false ~returns:true "caml_int64_and_native" typ_int64 [x; y]
-  | Naked_int64, Or when C.arch32 ->
-    C.extcall ~alloc:false ~returns:true "caml_int64_or_native" typ_int64 [x; y]
+  | Naked_int64, Add
+  | Naked_int64, Sub
+  | Naked_int64, Mul
+  | Naked_int64, Div
+  | Naked_int64, Mod
+  | Naked_int64, And
+  | Naked_int64, Or
   | Naked_int64, Xor when C.arch32 ->
-    C.extcall ~alloc:false ~returns:true "caml_int64_xor_native" typ_int64 [x; y]
+    unsupported_32_bits ()
   (* Tagged integers *)
   | Tagged_immediate, Add -> C.add_int_caml x y dbg
   | Tagged_immediate, Sub -> C.sub_int_caml x y dbg
@@ -333,18 +310,11 @@ let binary_int_comp_primitive _env dbg kind signed cmp x y =
         (signed : Flambda_primitive.signed_or_unsigned),
         (cmp : Flambda_primitive.ordered_comparison) with
   (* XXX arch32 cases need [untag_int] now. *)
-  | Naked_int64, Signed, Lt when C.arch32 ->
-    C.extcall ~alloc:true ~returns:true "caml_lessthan" typ_int
-      [C.box_int64 ~dbg x; C.box_int64 ~dbg y]
-  | Naked_int64, Signed, Le when C.arch32 ->
-    C.extcall ~alloc:true ~returns:true "caml_lessequal" typ_int
-      [C.box_int64 ~dbg x; C.box_int64 ~dbg y]
-  | Naked_int64, Signed, Gt when C.arch32 ->
-    C.extcall ~alloc:true ~returns:true "caml_greaterthan" typ_int
-      [C.box_int64 ~dbg x; C.box_int64 ~dbg y]
+  | Naked_int64, Signed, Lt
+  | Naked_int64, Signed, Le
+  | Naked_int64, Signed, Gt
   | Naked_int64, Signed, Ge when C.arch32 ->
-    C.extcall ~alloc:true ~returns:true "caml_greaterequal" typ_int
-      [C.box_int64 ~dbg x; C.box_int64 ~dbg y]
+    unsupported_32_bits ()
   | Naked_int64, Unsigned, (Lt | Le | Gt | Ge) when C.arch32 ->
     todo() (* There are no runtime C functions to do that afaict *)
   (* Tagged integers *)
@@ -414,9 +384,15 @@ let binary_float_comp_primitive_yielding_int _env dbg x y =
 let unary_primitive env dbg f arg =
   match (f : Flambda_primitive.unary_primitive) with
   | Duplicate_array _ ->
-    None, C.extcall ~alloc:true ~returns:true "caml_obj_dup" typ_val [arg]
+    None, 
+    C.extcall ~alloc:true ~returns:true
+      ~ty_args:[C.exttype_of_kind Flambda_kind.value]
+      "caml_obj_dup" typ_val [arg]
   | Duplicate_block _ ->
-    None, C.extcall ~alloc:true ~returns:true "caml_obj_dup" typ_val [arg]
+    None, 
+    C.extcall ~alloc:true ~returns:true
+      ~ty_args:[C.exttype_of_kind Flambda_kind.value]
+      "caml_obj_dup" typ_val [arg]
   | Is_int ->
     None, C.and_ ~dbg arg (C.int ~dbg 1)
   | Get_tag ->
@@ -446,6 +422,7 @@ let unary_primitive env dbg f arg =
        between different register kinds (e.g. integer to XMM registers
        on x86-64). *)
     None, C.extcall ~alloc:false ~returns:true
+      ~ty_args:[C.exttype_of_kind Flambda_kind.naked_int64]
       "caml_int64_float_of_bits_unboxed"
       typ_float
       [arg]
@@ -871,7 +848,7 @@ and let_cont_exn env res k body vars handle id arity =
     C.trywith
       ~dbg:Debuginfo.none
       ~kind:(Delayed id)
-      ~body ~exn_var ~handler
+      ~body ~exn_var ~handler ()
   in
   wrap_let_cont_exn_body trywith extra_vars, res
 
@@ -992,7 +969,7 @@ and apply_call env e =
       in
       C.indirect_full_call ~dbg ty f args, env, effs
     end
-  | Call_kind.C_call { alloc; return_arity; _ } ->
+  | Call_kind.C_call { alloc; return_arity; param_arity;_ } ->
     let f = function_name f in
     (* CR vlaviron: temporary hack to recover the right symbol *)
     let len = String.length f in
@@ -1002,8 +979,9 @@ and apply_call env e =
     let returns = apply_returns e in
     let args, env, _ = arg_list env args in
     let ty = machtype_of_return_arity return_arity in
+    let ty_args = List.map C.exttype_of_kind param_arity in
     let wrap = wrap_extcall_result return_arity in
-    wrap dbg (C.extcall ~dbg ~alloc ~returns f ty args), env, effs
+    wrap dbg (C.extcall ~dbg ~alloc ~returns ~ty_args f ty args), env, effs
   | Call_kind.Method { kind; obj; } ->
     let obj, env, _ = simple env obj in
     let meth, env, _ = simple env f in

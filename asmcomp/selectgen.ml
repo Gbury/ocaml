@@ -140,11 +140,7 @@ let env_empty = {
 
 let oper_result_type = function
     Capply ty -> ty
-<<<<<<< HEAD
-  | Cextcall { func = _; ty; alloc = _; label_after = _; returns = _; } -> ty
-=======
-  | Cextcall(_s, ty_res, _ty_args, _alloc) -> ty_res
->>>>>>> ocaml/4.12
+  | Cextcall { func = _; ty; alloc = _; ty_args = _; returns = _; } -> ty
   | Cload (c, _) ->
       begin match c with
       | Word_val -> typ_val
@@ -517,21 +513,9 @@ method select_operation op args _dbg =
   | (Capply _, Cconst_symbol (func, _dbg) :: rem) ->
     (Icall_imm { func; }, rem)
   | (Capply _, _) ->
-<<<<<<< HEAD
-    let label_after = Cmm.new_label () in
-    (Icall_ind { label_after; }, args)
-  | (Cextcall { func; ty = _; alloc;label_after; returns; }, _) ->
-    let label_after =
-      match label_after with
-      | None -> Cmm.new_label ()
-      | Some label_after -> label_after
-    in
-    Iextcall { func; alloc; label_after; returns; }, args
-=======
     (Icall_ind, args)
-  | (Cextcall(func, ty_res, ty_args, alloc), _) ->
-    Iextcall { func; ty_res; ty_args; alloc; }, args
->>>>>>> ocaml/4.12
+  | (Cextcall { func; ty = _; alloc; returns; ty_args }, _) ->
+    Iextcall { func; alloc; returns; ty_args }, args
   | (Cload (chunk, _mut), [arg]) ->
       let (addr, eloc) = self#select_addressing chunk arg in
       (Iload(chunk, addr), [eloc])
@@ -794,31 +778,16 @@ method emit_expr (env:environment) exp =
               self#insert_move_results env loc_res rd stack_ofs;
               set_traps_for_raise env;
               Some rd
-<<<<<<< HEAD
-          | Iextcall { returns; _ } ->
-              let spacetime_reg =
-                self#about_to_emit_call env (Iop new_op) [| |] dbg
-              in
-              let (loc_arg, stack_ofs) = self#emit_extcall_args env new_args in
-              self#maybe_emit_spacetime_move env ~spacetime_reg;
-=======
-          | Iextcall { ty_args; _} ->
-              let (loc_arg, stack_ofs) =
-                self#emit_extcall_args env ty_args new_args in
->>>>>>> ocaml/4.12
+          | Iextcall { returns; ty_args; _ } ->
+              let (loc_arg, stack_ofs) = self#emit_extcall_args env ty_args new_args in
               let rd = self#regs_for ty in
               let loc_res =
                 self#insert_op_debug env new_op dbg
                   loc_arg (Proc.loc_external_results (Reg.typv rd)) in
               self#insert_move_results env loc_res rd stack_ofs;
-<<<<<<< HEAD
               set_traps_for_raise env;
               if returns then Some rd else None
-          | Ialloc { bytes = _; spacetime_index; label_after_call_gc; } ->
-=======
-              Some rd
-          | Ialloc { bytes = _; } ->
->>>>>>> ocaml/4.12
+          | Ialloc { bytes = _; _ } ->
               let rd = self#regs_for typ_val in
               let bytes = size_expr env (Ctuple new_args) in
               assert (bytes mod Arch.size_addr = 0);
@@ -1209,18 +1178,9 @@ method emit_tail (env:environment) exp =
             Icall_ind ->
               let r1 = self#emit_tuple env new_args in
               let rarg = Array.sub r1 1 (Array.length r1 - 1) in
-<<<<<<< HEAD
-              let (loc_arg, stack_ofs) = Proc.loc_arguments rarg in
-              if stack_ofs = 0 && trap_stack_is_empty env then begin
-                let call = Iop (Itailcall_ind { label_after; }) in
-                let spacetime_reg =
-                  self#about_to_emit_call env call [| r1.(0) |] dbg
-                in
-=======
               let (loc_arg, stack_ofs) = Proc.loc_arguments (Reg.typv rarg) in
-              if stack_ofs = 0 then begin
+              if stack_ofs = 0 && trap_stack_is_empty env then begin
                 let call = Iop (Itailcall_ind) in
->>>>>>> ocaml/4.12
                 self#insert_moves env rarg loc_arg;
                 self#insert_debug env call dbg
                             (Array.append [|r1.(0)|] loc_arg) [||];
@@ -1236,32 +1196,14 @@ method emit_tail (env:environment) exp =
               end
           | Icall_imm { func; } ->
               let r1 = self#emit_tuple env new_args in
-<<<<<<< HEAD
-              let (loc_arg, stack_ofs) = Proc.loc_arguments r1 in
-              if stack_ofs = 0 && trap_stack_is_empty env then begin
-                let call = Iop (Itailcall_imm { func; label_after; }) in
-                let spacetime_reg =
-                  self#about_to_emit_call env call [| |] dbg
-                in
-=======
               let (loc_arg, stack_ofs) = Proc.loc_arguments (Reg.typv r1) in
-              if stack_ofs = 0 then begin
+              if stack_ofs = 0 && trap_stack_is_empty env then begin
                 let call = Iop (Itailcall_imm { func; }) in
->>>>>>> ocaml/4.12
                 self#insert_moves env r1 loc_arg;
                 self#insert_debug env call dbg loc_arg [||];
-<<<<<<< HEAD
               end else if func = !current_function_name && trap_stack_is_empty env then begin
-                let call = Iop (Itailcall_imm { func; label_after; }) in
-                let loc_arg' = Proc.loc_parameters r1 in
-                let spacetime_reg =
-                  self#about_to_emit_call env call [| |] dbg
-                in
-=======
-              end else if func = !current_function_name then begin
                 let call = Iop (Itailcall_imm { func; }) in
                 let loc_arg' = Proc.loc_parameters (Reg.typv r1) in
->>>>>>> ocaml/4.12
                 self#insert_moves env r1 loc_arg';
                 self#insert_debug env call dbg loc_arg' [||];
               end else begin
@@ -1374,23 +1316,10 @@ method emit_tail (env:environment) exp =
       in
       let s2 = self#emit_tail_sequence env_handler e2 in
       self#insert env
-<<<<<<< HEAD
         (Itrywith(s1, kind,
                   (env_handler.trap_stack,
                    instr_cons (Iop Imove) [|Proc.loc_exn_bucket|] rv s2)))
         [||] [||]
-=======
-        (Itrywith(s1#extract,
-                  instr_cons (Iop Imove) [|Proc.loc_exn_bucket|] rv s2))
-        [||] [||];
-      begin match opt_r1 with
-        None -> ()
-      | Some r1 ->
-          let loc = Proc.loc_results (Reg.typv r1) in
-          self#insert_moves env r1 loc;
-          self#insert env Ireturn loc [||]
-      end
->>>>>>> ocaml/4.12
   | Cop _
   | Cconst_int _ | Cconst_natint _ | Cconst_float _ | Cconst_symbol _
   | Cvar _

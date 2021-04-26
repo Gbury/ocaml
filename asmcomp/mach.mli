@@ -15,12 +15,6 @@
 
 (* Representation of machine code by sequences of pseudoinstructions *)
 
-<<<<<<< HEAD
-(** N.B. Backends vary in their treatment of call gc and checkbound
-    points.  If the positioning of any labels associated with these is
-    important for some new feature in the compiler, the relevant backends'
-    behaviour should be checked. *)
-type label = Cmm.label
 
 type trap_stack =
   | Uncaught
@@ -30,8 +24,6 @@ type trap_stack =
   | Specific_trap of Cmm.trywith_shared_label * trap_stack
   (** Current handler is a delayed/shared Trywith *)
 
-=======
->>>>>>> ocaml/4.12
 type integer_comparison =
     Isigned of Cmm.integer_comparison
   | Iunsigned of Cmm.integer_comparison
@@ -60,22 +52,12 @@ type operation =
   | Iconst_int of nativeint
   | Iconst_float of int64
   | Iconst_symbol of string
-<<<<<<< HEAD
-  | Icall_ind of { label_after : label; }
-  | Icall_imm of { func : string; label_after : label; }
-  | Itailcall_ind of { label_after : label; }
-  | Itailcall_imm of { func : string; label_after : label; }
-  | Iextcall of { func : string; alloc : bool;
-                  label_after : label; returns : bool; }
-=======
   | Icall_ind
-  | Icall_imm of { func : string; }
+  | Icall_imm of { func : string }
   | Itailcall_ind
   | Itailcall_imm of { func : string; }
-  | Iextcall of { func : string;
-                  ty_res : Cmm.machtype; ty_args : Cmm.exttype list;
-                  alloc : bool; }
->>>>>>> ocaml/4.12
+  | Iextcall of { func : string; alloc : bool;
+                  ty_args : Cmm.exttype list; returns : bool; }
   | Istackoffset of int
   | Iload of Cmm.memory_chunk * Arch.addressing_mode
   | Istore of Cmm.memory_chunk * Arch.addressing_mode * bool

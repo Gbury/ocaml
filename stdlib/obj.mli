@@ -27,13 +27,8 @@ external obj : t -> 'a = "%identity"
 external magic : 'a -> 'b = "%identity"
 val [@inline always] is_block : t -> bool
 external is_int : t -> bool = "%obj_is_int"
-<<<<<<< HEAD
-external tag : t -> int = "caml_obj_tag"
-val size : t -> int
-=======
 external tag : t -> int = "caml_obj_tag" [@@noalloc]
-external size : t -> int = "%obj_size"
->>>>>>> ocaml/4.12
+val size : t -> int
 external reachable_words : t -> int = "caml_obj_reachable_words"
   (**
      Computes the total size (in words, including the headers) of all

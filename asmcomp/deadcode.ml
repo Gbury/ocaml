@@ -38,13 +38,8 @@ let append a b =
 
 let rec deadcode i =
   match i.desc with
-<<<<<<< HEAD
-  | Iend | Ireturn _ | Iop(Itailcall_ind _) | Iop(Itailcall_imm _) | Iraise _ ->
-      let regs = Reg.add_set_array i.live arg in
-=======
-  | Iend | Ireturn | Iop(Itailcall_ind) | Iop(Itailcall_imm _) | Iraise _ ->
+  | Iend | Ireturn _ | Iop(Itailcall_ind) | Iop(Itailcall_imm _) | Iraise _ ->
       let regs = Reg.add_set_array i.live i.arg in
->>>>>>> ocaml/4.12
       { i; regs; exits = Int.Set.empty; }
   | Iop op ->
       let s = deadcode i.next in

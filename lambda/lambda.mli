@@ -293,11 +293,8 @@ type function_attribute = {
 
 type scoped_location = Debuginfo.Scoped_location.t
 
-<<<<<<< HEAD
 val print_scoped_location : Format.formatter -> scoped_location -> unit
 
-=======
->>>>>>> ocaml/4.12
 type lambda =
     Lvar of Ident.t
   | Lconst of structured_constant
@@ -337,11 +334,7 @@ and lambda_apply =
   { ap_func : lambda;
     ap_args : lambda list;
     ap_loc : scoped_location;
-<<<<<<< HEAD
-    ap_should_be_tailcall : bool;       (* true if [@tailcall] was specified *)
-=======
     ap_tailcall : tailcall_attribute;
->>>>>>> ocaml/4.12
     ap_inlined : inline_attribute; (* specified with the [@inlined] attribute *)
     ap_specialised : specialise_attribute; }
 

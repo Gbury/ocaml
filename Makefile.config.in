@@ -129,11 +129,7 @@ ARCH=@arch@
 # Whether the architecture has 64 bits
 ARCH64=@arch64@
 
-<<<<<<< HEAD
-# Endianess for this architecture
-=======
 # Endianness for this architecture
->>>>>>> ocaml/4.12
 ENDIANNESS=@endianness@
 
 ### Name of architecture model for the native-code compiler.

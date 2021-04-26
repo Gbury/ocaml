@@ -117,7 +117,7 @@ and apply = {
   continuation : Continuation.t;
   exn_continuation : exn_continuation;
   loc : Lambda.scoped_location;
-  should_be_tailcall : bool;
+  tailcall : Lambda.tailcall_attribute;
   inlined : Lambda.inline_attribute;
   specialised : Lambda.specialise_attribute;
 }

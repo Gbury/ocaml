@@ -86,19 +86,6 @@ val make : int -> char -> string
 (** [make n c] is a string of length [n] with each index holding the
     character [c].
 
-<<<<<<< HEAD
-external get : string -> int -> char = "%string_safe_get"
-(** [String.get s n] returns the character at index [n] in string [s].
-   You can also write [s.[n]] instead of [String.get s n].
-   @raise Invalid_argument if [n] not a valid index in [s]. *)
-
-external set : bytes -> int -> char -> unit = "%string_safe_set"
-  [@@ocaml.deprecated "Use BytesLabels.set instead."]
-(** [String.set s n c] modifies byte sequence [s] in place,
-   replacing the byte at index [n] with [c].
-   You can also write [s.[n] <- c] instead of [String.set s n c].
-   @raise Invalid_argument if [n] is not a valid index in [s].
-=======
     @raise Invalid_argument if [n < 0] or [n > ]{!Sys.max_string_length}. *)
 
 val init : int -> f:(int -> char) -> string
@@ -110,39 +97,18 @@ val init : int -> f:(int -> char) -> string
 
 external length : string -> int = "%string_length"
 (** [length s] is the length (number of bytes/characters) of [s]. *)
->>>>>>> ocaml/4.12
 
 external get : string -> int -> char = "%string_safe_get"
 (** [get s i] is the character at index [i] in [s]. This is the same
     as writing [s.[i]].
 
-<<<<<<< HEAD
-external create : int -> bytes = "caml_create_string"
-  [@@ocaml.deprecated "Use BytesLabels.create instead."]
-(** [String.create n] returns a fresh byte sequence of length [n].
-   The sequence is uninitialized and contains arbitrary bytes.
-   @raise Invalid_argument if [n < 0] or [n > ]{!Sys.max_string_length}.
-=======
     @raise Invalid_argument if [i] not an index of [s]. *)
 
 (** {1:concat Concatenating}
->>>>>>> ocaml/4.12
 
     {b Note.} The {!Stdlib.( ^ )} binary operator concatenates two
     strings. *)
 
-<<<<<<< HEAD
-val make : int -> char -> string
-(** [String.make n c] returns a fresh string of length [n],
-   filled with the character [c].
-   @raise Invalid_argument if [n < 0] or [n > ]{!Sys.max_string_length}. *)
-
-val init : int -> f:(int -> char) -> string
-(** [init n f] returns a string of length [n],
-    with character [i] initialized to the result of [f i].
-   @raise Invalid_argument if [n < 0] or [n > ]{!Sys.max_string_length}.
-   @since 4.02.0 *)
-=======
 val concat : sep:string -> string list -> string
 (** [concat ~sep ss] concatenates the list of strings [ss], inserting
     the separator string [sep] between each.
@@ -156,27 +122,11 @@ val equal : t -> t -> bool
 (** [equal s0 s1] is [true] if and only if [s0] and [s1] are character-wise
     equal.
     @since 4.03.0 (4.05.0 in StringLabels) *)
->>>>>>> ocaml/4.12
 
 val compare : t -> t -> int
 (** [compare s0 s1] sorts [s0] and [s1] in lexicographical order. [compare]
     behaves like {!Stdlib.compare} on strings but may be more efficient. *)
 
-<<<<<<< HEAD
-val sub : string -> pos:int -> len:int -> string
-(** [String.sub s start len] returns a fresh string of length [len],
-   containing the substring of [s] that starts at position [start] and
-   has length [len].
-   @raise Invalid_argument if [start] and [len] do not
-   designate a valid substring of [s]. *)
-
-val fill : bytes -> pos:int -> len:int -> char -> unit
-  [@@ocaml.deprecated "Use BytesLabels.fill instead."]
-(** [String.fill s start len c] modifies byte sequence [s] in place,
-   replacing [len] bytes by [c], starting at [start].
-   @raise Invalid_argument if [start] and [len] do not
-   designate a valid substring of [s].
-=======
 val contains_from : string -> int -> char -> bool
 (** [contains_from s start c] is [true] if and only if [c] appears in [s]
     after position [start].
@@ -189,29 +139,16 @@ val rcontains_from : string -> int -> char -> bool
 
     @raise Invalid_argument if [stop < 0] or [stop+1] is not a valid
     position in [s]. *)
->>>>>>> ocaml/4.12
 
 val contains : string -> char -> bool
 (** [contains s c] is {!String.contains_from}[ s 0 c]. *)
 
-<<<<<<< HEAD
-val blit :
-  src:string -> src_pos:int -> dst:bytes -> dst_pos:int -> len:int
-  -> unit
-(** [String.blit src srcoff dst dstoff len] copies [len] bytes
-   from the string [src], starting at index [srcoff],
-   to byte sequence [dst], starting at character number [dstoff].
-   @raise Invalid_argument if [srcoff] and [len] do not
-   designate a valid range of [src], or if [dstoff] and [len]
-   do not designate a valid range of [dst]. *)
-=======
 (** {1:extract Extracting substrings} *)
 
 val sub : string -> pos:int -> len:int -> string
 (** [sub s ~pos ~len] is a string of length [len], containing the
     substring of [s] that starts at position [pos] and has length
     [len].
->>>>>>> ocaml/4.12
 
     @raise Invalid_argument if [pos] and [len] do not designate a valid
     substring of [s]. *)
@@ -254,35 +191,21 @@ val escaped : string -> string
 (** [escaped s] is [s] with special characters represented by escape
     sequences, following the lexical conventions of OCaml.
 
-<<<<<<< HEAD
-val index : string -> char -> int
-(** [String.index s c] returns the index of the first
-   occurrence of character [c] in string [s].
-   @raise Not_found if [c] does not occur in [s]. *)
-=======
     All characters outside the US-ASCII printable range \[0x20;0x7E\] are
     escaped, as well as backslash (0x2F) and double-quote (0x22).
 
     The function {!Scanf.unescaped} is a left inverse of [escaped],
     i.e. [Scanf.unescaped (escaped s) = s] for any string [s] (unless
     [escaped s] fails).
->>>>>>> ocaml/4.12
 
     @raise Invalid_argument if the result is longer than
     {!Sys.max_string_length} bytes. *)
 
-<<<<<<< HEAD
-val rindex : string -> char -> int
-(** [String.rindex s c] returns the index of the last
-   occurrence of character [c] in string [s].
-   @raise Not_found if [c] does not occur in [s]. *)
-=======
 val uppercase_ascii : string -> string
 (** [uppercase_ascii s] is [s] with all lowercase letters
     translated to uppercase, using the US-ASCII character set.
 
     @since 4.03.0 (4.05.0 in StringLabels) *)
->>>>>>> ocaml/4.12
 
 val lowercase_ascii : string -> string
 (** [lowercase_ascii s] is [s] with all uppercase letters translated
@@ -317,84 +240,42 @@ val iteri : f:(int -> char -> unit) -> string -> unit
 (** {1:searching Searching} *)
 
 val index_from : string -> int -> char -> int
-<<<<<<< HEAD
-(** [String.index_from s i c] returns the index of the
-   first occurrence of character [c] in string [s] after position [i].
-   [String.index s c] is equivalent to [String.index_from s 0 c].
-   @raise Invalid_argument if [i] is not a valid position in [s].
-   @raise Not_found if [c] does not occur in [s] after position [i]. *)
-=======
 (** [index_from s i c] is the index of the first occurrence of [c] in
     [s] after position [i].
 
     @raise Not_found if [c] does not occur in [s] after position [i].
     @raise Invalid_argument if [i] is not a valid position in [s]. *)
->>>>>>> ocaml/4.12
 
 
-<<<<<<< HEAD
-    [String.index_opt s c] is equivalent to [String.index_from_opt s 0 c].
-    @raise Invalid_argument if [i] is not a valid position in [s].
-=======
 val index_from_opt : string -> int -> char -> int option
 (** [index_from_opt s i c] is the index of the first occurrence of [c]
     in [s] after position [i] (if any).
->>>>>>> ocaml/4.12
 
     @raise Invalid_argument if [i] is not a valid position in [s].
     @since 4.05 *)
 
 val rindex_from : string -> int -> char -> int
-<<<<<<< HEAD
-(** [String.rindex_from s i c] returns the index of the
-   last occurrence of character [c] in string [s] before position [i+1].
-   [String.rindex s c] is equivalent to
-   [String.rindex_from s (String.length s - 1) c].
-   @raise Invalid_argument if [i+1] is not a valid position in [s].
-   @raise Not_found if [c] does not occur in [s] before position [i+1]. *)
-=======
 (** [rindex_from s i c] is the index of the last occurrence of [c] in
     [s] before position [i+1].
 
     @raise Not_found if [c] does not occur in [s] before position [i+1].
     @raise Invalid_argument if [i+1] is not a valid position in [s]. *)
->>>>>>> ocaml/4.12
 
 val rindex_from_opt : string -> int -> char -> int option
 (** [rindex_from_opt s i c] is the index of the last occurrence of [c]
     in [s] before position [i+1] (if any).
 
-<<<<<<< HEAD
-   [String.rindex_opt s c] is equivalent to
-   [String.rindex_from_opt s (String.length s - 1) c].
-   @raise Invalid_argument if [i+1] is not a valid position in [s].
-=======
     @raise Invalid_argument if [i+1] is not a valid position in [s].
     @since 4.05 *)
 
 val index : string -> char -> int
 (** [index s c] is {!String.index_from}[ s 0 c]. *)
->>>>>>> ocaml/4.12
 
 val index_opt : string -> char -> int option
 (** [index_opt s c] is {!String.index_from_opt}[ s 0 c].
 
     @since 4.05 *)
 
-<<<<<<< HEAD
-val contains_from : string -> int -> char -> bool
-(** [String.contains_from s start c] tests if character [c]
-   appears in [s] after position [start].
-   [String.contains s c] is equivalent to
-   [String.contains_from s 0 c].
-   @raise Invalid_argument if [start] is not a valid position in [s]. *)
-
-val rcontains_from : string -> int -> char -> bool
-(** [String.rcontains_from s stop c] tests if character [c]
-   appears in [s] before position [stop+1].
-   @raise Invalid_argument if [stop < 0] or [stop+1] is not a valid
-   position in [s]. *)
-=======
 val rindex : string -> char -> int
 (** [rindex s c] is {!String.rindex_from}[ s (length s - 1) c]. *)
 
@@ -404,7 +285,6 @@ val rindex_opt : string -> char -> int option
     @since 4.05 *)
 
 (** {1:converting Converting} *)
->>>>>>> ocaml/4.12
 
 val to_seq : t -> char Seq.t
 (** [to_seq s] is a sequence made of the string's characters in

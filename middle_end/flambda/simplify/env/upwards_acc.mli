@@ -21,11 +21,7 @@ type t
 (** Print a upwards accumulator to a formatter. *)
 val print : Format.formatter -> t -> unit
 
-val create
-   : required_variables:Variable.Set.t
-  -> Upwards_env.t
-  -> Downwards_acc.t
-  -> t
+val create : Upwards_env.t -> Downwards_acc.t -> t
 
 val creation_dacc : t -> Downwards_acc.t
 
@@ -35,8 +31,6 @@ val uenv : t -> Upwards_env.t
 val cost_metrics : t -> Flambda.Cost_metrics.t
 
 val code_age_relation : t -> Code_age_relation.t
-
-val required_variables : t -> Variable.Set.t
 
 (** Return the lifted constants that still need to be placed (i.e. have
     [Let]-expressions made for them) on the upwards traversal. *)

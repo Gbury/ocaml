@@ -142,7 +142,7 @@ method is_immediate_test _cmp n = is_immediate n
 
 method! is_simple_expr e =
   match e with
-  | Cop(Cextcall { func = fn; ty = _; alloc = _; label_after = _; }, args, _)
+  | Cop(Cextcall { func = fn; ty = _; alloc = _; ty_args = _; }, args, _)
     when List.mem fn inline_ops ->
       (* inlined ops are simple if their arguments are *)
       List.for_all self#is_simple_expr args
@@ -151,7 +151,7 @@ method! is_simple_expr e =
 
 method! effects_of e =
   match e with
-  | Cop(Cextcall { func = fn; ty = _; alloc = _; label_after = _; }, args, _)
+  | Cop(Cextcall { func = fn; ty = _; alloc = _; ty_args = _; }, args, _)
     when List.mem fn inline_ops ->
       Selectgen.Effect_and_coeffect.join_list_map args self#effects_of
   | _ ->
@@ -201,11 +201,7 @@ method! select_operation op args dbg =
       self#select_floatarith true Imulf Ifloatmul args
   | Cdivf ->
       self#select_floatarith false Idivf Ifloatdiv args
-<<<<<<< HEAD
-  | Cextcall { func = "sqrt"; ty = _; alloc = false; label_after = _; } ->
-=======
-  | Cextcall("sqrt", _, _, false) ->
->>>>>>> ocaml/4.12
+  | Cextcall { func = "sqrt"; ty = _; alloc = false; ty_args = _; } ->
      begin match args with
        [Cop(Cload ((Double|Double_u as chunk), _), [loc], _dbg)] ->
          let (addr, arg) = self#select_addressing chunk loc in
@@ -226,15 +222,15 @@ method! select_operation op args dbg =
           super#select_operation op args dbg
       end
   | Cextcall { func = "caml_bswap16_direct"; ty = _;
-               alloc = _; label_after = _; } ->
+               alloc = _; } ->
       (Ispecific (Ibswap 16), args)
   | Cextcall { func = "caml_int32_direct_bswap"; ty = _;
-               alloc = _; label_after = _; } ->
+               alloc = _; } ->
       (Ispecific (Ibswap 32), args)
   | Cextcall { func = "caml_int64_direct_bswap"; ty = _;
-               alloc = _; label_after = _; }
+               alloc = _; }
   | Cextcall { func = "caml_nativeint_direct_bswap"; ty =  _;
-               alloc = _; label_after = _; } ->
+               alloc = _; } ->
       (Ispecific (Ibswap 64), args)
   (* Recognize sign extension *)
   | Casr ->

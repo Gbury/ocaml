@@ -589,19 +589,11 @@ AS_CASE([$host],
         [AC_MSG_ERROR(m4_normalize([This version of Mingw GCC is too old.
           Please use GCC version 5 or above.]))],
       [gcc-*],
-<<<<<<< HEAD
-        [internal_cflags="-Wno-unused $gcc_warnings \
--fexcess-precision=standard"
-        # TODO: see whether the code can be fixed to avoid -Wno-unused
-        common_cflags="-O2 -fno-strict-aliasing -fwrapv -mms-bitfields"
-        internal_cppflags='-DUNICODE -D_UNICODE'
-=======
         [internal_cflags="-Wno-unused $cc_warnings \
 -fexcess-precision=standard"
         # TODO: see whether the code can be fixed to avoid -Wno-unused
         common_cflags="-O2 -fno-strict-aliasing -fwrapv -mms-bitfields"
         internal_cppflags='-D__USE_MINGW_ANSI_STDIO=0 -DUNICODE -D_UNICODE'
->>>>>>> ocaml/4.12
         internal_cppflags="$internal_cppflags -DWINDOWS_UNICODE="
         internal_cppflags="${internal_cppflags}\$(WINDOWS_UNICODE)"],
       [AC_MSG_ERROR([Unsupported C compiler for a Mingw build])])],
@@ -630,17 +622,10 @@ AS_CASE([$host],
     [gcc-4-*],
       [common_cflags="-std=gnu99 -O2 -fno-strict-aliasing -fwrapv \
 -fno-builtin-memcmp";
-<<<<<<< HEAD
-      internal_cflags="$gcc_warnings -fexcess-precision=standard"],
-    [gcc-*],
-      [common_cflags="-O2 -fno-strict-aliasing -fwrapv";
-      internal_cflags="$gcc_warnings -fno-common \
-=======
       internal_cflags="$cc_warnings -fexcess-precision=standard"],
     [gcc-*],
       [common_cflags="-O2 -fno-strict-aliasing -fwrapv";
       internal_cflags="$cc_warnings -fno-common \
->>>>>>> ocaml/4.12
 -fexcess-precision=standard"],
     [msvc-*],
       [common_cflags="-nologo -O2 -Gy- -MD $cc_warnings"
@@ -813,11 +798,7 @@ AC_MSG_NOTICE([Target is a $bits bits architecture])
 
 AC_C_BIGENDIAN(
   [
-<<<<<<< HEAD
-    AC_DEFINE([ARCH_BIG_ENDIAN], [1]),
-=======
     AC_DEFINE([ARCH_BIG_ENDIAN], [1])
->>>>>>> ocaml/4.12
     [endianness="be"]
   ],
   [endianness="le"],
@@ -1263,11 +1244,8 @@ AS_CASE([$host],
 AS_IF([test "x$enable_instrumented_runtime" != "xno" ],
   [
     AS_CASE([$host],
-<<<<<<< HEAD
-=======
     [sparc-sun-solaris*],
       [instrumented_runtime=false],
->>>>>>> ocaml/4.12
     [*-*-windows],
       [instrumented_runtime=true],
     [*-apple-darwin*], [
@@ -1323,12 +1301,9 @@ AS_CASE([$host],
   [*-*-haiku],
     [cclibs="$cclibs -lnetwork"
     sockets=true],
-<<<<<<< HEAD
-=======
   [*-*-solaris*],
     [cclibs="$cclibs -lsocket -lnsl"
     sockets=true],
->>>>>>> ocaml/4.12
   [
     AC_CHECK_FUNC([socket])
     AC_CHECK_FUNC([socketpair])
@@ -1718,75 +1693,6 @@ AS_IF([test x"$enable_systhreads" = "xno"],
         [systhread_support=false
         AC_MSG_NOTICE([the POSIX threads library is not supported])])])])])
 
-<<<<<<< HEAD
-## BFD (Binary File Description) library
-
-bfd_cppflags=""
-bfd_ldflags=""
-bfd_ldlibs=""
-
-AS_IF([test x"$with_bfd" != "xno"],
-  [bfd_available=false
-  AS_CASE([$host],
-    [x86_64-*-darwin*],
-      [AS_IF([test -z "$BFD_INCLUDE_DIR"],
-        [BFD_INCLUDE_DIR="/opt/local/include"])
-      AS_IF([test -z "$BFD_LIB_DIR"],
-        [BFD_LIB_DIR="/opt/local/lib"])],
-    [*-*-openbsd*|*-*-freebsd*],
-      [AS_IF([test -z "$BFD_INCLUDE_DIR"],
-        [BFD_INCLUDE_DIR="/usr/local/include"])
-      AS_IF([test -z "$BFD_LIB_DIR"],
-        [BFD_LIB_DIR="/usr/local/lib"])])
-  AS_IF([test -n "$BFD_INCLUDE_DIR"],
-    [bfd_cppflags="-I$BFD_INCLUDE_DIR"])
-  AS_IF([test -n "$BFD_LIB_DIR"],
-    [bfd_ldflags="-L$BFD_LIB_DIR"])
-  SAVED_CPPFLAGS="$CPPFLAGS"
-  SAVED_LDFLAGS="$LDFLAGS"
-  CPPFLAGS="$CPPFLAGS $bfd_cppflags"
-  LDFLAGS="$LDFLAGS $bfd_ldflags"
-  AC_CHECK_HEADER([bfd.h],
-    [bfd_ldlibs=""
-    AC_CHECK_LIB([bfd], [bfd_openr], [bfd_ldlibs="-lbfd"])
-    AS_IF([test -z "$bfd_ldlibs"],
-      [unset ac_cv_lib_bfd_bfd_openr
-      AC_CHECK_LIB([bfd], [bfd_openr],
-        [bfd_ldlibs="-lbfd $DLLIBS"], [], [$DLLIBS])])
-    AS_IF([test -z "$bfd_ldlibs"],
-      [unset ac_cv_lib_bfd_bfd_openr
-      AC_CHECK_LIB([bfd], [bfd_openr],
-        [bfd_ldlibs="-lbfd $DLLIBS -liberty"], [], [$DLLIBS -liberty])])
-    AS_IF([test -z "$bfd_ldlibs"],
-      [unset ac_cv_lib_bfd_bfd_openr
-      AC_CHECK_LIB([bfd], [bfd_openr],
-        [bfd_ldlibs="-lbfd $DLLIBS -liberty -lz"], [], [$DLLIBS -liberty -lz])])
-    AS_IF([test -z "$bfd_ldlibs"],
-      [unset ac_cv_lib_bfd_bfd_openr
-      AC_CHECK_LIB([bfd], [bfd_openr],
-        [bfd_ldlibs="-lbfd $DLLIBS -liberty -lz -lintl"], [],
-        [$DLLIBS -liberty -lz -lintl])])
-    AS_IF([test -n "$bfd_ldlibs"],
-      [bfd_available=true
-      AC_DEFINE([HAS_LIBBFD])])])
-  AS_IF([! $bfd_available],
-    [AS_IF([test x"$with_bfd" = "xyes"],
-      [AC_MSG_ERROR([BFD library support requested but not available])],
-      [bfd_cppflags=""
-      bfd_ldflags=""
-      AC_MSG_NOTICE(m4_normalize([
-        BFD library not found, 'ocamlobjinfo' will be unable to display
-        info on .cmxs files.
-      ]))])])
-  LDFLAGS="$SAVED_LDFLAGS"
-  CPP_FLAGS="$SAVED_CPPFLAGS"],
-  [AC_MSG_NOTICE(m4_normalize([
-    Support for the BFD (Binary File Description) library disabled,
-    'ocamlobjinfo' will be unable to display info on .cmxs files.
-    ]))])
-
-=======
->>>>>>> ocaml/4.12
 ## Does the assembler support debug prefix map and CFI directives
 as_has_debug_prefix_map=false
 asm_cfi_supported=false

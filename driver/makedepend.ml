@@ -586,14 +586,10 @@ let print_version_num () =
   exit 0;
 ;;
 
-<<<<<<< HEAD
-let run_main argv =
-=======
 
 let run_main argv =
   let dep_args_rev : dep_arg list ref = ref [] in
   let add_dep_arg f s = dep_args_rev := (f s) :: !dep_args_rev in
->>>>>>> ocaml/4.12
   Clflags.classic := false;
   Compenv.readenv ppf Before_args;
   Clflags.reset_arguments (); (* reset arguments from ocamlc/ocamlopt *)
@@ -661,12 +657,8 @@ let run_main argv =
     Printf.sprintf "Usage: %s [options] <source files>\nOptions are:"
                    (Filename.basename Sys.argv.(0))
   in
-<<<<<<< HEAD
-  Clflags.parse_arguments argv file_dependencies usage;
-=======
   Clflags.parse_arguments argv (add_dep_arg (fun f -> Src (f, None))) usage;
   process_dep_args (List.rev !dep_args_rev);
->>>>>>> ocaml/4.12
   Compenv.readenv ppf Before_link;
   if !sort_files then sort_files_by_dependencies !files
   else List.iter print_file_dependencies (List.sort compare !files);

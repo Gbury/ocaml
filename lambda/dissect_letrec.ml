@@ -140,8 +140,8 @@ let () = ignore Bug
 
 let lsequence (lam1, lam2) =
   match lam1 with
-  | Lsequence (lam, Lconst (Const_pointer 0)) -> Lsequence (lam, lam2)
-  | Lconst (Const_pointer 0) -> lam2
+  | Lsequence (lam, Lconst (Const_base (Const_int 0))) -> Lsequence (lam, lam2)
+  | Lconst (Const_base (Const_int 0)) -> lam2
   | _ -> Lsequence (lam1, lam2)
 
 let caml_update_dummy_prim =
@@ -366,7 +366,7 @@ let rec prepare_letrec
                 letrec
               in
               let inner_letrec = {
-                effects = Lconst (Const_pointer 0);
+                effects = Lconst (Const_base (Const_int 0));
                 functions = [];
                 (* these can be safely handled in common *)
                 blocks; consts; pre; substitution; letbound;
@@ -385,7 +385,7 @@ let rec prepare_letrec
       in
       let pre =
         List.fold_left (fun pre -> function
-            | Lconst (Const_pointer 0) -> pre
+            | Lconst (Const_base (Const_int 0)) -> pre
             | eff -> fun ~tail -> Lsequence (eff, pre ~tail))
           pre inner_effects
       in
@@ -429,7 +429,7 @@ let rec prepare_letrec
       (* Effect expressions returning unit. The result can be
          pre-declared.  *)
       let consts = match current_let with
-        | Some cl -> (cl.ident, Const_pointer 0) :: letrec.consts
+        | Some cl -> (cl.ident, Const_base (Const_int 0)) :: letrec.consts
         | None -> letrec.consts
       in
       { letrec with
@@ -501,7 +501,7 @@ let dissect_letrec ~bindings ~body =
       { blocks = [];
         consts = [];
         pre = (fun ~tail -> tail);
-        effects = Lconst (Const_pointer 0);
+        effects = Lconst (Const_base (Const_int 0));
         functions = [];
         substitution = Ident.Map.empty;
         letbound;

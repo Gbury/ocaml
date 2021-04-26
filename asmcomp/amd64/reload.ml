@@ -66,11 +66,7 @@ inherit Reloadgen.reload_generic as super
 
 method! reload_operation op arg res =
   match op with
-<<<<<<< HEAD
-  | Iintop(Iadd|Isub|Iand|Ior|Ixor|Icheckbound _) ->
-=======
-  | Iintop(Iadd|Isub|Iand|Ior|Ixor|Icomp _|Icheckbound) ->
->>>>>>> ocaml/4.12
+  | Iintop(Iadd|Isub|Iand|Ior|Ixor|Icheckbound) ->
       (* One of the two arguments can reside in the stack, but not both *)
       if stackp arg.(0) && stackp arg.(1)
       then ([|arg.(0); self#makereg arg.(1)|], res)

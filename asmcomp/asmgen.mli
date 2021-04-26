@@ -35,7 +35,6 @@ val compile_implementation
   -> Lambda.program
   -> unit
 
-<<<<<<< HEAD
 (** The type of converters from Lambda to Flambda programs *)
 type middle_end_flambda =
      ppf_dump:Format.formatter
@@ -71,13 +70,11 @@ val compile_implementation_flambda_for_ilambdac
   -> Flambda_middle_end.middle_end_result
   -> unit
 
+val compile_implementation_linear :
+    string -> progname:string -> unit 
+
 (** Information that Flambda needs to know about the backend. *)
 module Flambda_backend : Flambda_backend_intf.S
-=======
-val compile_implementation_linear :
-    string -> progname:string -> unit
->>>>>>> ocaml/4.12
-
 val compile_phrase :
     ppf_dump:Format.formatter -> Cmm.phrase -> unit
 

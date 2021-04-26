@@ -25,6 +25,7 @@ val arch64 : bool
 val typ_int64 : Cmm.machtype
 (** An adequate Cmm machtype for an int64 (including on a 32-bit target). *)
 
+val  exttype_of_kind : Flambda_kind.t -> Cmm.exttype
 
 (** {2 Data items} *)
 
@@ -265,6 +266,7 @@ val trywith :
   body:Cmm.expression ->
   exn_var:Backend_var.With_provenance.t ->
   handler:Cmm.expression ->
+  unit ->
   Cmm.expression
 (** Create a try_with structure. The [exn_var] is the variable bound to the catched
     exception in the handler. *)
@@ -395,8 +397,8 @@ val indirect_full_call :
     a full application (since this enables a few optimisations). *)
 
 val extcall :
-  ?dbg:Debuginfo.t -> ?label:int ->
-  returns:bool -> alloc:bool ->
+  ?dbg:Debuginfo.t ->
+  returns:bool -> alloc:bool -> ty_args:Cmm.exttype list ->
   string -> Cmm.machtype -> Cmm.expression list -> Cmm.expression
 (** Create a C function call. *)
 

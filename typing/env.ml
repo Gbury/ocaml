@@ -819,9 +819,6 @@ let is_imported_opaque modname =
 let register_import_as_opaque modname =
   Persistent_env.register_import_as_opaque !persistent_env modname
 
-let register_import_as_opaque modname =
-  Persistent_env.register_import_as_opaque persistent_env modname
-
 let reset_declaration_caches () =
   Types.Uid.Tbl.clear !value_declarations;
   Types.Uid.Tbl.clear !type_declarations;
@@ -1731,11 +1728,7 @@ and store_type ~check id info env =
         let k = cstr.cstr_uid in
         if not (Types.Uid.Tbl.mem !used_constructors k) then
           let used = constructor_usages () in
-<<<<<<< HEAD
-          Types.Uid.Tbl.add used_constructors k
-=======
           Types.Uid.Tbl.add !used_constructors k
->>>>>>> ocaml/4.12
             (add_constructor_usage ~rebind:false priv used);
           if not (ty_name = "" || ty_name.[0] = '_')
           then !add_delayed_check_forward
@@ -1787,11 +1780,7 @@ and store_extension ~check ~rebind id addr ext env =
     let k = cstr.cstr_uid in
     if not (Types.Uid.Tbl.mem !used_constructors k) then begin
       let used = constructor_usages () in
-<<<<<<< HEAD
-      Types.Uid.Tbl.add used_constructors k
-=======
       Types.Uid.Tbl.add !used_constructors k
->>>>>>> ocaml/4.12
         (add_constructor_usage ~rebind priv used);
       !add_delayed_check_forward
         (fun () ->

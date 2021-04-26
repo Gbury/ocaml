@@ -1884,11 +1884,7 @@ let partial_pred ~lev ~splitting_mode ?(explode=0)
         constrs; labels;
       } in
   try
-<<<<<<< HEAD
-    reset_pattern None true;
-=======
     reset_pattern true;
->>>>>>> ocaml/4.12
     let typed_p = type_pat Value ~lev ~mode env p expected_ty in
     set_state state env;
     (* types are invalidated but we don't need them here *)

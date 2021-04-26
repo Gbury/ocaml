@@ -118,9 +118,6 @@ val function_sections : bool
 
 val has_instrumented_runtime : bool
 (** Whether the instrumented runtime is available *)
-<<<<<<< HEAD
-=======
 
 val naked_pointers : bool
 (** Whether the runtime system supports naked pointers outside the heap *)
->>>>>>> ocaml/4.12
