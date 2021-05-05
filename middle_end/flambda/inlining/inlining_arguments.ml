@@ -191,7 +191,7 @@ module Args = struct
     Clflags.Float_arg_helper.get ~key:round flag
 
   let create ~round = {
-    max_inlining_depth = !Clflags.Flambda.Expert.max_inlining_depth;
+    max_inlining_depth = cost_i !Clflags.inline_max_depth ~round;
     call_cost = cost_f !Clflags.inline_call_cost ~round;
     alloc_cost = cost_f !Clflags.inline_alloc_cost ~round;
     prim_cost = cost_f !Clflags.inline_prim_cost ~round;
