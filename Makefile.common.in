@@ -68,7 +68,7 @@ endif
 
 # CR mshinwell: We should be able to remove this inlining depth setting
 # once the new inliner has been merged.
-OPTCOMPFLAGS=-flambda-expert-max-inlining-depth 3
+OPTCOMPFLAGS=-inline-max-depth 3
 ifeq "$(FUNCTION_SECTIONS)" "true"
 OPTCOMPFLAGS += -function-sections
 endif
