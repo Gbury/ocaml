@@ -20,6 +20,5 @@
 (* *********************************** *)
 
 val filter_non_beneficial_decisions
-  : continuation_is_recursive:bool
- -> Unboxing_types.decision
+  : Unboxing_types.decision
  -> Unboxing_types.decision

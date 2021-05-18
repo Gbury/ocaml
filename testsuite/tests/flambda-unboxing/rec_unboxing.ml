@@ -136,8 +136,10 @@ let () =
     done;
     !r
   in
-  check_not_many_allocs 5. "float-hard-1" aux 1_000 0. 1_000.;
-  check_not_many_allocs 5. "float-hard-2" aux 10_000 0. 10_000.;
+  check_not_many_allocs 5. "float-loop-hard-1-expected-to-fail"
+    aux 1_000 0. 1_000.;
+  check_not_many_allocs 5. "float-loop-hard-2-expected-to-fail"
+    aux 10_000 0. 10_000.;
   (* Check tuple.
      Not currently unboxed. *)
   let aux n ((_x, _y) as t) res =
@@ -149,8 +151,8 @@ let () =
     let x, y = !r in
     x - y = res
   in
-  check_no_alloc "tuple-loop-1" aux 0 (1,2) 1;
-  check_no_alloc "tuple-loop-2" aux 1 (1,2) ~-1;
+  check_no_alloc "tuple-loop-1-expected-to-fail" aux 0 (1,2) 1;
+  check_no_alloc "tuple-loop-2-expected-to-fail" aux 1 (1,2) ~-1;
   (* Check nested tuples.
      Not currently unboxed. *)
   let aux n (((_x, _y), _z) as t) res =
@@ -162,8 +164,8 @@ let () =
     let (x, y), z = !r in
     x + (y - z) = res
   in
-  check_no_alloc "tuple-loop-3" aux 0 ((1,2),3) 4;
-  check_no_alloc "tuple-loop-4" aux 1 ((1,2),3) 2;
+  check_no_alloc "tuple-loop-3-expected-to-fail" aux 0 ((1,2),3) 4;
+  check_no_alloc "tuple-loop-4-expected-to-fail" aux 1 ((1,2),3) 2;
   (* Check tuple+floats.
      Not unboxed yet. *)
   let aux n ((_x, _y) as t) res =
@@ -175,8 +177,8 @@ let () =
     let x, y = !r in
     x +. y = res
   in
-  check_no_alloc "tuple-float-1" aux 0 (1.,2.) 2.;
-  check_no_alloc "tuple-float-2" aux 1 (1.,2.) 6.;
+  check_no_alloc "tuple-float-1-expected-to-fail" aux 0 (1.,2.) 2.;
+  check_no_alloc "tuple-float-2-expected-to-fail" aux 1 (1.,2.) 6.;
   (* Check blocks and floats.
      Not unboxed yet. *)
   let aux n (c1, c2) res =
@@ -191,8 +193,10 @@ let () =
     in
     f = res
   in
-  check_no_alloc "complex-loop-1" aux 0 (Complex.zero, Complex.one) 0.;
-  check_no_alloc "complex-loop-2" aux 1 (Complex.zero, Complex.one) 2.;
+  check_no_alloc "complex-loop-1-expected-to-fail"
+    aux 0 (Complex.zero, Complex.one) 0.;
+  check_no_alloc "complex-loop-2-expected-to-fail"
+    aux 1 (Complex.zero, Complex.one) 2.;
   (* Check variants.
      Not unboxed yet. *)
   let aux n x res =
@@ -209,8 +213,8 @@ let () =
     in
     r = res
   in
-  check_no_alloc "variant-loop-1" aux 0 0 0;
-  check_no_alloc "variant-loop-2" aux 1 0 13;
+  check_no_alloc "variant-loop-1-expected-to-fail" aux 0 0 0;
+  check_no_alloc "variant-loop-2-expected-to-fail" aux 1 0 13;
   (* Check more complicated variant.
      Not unboxed yet. *)
   let aux n (a, b) res =
@@ -231,10 +235,10 @@ let () =
     in
     e = res
   in
-  check_no_alloc "variant-loop-3" aux 0 (1,2) 50;
-  check_no_alloc "variant-loop-4" aux 1 (1,2) 1;
-  check_no_alloc "variant-loop-5" aux 2 (1,2) 3;
-  check_no_alloc "variant-loop-6" aux 3 (1,2) 42;
+  check_no_alloc "variant-loop-3-expected-to-fail" aux 0 (1,2) 50;
+  check_no_alloc "variant-loop-4-expected-to-fail" aux 1 (1,2) 1;
+  check_no_alloc "variant-loop-5-expected-to-fail" aux 2 (1,2) 3;
+  check_no_alloc "variant-loop-6-expected-to-fail" aux 3 (1,2) 42;
   (* END *)
   ()
 
