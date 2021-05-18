@@ -64,8 +64,16 @@ let make_decisions ~continuation_is_recursive ~arg_types_by_use_id
            |> refine_decision_based_on_arg_types_at_uses
                 ~rewrite_ids_seen:empty nth arg_type_by_use_id
                 ~pass:(Filter { recursive = continuation_is_recursive; })
-           |> Is_unboxing_beneficial.filter_non_beneficial_decisions
-                ~continuation_is_recursive
+in
+let filtered_decision =
+  if continuation_is_recursive then
+    (* For recursive continuation whether unboxing is beneficial or not does not really depends
+        on the external use site: the body of the loop matters more than the entry.
+        In the worst case, unboxing for recursive continuation risk introducing an allocation when
+        leaving the loop if the value is unused, while the benefit might be great most of the time. *)
+    decision
+  else
+     Is_unboxing_beneficial.filter_non_beneficial_decisions decision
          in
          let denv =
            Build_unboxing_denv.denv_of_decision denv ~param_var:(KP.var param)
