@@ -1052,7 +1052,7 @@ and add_equation t name ty =
       in
       let ({ canonical_element; alias_of_demoted_element; t = aliases; }
             : Aliases.add_result) =
-        Aliases.add 
+        Aliases.add
           aliases
           ~element1:alias
           ~binding_time_and_mode1:binding_time_and_mode_alias
@@ -1108,7 +1108,7 @@ and add_equation t name ty =
   in
   let [@inline always] name name ~coercion:_ =
     (* [bare_lhs] has no coercion by its definition *)
-    add_equation0 t aliases name ty
+    add_equation0 t name ty
   in
   Simple.pattern_match bare_lhs ~name ~const:(fun _ -> t)
 
