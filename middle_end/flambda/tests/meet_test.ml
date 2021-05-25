@@ -201,11 +201,11 @@ let () =
       (Linkage_name.create "meet_test")
   in
   Compilation_unit.set_current comp_unit;
-  (* Format.eprintf "MEET CHAINS WITH TWO VARS\n\n%!";
-   * test_meet_chains_two_vars ();
-   * Format.eprintf "\nMEET CHAINS WITH THREE VARS\n\n%!";
-   * test_meet_chains_three_vars ();
-   * Format.eprintf "@.MEET VARIANT@.@.";
-   * meet_variants_don't_lose_aliases (); *)
-  Format.eprintf "@.Test bug ?@.";
+  Format.eprintf "MEET CHAINS WITH TWO VARS@\n@.";
+  test_meet_chains_two_vars ();
+  Format.eprintf "@.MEET CHAINS WITH THREE VARS@\n@.";
+  test_meet_chains_three_vars ();
+  Format.eprintf "@.MEET VARIANT@\n@.";
+  meet_variants_don't_lose_aliases ();
+  Format.eprintf "@.MEET TWO BLOCKS@\n@.";
   test_meet_two_blocks ()

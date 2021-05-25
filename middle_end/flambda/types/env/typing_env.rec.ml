@@ -896,14 +896,17 @@ let invariant_for_alias (t:t) name ty =
           Name.print name Type_grammar.print ty
      end
 
+(* This is too costly to check, but it can be useful for debugging problems with
+   canonical aliases.
 let invariant_for_aliases (t:t) =
   Name.Map.iter (fun name (ty, _, _) ->
       invariant_for_alias t name ty
-    ) (names_to_types t)
+   ) (names_to_types t)
+*)
 
 let invariant_for_new_equation (t:t) name ty =
-  invariant_for_alias t name ty;
   if !Clflags.flambda_invariant_checks then begin
+    invariant_for_alias t name ty;
     (* CR mshinwell: This should check that precision is not decreasing. *)
     let defined_names =
       Name_occurrences.create_names
@@ -978,7 +981,7 @@ let rec add_equation0 (t:t) name ty =
     One_level.create (current_scope t) level ~just_after_level
   in
   let res = with_current_level t ~current_level in
-  invariant_for_aliases res;
+  (* invariant_for_aliases res; *)
   res
 
 and add_equation t name ty =
