@@ -22,7 +22,7 @@
 type unboxed_arg =
   | Poison (* used for recursive calls *)
   | Available of Simple.t
-  | Generated of Variable.t
+  | Generated of Variable.t * Flambda_type.t
   | Added_by_wrapper_at_rewrite_use of { nth_arg : int; }
 
 val compute_extra_args_for_one_decision_and_use

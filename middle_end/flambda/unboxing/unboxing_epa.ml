@@ -28,22 +28,21 @@ let prevent_current_unboxing () = raise Prevent_current_unboxing
 type unboxed_arg =
   | Poison (* used for recursive calls *)
   | Available of Simple.t
-  | Generated of Variable.t
+  | Generated of Variable.t * T.t
   | Added_by_wrapper_at_rewrite_use of { nth_arg : int; }
 
 let _print_unboxed_arg ppf = function
   | Poison -> Format.fprintf ppf "poison"
   | Available simple -> Format.fprintf ppf "simple: %a" Simple.print simple
-  | Generated v -> Format.fprintf ppf "generated: %a" Variable.print v
+  | Generated (v, t) -> Format.fprintf ppf "generated %a : %a" Variable.print v T.print t
   | Added_by_wrapper_at_rewrite_use {nth_arg } ->
     Format.fprintf ppf "added_by_wrapper(%d)" nth_arg
 
 let type_of_arg_being_unboxed unboxed_arg =
-  let aux simple = T.alias_type_of K.value simple in
   match unboxed_arg with
   | Poison -> None
-  | Available simple -> Some (aux simple)
-  | Generated var -> Some (aux (Simple.var var))
+  | Available simple -> Some (T.alias_type_of K.value simple)
+  | Generated (_, t) -> Some t
   | Added_by_wrapper_at_rewrite_use _ -> prevent_current_unboxing ()
 
 let unbox_arg (unboxer : Unboxers.unboxer)
@@ -69,20 +68,24 @@ let unbox_arg (unboxer : Unboxers.unboxer)
       let var = Variable.create unboxer.var_name in
       let prim = unboxer.unboxing_prim arg_at_use in
       let extra_arg = EPA.Extra_arg.New_let_binding (var, prim) in
-      extra_arg, Generated var
+      let type_ = T.unknown K.value in
+      extra_arg, Generated (var, type_)
     end
-  | Generated var ->
+  | Generated (var, _) ->
     let arg_at_use = Simple.var var in
     let var = Variable.create unboxer.var_name in
     let prim = unboxer.unboxing_prim arg_at_use in
     let extra_arg = EPA.Extra_arg.New_let_binding (var, prim) in
-    extra_arg, Generated var
+    let type_ = T.unknown K.value in
+    extra_arg, Generated (var, type_)
   | Added_by_wrapper_at_rewrite_use { nth_arg; } ->
+    let type_ = T.unknown K.value in
     let var = Variable.create "unboxed_field" in
     EPA.Extra_arg.New_let_binding_with_named_args (var, (fun args ->
       let arg_simple = List.nth args nth_arg in
       unboxer.unboxing_prim arg_simple
-    )), Generated var
+    )), Generated (var, type_)
+
 
 (* Helpers for the variant case *)
 (* **************************** *)
