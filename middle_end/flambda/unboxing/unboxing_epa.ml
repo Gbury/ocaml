@@ -39,11 +39,10 @@ let _print_unboxed_arg ppf = function
     Format.fprintf ppf "added_by_wrapper(%d)" nth_arg
 
 let type_of_arg_being_unboxed unboxed_arg =
-  let aux simple = T.alias_type_of K.value simple in
   match unboxed_arg with
   | Poison -> None
-  | Available simple -> Some (aux simple)
-  | Generated var -> Some (aux (Simple.var var))
+  | Available simple -> Some (T.alias_type_of K.value simple)
+  | Generated _ -> Some (T.unknown K.value)
   | Added_by_wrapper_at_rewrite_use _ -> prevent_current_unboxing ()
 
 let unbox_arg (unboxer : Unboxers.unboxer)
