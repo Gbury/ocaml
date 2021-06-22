@@ -30,6 +30,18 @@ module Expr_with_acc = Closure_conversion_aux.Expr_with_acc
 module Function_decl =
   Closure_conversion_aux.Function_decls.Function_decl
 
+module Continuation = struct
+
+  include Continuation
+
+  let r = ref 0
+
+  let create ?sort () =
+    incr r;
+    create ?sort ~name:(Format.asprintf "k%d" !r) ()
+
+end
+
 module Env : sig
 
   type t

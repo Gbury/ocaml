@@ -373,10 +373,15 @@ let simplify_non_recursive_let_cont_handler ~simplify_expr
               ~continuation_is_recursive:false
               ~arg_types_by_use_id params param_types
           in
+          Format.eprintf "=== UNBOX %a@\n%a@\n@."
+            Continuation.print cont
+            Unbox_continuation_params.Decisions.print decisions;
           let epa =
             Unbox_continuation_params.compute_extra_params_and_args
               ~arg_types_by_use_id decisions extra_params_and_args
           in
+          Format.eprintf "* EPA: %a@\nENV: %a@\n@."
+            EPA.print epa TE.print (DE.typing_env handler_env);
           handler_env, epa, false, dacc
       | Return | Toplevel_return ->
         if is_exn_handler then begin
