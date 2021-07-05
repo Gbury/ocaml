@@ -236,12 +236,7 @@ let print_flattened ppf
       (Flambda_colours.expr_keyword ())
       (Flambda_colours.normal ())
   end else begin
-    let shape =
-      (* match scoping_rule with
-       * | Syntactic -> "\u{25b6}" (\* filled triangle *\)
-       * | Dominator -> *)
-        "\u{25b7}" (* unfilled triangle *)
-    in
+    let shape = "\u{25b7}" (* unfilled triangle *) in
     fprintf ppf "@<0>%s@<1>%s @<0>%s"
       (shape_colour descr)
       shape

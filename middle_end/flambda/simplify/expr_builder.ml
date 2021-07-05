@@ -255,7 +255,7 @@ let create_raw_let_symbol uacc bound_symbols static_consts ~body =
     RE.create_let (UA.are_rebuilding_terms uacc) bindable defining_expr
       ~body ~free_names_of_body, uacc
 
-let create_let_symbol0 uacc _code_age_relation (bound_symbols : Bound_symbols.t)
+let create_let_symbol0 uacc (bound_symbols : Bound_symbols.t)
       (static_consts : Rebuilt_static_const.Group.t) ~body =
   (* Upon entry to this function, [UA.name_occurrences uacc] must precisely
      indicate the free names of [body]. *)
@@ -315,8 +315,7 @@ let remove_unused_closure_vars uacc static_const =
       Set_of_closures.create (Set_of_closures.function_decls set_of_closures)
         ~closure_elements)
 
-let create_let_symbols uacc
-      code_age_relation lifted_constant ~body =
+let create_let_symbols uacc lifted_constant ~body =
   let bound_symbols = LC.bound_symbols lifted_constant in
   let symbol_projections = LC.symbol_projections lifted_constant in
   let static_consts =
@@ -324,8 +323,7 @@ let create_let_symbols uacc
       ~f:(remove_unused_closure_vars uacc)
   in
   let expr, uacc =
-    create_let_symbol0 uacc code_age_relation bound_symbols static_consts
-      ~body
+    create_let_symbol0 uacc bound_symbols static_consts ~body
   in
   Variable.Map.fold (fun var proj (expr, uacc) ->
     let rec apply_projection proj =
@@ -405,8 +403,7 @@ let place_lifted_constants uacc
   let place_constants uacc ~around constants =
     LCS.fold_innermost_first constants ~init:(around, uacc)
       ~f:(fun (body, uacc) lifted_const ->
-        create_let_symbols uacc
-          (UA.code_age_relation uacc) lifted_const ~body)
+        create_let_symbols uacc lifted_const ~body)
   in
   let body, uacc =
     place_constants uacc ~around:body lifted_constants_from_body
@@ -454,8 +451,8 @@ type rewrite_use_ctx =
 type rewrite_use_result =
   | Apply_cont of Apply_cont.t
   | Expr of (
-      apply_cont_to_expr:(Apply_cont.t
-                          -> (RE.t * Cost_metrics.t * Name_occurrences.t))
+       apply_cont_to_expr:(Apply_cont.t
+         -> (RE.t * Cost_metrics.t * Name_occurrences.t))
       -> RE.t * Cost_metrics.t * Name_occurrences.t)
 
 let no_rewrite apply_cont = Apply_cont apply_cont
@@ -465,7 +462,7 @@ let rewrite_use uacc rewrite ~ctx id apply_cont : rewrite_use_result =
   let original_params = Apply_cont_rewrite.original_params rewrite in
   if List.compare_lengths args original_params <> 0 then begin
     Misc.fatal_errorf "Arguments to this [Apply_cont]@ (%a)@ do not match@ \
-                       [original_params] (%a):@ %a"
+        [original_params] (%a):@ %a"
       Apply_cont.print apply_cont
       KP.List.print original_params
       Simple.List.print args
@@ -474,15 +471,15 @@ let rewrite_use uacc rewrite ~ctx id apply_cont : rewrite_use_result =
   let args =
     let used_params = Apply_cont_rewrite.used_params rewrite in
     List.filter_map (fun (original_param, arg) ->
-      if KP.Set.mem original_param used_params then Some arg
-      else None)
+        if KP.Set.mem original_param used_params then Some arg
+        else None)
       original_params_with_args
   in
   let extra_args_list = Apply_cont_rewrite.extra_args rewrite id in
   let extra_args_rev, extra_lets =
     List.fold_left
       (fun (extra_args_rev, extra_lets)
-        (arg : Continuation_extra_params_and_args.Extra_arg.t) ->
+           (arg : Continuation_extra_params_and_args.Extra_arg.t) ->
         match arg with
         | Already_in_scope simple -> simple :: extra_args_rev, extra_lets
         | New_let_binding (temp, prim) ->
@@ -491,7 +488,7 @@ let rewrite_use uacc rewrite ~ctx id apply_cont : rewrite_use_result =
             (Var_in_binding_pos.create temp Name_mode.normal,
              Code_size.prim prim,
              Named.create_prim prim Debuginfo.none)
-            :: extra_lets
+              :: extra_lets
           in
           extra_args_rev, extra_lets
         | New_let_binding_with_named_args (temp, gen_prim) ->
@@ -538,10 +535,10 @@ let rewrite_exn_continuation rewrite id exn_cont =
   let original_params = Apply_cont_rewrite.original_params rewrite in
   let original_params_arity = KP.List.arity_with_subkinds original_params in
   if not (Flambda_arity.With_subkinds.equal exn_cont_arity
-            original_params_arity)
+    original_params_arity)
   then begin
     Misc.fatal_errorf "Arity of exception continuation %a does not \
-                       match@ [original_params] (%a)"
+        match@ [original_params] (%a)"
       Exn_continuation.print exn_cont
       KP.List.print original_params
   end;
@@ -553,8 +550,8 @@ let rewrite_exn_continuation rewrite id exn_cont =
   let extra_args0 =
     let used_params = Apply_cont_rewrite.used_params rewrite in
     List.filter_map (fun (pre_existing_extra_param, arg) ->
-      if KP.Set.mem pre_existing_extra_param used_params then Some arg
-      else None)
+        if KP.Set.mem pre_existing_extra_param used_params then Some arg
+        else None)
       pre_existing_extra_params_with_args
   in
   let extra_args1 =
@@ -563,10 +560,10 @@ let rewrite_exn_continuation rewrite id exn_cont =
     assert (List.compare_lengths used_extra_params extra_args_list = 0);
     List.map2
       (fun param (arg : Continuation_extra_params_and_args.Extra_arg.t) ->
-         match arg with
-         | Already_in_scope simple -> simple, KP.kind param
-         | New_let_binding _ | New_let_binding_with_named_args _ ->
-           Misc.fatal_error "[New_let_binding] not expected here")
+        match arg with
+        | Already_in_scope simple -> simple, KP.kind param
+        | New_let_binding _ | New_let_binding_with_named_args _ ->
+          Misc.fatal_error "[New_let_binding] not expected here")
       used_extra_params extra_args_list
   in
   let extra_args = extra_args0 @ extra_args1 in
@@ -577,7 +574,7 @@ type add_wrapper_for_fixed_arity_continuation0_result =
   | This_continuation of Continuation.t
   | Apply_cont of Apply_cont.t
   | New_wrapper of Continuation.t * RE.Continuation_handler.t
-                   * Name_occurrences.t * Cost_metrics.t
+      * Name_occurrences.t * Cost_metrics.t
 
 type cont_or_apply_cont =
   | Continuation of Continuation.t
@@ -604,7 +601,7 @@ let add_wrapper_for_fixed_arity_continuation0 uacc cont_or_apply_cont
     in
     if not (Flambda_arity.equal arity arity_in_rewrite) then begin
       Misc.fatal_errorf "Arity %a provided to fixed-arity-wrapper \
-                         addition function does not match arity %a in rewrite:@ %a"
+          addition function does not match arity %a in rewrite:@ %a"
         Flambda_arity.print arity
         Flambda_arity.print arity_in_rewrite
         Apply_cont_rewrite.print rewrite
@@ -667,10 +664,10 @@ let add_wrapper_for_fixed_arity_continuation0 uacc cont_or_apply_cont
 type add_wrapper_for_switch_arm_result =
   | Apply_cont of Apply_cont.t
   | New_wrapper of Continuation.t * RE.Continuation_handler.t
-                   * Name_occurrences.t * Cost_metrics.t
+      * Name_occurrences.t * Cost_metrics.t
 
 let add_wrapper_for_switch_arm uacc apply_cont ~use_id arity
-  : add_wrapper_for_switch_arm_result =
+      : add_wrapper_for_switch_arm_result =
   match
     add_wrapper_for_fixed_arity_continuation0 uacc (Apply_cont apply_cont)
       ~use_id arity
@@ -689,7 +686,7 @@ let add_wrapper_for_fixed_arity_continuation uacc cont ~use_id arity ~around =
   | This_continuation cont -> around uacc cont
   | Apply_cont _ -> assert false
   | New_wrapper (new_cont, new_handler, free_names_of_handler,
-                 cost_metrics_of_handler) ->
+      cost_metrics_of_handler) ->
     let body, uacc = around uacc new_cont in
     let free_names_of_body = UA.name_occurrences uacc in
     let expr =

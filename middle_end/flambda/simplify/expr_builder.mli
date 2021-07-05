@@ -50,7 +50,6 @@ val make_new_let_bindings
     free names of the [body]. *)
 val create_let_symbols
    : Upwards_acc.t
-  -> Code_age_relation.t
   -> Lifted_constant.t
   -> body:Rebuilt_expr.t
   -> Rebuilt_expr.t * Upwards_acc.t
