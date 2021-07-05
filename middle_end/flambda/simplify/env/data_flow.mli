@@ -68,15 +68,7 @@ val record_code_id_binding
   -> Name_occurrences.t
   -> t
   -> t
-
-(*
-val record_set_of_closures_binding
-   : Name.t list
-  -> Function_declaration.t Closure_id.Lmap.t
-  -> t
-  -> t
-   (** Add binding to a set of closures in the current handler. *)
-*)
+(** Add a code id binding from the current handler. *)
 
 val record_closure_element_binding
    : Name.t
@@ -84,6 +76,7 @@ val record_closure_element_binding
   -> Name_occurrences.t
   -> t
   -> t
+(** Add a closure elemnt binding from the current handler. *)
 
 val add_used_in_current_handler : Name_occurrences.t -> t -> t
 (** Add name occurrences used in the body of the current continuation's

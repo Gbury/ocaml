@@ -14,47 +14,8 @@
 
 [@@@ocaml.warning "+a-4-30-40-41-42"]
 
-(* TODO:
-
- v ajouter à `elt` un champs : name -> code_id
- v on the way down dans les let_expr il faut différencier si on est dans
-   une fonction ou pas (ce qui est un critère différent de "à unit toplevel"):
-   - si dans une fonction : pas de let_symbols ou de code_id -> assert false
-   - si pas dans une fonction: on enregistre la relation symbol -> code_id
-
- v pour les lifted constants:
-   - si dans une fonction: rien à faire
-   - si pas dans une fonction: rajouter le relation entre symbols et free_names/code_id
-   -> à la fin de l'analyse du corps d'une fonction (après la simplification),
-      il faut ajouter les lifted_constants au data_flow
-      utiliser les free_names du corps de la fonction (qui ne seront que des symbols),
-      pour enregistrer les dépendances de la fonction (i.e. code_id -> symbol)
-
- v lors de l'analyse du corps d'une fonction, calculer
-   le set de code id utilisé par les name vivants/required
- v ce set est passé dans le uacc
- v une fois que le corps d'une fonciton est simplifié,
-   ajouter au dacc du toplevel un binding
-   new_code_id -> set de code_id utilisés dans la fonction
- * lors de l'analyse au toplevel, calculer en même temps les names
-   reachable et les code_ids qui sont 1) reachables, et
-   2) mentioné comme antécédant par le code_age_relation "Newer_version_of"
-   d'un reachable
- * un code_id est reachable ssi:
-   + il est reachable depuis un name reachable
-   + il est antécédant d'au moins deux code_id qui sont reachable (dans des branches
-     différentes)
- * les code_ids qui ne sont ni 1) ni 2) sont simplement éliminés
- * let code_ids 2) peuvent être "((newer_version_of ()) Deleted)"
- * naturellement les symbols bound à des code_ids unreachable sont supprimés
-   parce que pas présents dans le required_names qui sort de l'analyze.
-
-
-
-Notes:
- - la code_age relation est accessible dans le typing_env présent dans le dacc
-
-*)
+(* Helper module *)
+(* ************* *)
 
 module Reachable_code_ids = struct
 
@@ -76,7 +37,8 @@ end
 (* Typedefs *)
 (* ******** *)
 
-(* CR: get rid of Name_occurences everywhere, this is not small while we need only the names *)
+(* CR chambart/gbury: get rid of Name_occurences everywhere,
+                      this is not small while we need only the names *)
 type elt = {
   continuation : Continuation.t;
   params : Variable.t list;
@@ -272,26 +234,6 @@ let record_closure_element_binding src closure_var dst t =
     in
     { elt with closure_envs }
   )
-
-(*
-let record_set_of_closures_binding names closure_id_lmap t =
-  update_top_of_stack ~t ~f:(fun elt ->
-    let bindings_in_sets_of_closures =
-      List.fold_left2 (fun bindings_in_sets_of_closures name (_, fundecl)->
-        let code_id = Function_declaration.code_id fundecl in
-        Name.Map.update name (function
-          | None -> Some code_id
-          | Some _ ->
-            Misc.fatal_errorf
-              "The following name has been bound twice: %a"
-              Name.print name
-        ) bindings_in_sets_of_closures
-      ) elt.bindings_in_sets_of_closures
-        names (Closure_id.Lmap.bindings closure_id_lmap)
-    in
-    { elt with bindings_in_sets_of_closures; }
-   )
-*)
 
 let add_used_in_current_handler name_occurrences t =
   update_top_of_stack ~t ~f:(fun elt ->
