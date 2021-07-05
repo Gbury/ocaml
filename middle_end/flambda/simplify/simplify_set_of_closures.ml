@@ -350,8 +350,11 @@ type simplify_function_result = {
 let simplify_function context ~used_closure_vars ~shareable_constants
       closure_id function_decl ~closure_bound_names_inside_function
       code_age_relation ~lifted_consts_prev_functions =
-  let code_id = FD.code_id function_decl in
-  let code = DE.find_code (DA.denv (C.dacc_prior_to_sets context)) code_id in
+  let old_code_id = FD.code_id function_decl in
+  let new_code_id =
+    Code_id.Map.find old_code_id (C.old_to_new_code_ids_all_sets context)
+  in
+  let code = DE.find_code (DA.denv (C.dacc_prior_to_sets context)) old_code_id in
   let params_and_body =
     Code.params_and_body_must_be_present code ~error_context:"Simplifying"
   in
@@ -377,106 +380,102 @@ let simplify_function context ~used_closure_vars ~shareable_constants
     Function_params_and_body.pattern_match params_and_body
       ~f:(fun ~return_continuation exn_continuation params ~body
               ~my_closure ~is_my_closure_used:_ ~my_depth ->
-        let dacc =
-          dacc_inside_function context ~used_closure_vars ~shareable_constants
-            ~params ~my_closure closure_id
-            ~closure_bound_names_inside_function
-            ~inlining_arguments
-        in
-        if not (DA.no_lifted_constants dacc) then begin
-          Misc.fatal_errorf "Did not expect lifted constants in [dacc]:@ %a"
-            DA.print dacc
-        end;
-        let dacc =
-          DA.map_denv dacc ~f:(fun denv ->
-            denv
-            |> DE.enter_closure code_id
-                 return_continuation exn_continuation
-            |> DE.map_typing_env ~f:(fun typing_env ->
-              let code_age_relation =
-                (* CR mshinwell: Tidy up propagation to avoid union *)
-                Code_age_relation.union (TE.code_age_relation typing_env)
-                  code_age_relation
+              let dacc =
+                dacc_inside_function context ~used_closure_vars ~shareable_constants
+                  ~params ~my_closure closure_id
+                  ~closure_bound_names_inside_function
+                  ~inlining_arguments:(Code.inlining_arguments code)
               in
-              TE.with_code_age_relation typing_env code_age_relation)
-            |> fun denv ->
-              (* Lifted constants from previous functions in the set get
-                 put into the environment for subsequent functions. *)
-              LCS.add_to_denv denv lifted_consts_prev_functions)
-        in
-        assert (not (DE.at_unit_toplevel (DA.denv dacc)));
-        (* CR mshinwell: DE.no_longer_defining_symbol is redundant now? *)
-        match
-          C.simplify_toplevel context dacc body
-            ~return_continuation exn_continuation
-            ~return_arity:(Code.result_arity code)
-            ~return_cont_scope:Scope.initial
-            ~exn_cont_scope:(Scope.next Scope.initial)
-        with
-        | body, uacc ->
-          let dacc_after_body = UA.creation_dacc uacc in
-          let dbg = Function_params_and_body.debuginfo params_and_body in
-          (* CR mshinwell: Should probably look at [cont_uses]? *)
-          let free_names_of_body = UA.name_occurrences uacc in
-          let params_and_body =
-            RE.Function_params_and_body.create ~free_names_of_body
-              ~return_continuation exn_continuation params ~dbg ~body
-              ~my_closure ~my_depth
-          in
-          (* Free names of the code = free names of the body minus the
-             return and exception continuations, the parameters and the
-             [my_closure] variable. *)
-          let free_names_of_code =
-            Name_occurrences.remove_continuation free_names_of_body
-              return_continuation
-          in
-          let free_names_of_code =
-            Name_occurrences.remove_continuation free_names_of_code
-              (Exn_continuation.exn_handler exn_continuation)
-          in
-          let free_names_of_code =
-            Name_occurrences.remove_var free_names_of_code my_closure
-          in
-          let free_names_of_code =
-            Name_occurrences.diff free_names_of_code
-              (KP.List.free_names params)
-          in
-          if not (
-            Name_occurrences.no_variables free_names_of_code
-            && Name_occurrences.no_continuations free_names_of_code)
-          then begin
-            Misc.fatal_errorf "Unexpected free name(s):@ %a@ in:@ \n%a@ \n\
-                Simplified version:@ fun %a %a ->@ \n  %a"
-              Name_occurrences.print free_names_of_code
-              Function_declaration.print function_decl
-              KP.List.print params
-              Variable.print my_closure
-              (RE.print (UA.are_rebuilding_terms uacc)) body
-          end;
-          params_and_body, dacc_after_body, free_names_of_code, uacc
-        | exception Misc.Fatal_error ->
-          if !Clflags.flambda_context_on_error then begin
-            Format.eprintf "\n%sContext is:%s simplifying function \
-                with closure ID %a,@ params %a,@ return continuation %a,@ \
-                exn continuation %a,@ my_closure %a,@ body:@ %a@ \
-                with downwards accumulator:@ %a\n"
-              (Flambda_colours.error ())
-              (Flambda_colours.normal ())
-              Closure_id.print closure_id
-              Kinded_parameter.List.print params
-              Continuation.print return_continuation
-              Exn_continuation.print exn_continuation
-              Variable.print my_closure
-              Expr.print body
-              DA.print dacc
-          end;
-          reraise Misc.Fatal_error)
+              if not (DA.no_lifted_constants dacc) then begin
+                Misc.fatal_errorf "Did not expect lifted constants in [dacc]:@ %a"
+                  DA.print dacc
+              end;
+              let dacc =
+                DA.map_denv dacc ~f:(fun denv ->
+                    denv
+                    |> DE.enter_closure new_code_id
+                         return_continuation exn_continuation
+                    |> DE.map_typing_env ~f:(fun typing_env ->
+                        let code_age_relation =
+                          (* CR mshinwell: Tidy up propagation to avoid union *)
+                          Code_age_relation.union (TE.code_age_relation typing_env)
+                            code_age_relation
+                        in
+                        TE.with_code_age_relation typing_env code_age_relation)
+                    |> fun denv ->
+                    (* Lifted constants from previous functions in the set get
+                       put into the environment for subsequent functions. *)
+                    LCS.add_to_denv denv lifted_consts_prev_functions)
+              in
+              assert (not (DE.at_unit_toplevel (DA.denv dacc)));
+              (* CR mshinwell: DE.no_longer_defining_symbol is redundant now? *)
+              match
+                C.simplify_toplevel context dacc body
+                  ~return_continuation exn_continuation
+                  ~return_arity:(Code.result_arity code)
+                  ~return_cont_scope:Scope.initial
+                  ~exn_cont_scope:(Scope.next Scope.initial)
+              with
+              | body, uacc ->
+                  let dacc_after_body = UA.creation_dacc uacc in
+                  let dbg = Function_params_and_body.debuginfo params_and_body in
+                  (* CR mshinwell: Should probably look at [cont_uses]? *)
+                  let free_names_of_body = UA.name_occurrences uacc in
+                  let params_and_body =
+                    RE.Function_params_and_body.create ~free_names_of_body
+                      ~return_continuation exn_continuation params ~dbg ~body
+                      ~my_closure ~my_depth
+                  in
+                  (* Free names of the code = free names of the body minus the
+                     return and exception continuations, the parameters and the
+                     [my_closure] variable. *)
+                  let free_names_of_code =
+                    Name_occurrences.remove_continuation free_names_of_body
+                      return_continuation
+                  in
+                  let free_names_of_code =
+                    Name_occurrences.remove_continuation free_names_of_code
+                      (Exn_continuation.exn_handler exn_continuation)
+                  in
+                  let free_names_of_code =
+                    Name_occurrences.remove_var free_names_of_code my_closure
+                  in
+                  let free_names_of_code =
+                    Name_occurrences.diff free_names_of_code
+                      (KP.List.free_names params)
+                  in
+                  if not (
+                      Name_occurrences.no_variables free_names_of_code
+                      && Name_occurrences.no_continuations free_names_of_code)
+                  then begin
+                    Misc.fatal_errorf "Unexpected free name(s):@ %a@ in:@ \n%a@ \n\
+                                       Simplified version:@ fun %a %a ->@ \n  %a"
+                      Name_occurrences.print free_names_of_code
+                      Function_declaration.print function_decl
+                      KP.List.print params
+                      Variable.print my_closure
+                      (RE.print (UA.are_rebuilding_terms uacc)) body
+                  end;
+                  params_and_body, dacc_after_body, free_names_of_code, uacc
+              | exception Misc.Fatal_error ->
+                  if !Clflags.flambda_context_on_error then begin
+                    Format.eprintf "\n%sContext is:%s simplifying function \
+                                    with closure ID %a,@ params %a,@ return continuation %a,@ \
+                                    exn continuation %a,@ my_closure %a,@ body:@ %a@ \
+                                    with downwards accumulator:@ %a\n"
+                      (Flambda_colours.error ())
+                      (Flambda_colours.normal ())
+                      Closure_id.print closure_id
+                      Kinded_parameter.List.print params
+                      Continuation.print return_continuation
+                      Exn_continuation.print exn_continuation
+                      Variable.print my_closure
+                      Expr.print body
+                      DA.print dacc
+                  end;
+                  reraise Misc.Fatal_error)
   in
   let cost_metrics = UA.cost_metrics uacc_after_upwards_traversal in
-  let old_code_id = code_id in
-  let new_code_id =
-    Code_id.Map.find old_code_id (C.old_to_new_code_ids_all_sets context)
-  in
   let code =
     Rebuilt_static_const.create_code
       (DA.are_rebuilding_terms dacc_after_body)
@@ -605,16 +604,16 @@ let simplify_set_of_closures0 dacc context set_of_closures
     Closure_id.Map.fold (fun closure_id _function_decl_type closure_types ->
         match Closure_id.Map.find closure_id closure_bound_names with
         | exception Not_found ->
-          Misc.fatal_errorf "No bound variable for closure ID %a"
-            Closure_id.print closure_id
+            Misc.fatal_errorf "No bound variable for closure ID %a"
+              Closure_id.print closure_id
         | bound_name ->
-          let closure_type =
-            T.exactly_this_closure closure_id
-              ~all_function_decls_in_set:fun_types
-              ~all_closures_in_set:closure_types_via_aliases
-              ~all_closure_vars_in_set:closure_element_types
-          in
-          Name_in_binding_pos.Map.add bound_name closure_type closure_types)
+            let closure_type =
+              T.exactly_this_closure closure_id
+                ~all_function_decls_in_set:fun_types
+                ~all_closures_in_set:closure_types_via_aliases
+                ~all_closure_vars_in_set:closure_element_types
+            in
+            Name_in_binding_pos.Map.add bound_name closure_type closure_types)
       fun_types
       Name_in_binding_pos.Map.empty
   in
@@ -625,17 +624,17 @@ let simplify_set_of_closures0 dacc context set_of_closures
      bound closure variables themselves.) *)
   let dacc =
     DA.map_denv dacc ~f:(fun denv ->
-      denv
-      |> DE.map_typing_env ~f:(fun typing_env ->
-        TE.with_code_age_relation typing_env code_age_relation)
-      |> Closure_id.Map.fold (fun _closure_id bound_name denv ->
-             DE.define_name_if_undefined denv bound_name K.value)
-           closure_bound_names
-      |> fun denv -> LCS.add_to_denv denv lifted_consts
-      |> Name_in_binding_pos.Map.fold (fun bound_name closure_type denv ->
-             let bound_name = Name_in_binding_pos.to_name bound_name in
-             DE.add_equation_on_name denv bound_name closure_type)
-           closure_types_by_bound_name)
+        denv
+        |> DE.map_typing_env ~f:(fun typing_env ->
+            TE.with_code_age_relation typing_env code_age_relation)
+        |> Closure_id.Map.fold (fun _closure_id bound_name denv ->
+            DE.define_name_if_undefined denv bound_name K.value)
+            closure_bound_names
+        |> fun denv -> LCS.add_to_denv denv lifted_consts
+                       |> Name_in_binding_pos.Map.fold (fun bound_name closure_type denv ->
+                           let bound_name = Name_in_binding_pos.to_name bound_name in
+                           DE.add_equation_on_name denv bound_name closure_type)
+                           closure_types_by_bound_name)
   in
   let set_of_closures =
     Function_declarations.create all_function_decls_in_set
@@ -653,7 +652,7 @@ let introduce_code dacc code =
   in
   DA.add_lifted_constants_from_list dacc lifted_constants
   |> DA.map_denv ~f:(fun denv ->
-    LCS.add_list_to_denv denv lifted_constants)
+      LCS.add_list_to_denv denv lifted_constants)
 
 let simplify_and_lift_set_of_closures dacc ~closure_bound_vars_inverse
       ~closure_bound_vars set_of_closures ~closure_elements
@@ -681,20 +680,20 @@ let simplify_and_lift_set_of_closures dacc ~closure_bound_vars_inverse
         Simple.pattern_match closure_element
           ~const:(fun _ -> T.alias_type_of K.value closure_element)
           ~name:(fun name ~coercion ->
-            Name.pattern_match name
-              ~var:(fun var ->
-                match Variable.Map.find var closure_bound_vars_inverse with
-                | exception Not_found ->
-                  assert (DE.mem_variable (DA.denv dacc) var);
-                  T.alias_type_of K.value closure_element
-                | closure_id ->
-                  let closure_symbol =
-                    Closure_id.Map.find closure_id closure_symbols_map
-                  in
-                  let simple =
-                    Simple.with_coercion (Simple.symbol closure_symbol) coercion
-                  in
-                  T.alias_type_of K.value simple)
+              Name.pattern_match name
+                ~var:(fun var ->
+                    match Variable.Map.find var closure_bound_vars_inverse with
+                    | exception Not_found ->
+                        assert (DE.mem_variable (DA.denv dacc) var);
+                        T.alias_type_of K.value closure_element
+                    | closure_id ->
+                        let closure_symbol =
+                          Closure_id.Map.find closure_id closure_symbols_map
+                        in
+                        let simple =
+                          Simple.with_coercion (Simple.symbol closure_symbol) coercion
+                        in
+                        T.alias_type_of K.value simple)
                 ~symbol:(fun _sym -> T.alias_type_of K.value closure_element)))
       closure_elements
   in
@@ -722,7 +721,7 @@ let simplify_and_lift_set_of_closures dacc ~closure_bound_vars_inverse
     Symbol.Set.of_list (Closure_id.Lmap.data closure_symbols)
   in
   assert (Symbol.Set.cardinal closure_symbols_set
-    = Closure_id.Map.cardinal closure_symbols_map);
+          = Closure_id.Map.cardinal closure_symbols_map);
   let denv = DA.denv dacc in
   let closure_symbols_with_types =
     Closure_id.Map.map (fun symbol ->
@@ -740,7 +739,7 @@ let simplify_and_lift_set_of_closures dacc ~closure_bound_vars_inverse
       ~closure_symbols_with_types
       ~symbol_projections
       (Rebuilt_static_const.create_set_of_closures
-        (DE.are_rebuilding_terms denv) set_of_closures)
+         (DE.are_rebuilding_terms denv) set_of_closures)
   in
   let dacc =
     DA.add_lifted_constant dacc set_of_closures_lifted_constant
@@ -752,18 +751,18 @@ let simplify_and_lift_set_of_closures dacc ~closure_bound_vars_inverse
     Closure_id.Map.fold (fun closure_id bound_var (denv, bindings) ->
         match Closure_id.Map.find closure_id closure_symbols_map with
         | exception Not_found ->
-          Misc.fatal_errorf "No closure symbol for closure ID %a"
-            Closure_id.print closure_id
+            Misc.fatal_errorf "No closure symbol for closure ID %a"
+              Closure_id.print closure_id
         | closure_symbol ->
-          let denv =
-            let simple = Simple.symbol closure_symbol in
-            let typ = T.alias_type_of K.value simple in
-            DE.add_variable denv bound_var typ
-          in
-          let bindings =
-            Var_in_binding_pos.Map.add bound_var closure_symbol bindings
-          in
-          denv, bindings)
+            let denv =
+              let simple = Simple.symbol closure_symbol in
+              let typ = T.alias_type_of K.value simple in
+              DE.add_variable denv bound_var typ
+            in
+            let bindings =
+              Var_in_binding_pos.Map.add bound_var closure_symbol bindings
+            in
+            denv, bindings)
       closure_bound_vars
       (denv, Var_in_binding_pos.Map.empty)
   in
@@ -839,7 +838,7 @@ let type_closure_elements_and_make_lifting_decision_for_one_set dacc
   let closure_elements, closure_element_types, symbol_projections =
     Var_within_closure.Map.fold
       (fun closure_var env_entry
-           (closure_elements, closure_element_types, symbol_projections) ->
+        (closure_elements, closure_element_types, symbol_projections) ->
         let env_entry, ty, symbol_projections =
           let ty = S.simplify_simple dacc env_entry ~min_name_mode in
           let simple = T.get_alias_exn ty in
@@ -850,12 +849,12 @@ let type_closure_elements_and_make_lifting_decision_for_one_set dacc
               ~const:(fun _ -> symbol_projections)
               ~symbol:(fun _ ~coercion:_ -> symbol_projections)
               ~var:(fun var ~coercion:_ ->
-                (* [var] will already be canonical, as we require for the
-                   symbol projections map. *)
-                match DE.find_symbol_projection (DA.denv dacc) var with
-                | None -> symbol_projections
-                | Some proj ->
-                  Variable.Map.add var proj symbol_projections)
+                  (* [var] will already be canonical, as we require for the
+                     symbol projections map. *)
+                  match DE.find_symbol_projection (DA.denv dacc) var with
+                  | None -> symbol_projections
+                  | Some proj ->
+                      Variable.Map.add var proj symbol_projections)
           in
           simple, ty, symbol_projections
         in
@@ -880,18 +879,18 @@ let type_closure_elements_and_make_lifting_decision_for_one_set dacc
     &&
     Var_within_closure.Map.for_all
       (fun _ simple ->
-        Simple.pattern_match' simple
-          ~const:(fun _ -> true)
-          ~symbol:(fun _ ~coercion:_ -> true)
-          ~var:(fun var ~coercion:_ ->
-            DE.is_defined_at_toplevel (DA.denv dacc) var
-              || Variable.Map.mem var closure_bound_vars_inverse
-              (* If [var] is known to be a symbol projection, it doesn't
-                 matter if it isn't in scope at the place where we will
-                 eventually insert the "let symbol", as the binding to the
-                 projection from the relevant symbol can always be
-                 rematerialised. *)
-              || Variable.Map.mem var symbol_projections))
+         Simple.pattern_match' simple
+           ~const:(fun _ -> true)
+           ~symbol:(fun _ ~coercion:_ -> true)
+           ~var:(fun var ~coercion:_ ->
+               DE.is_defined_at_toplevel (DA.denv dacc) var
+               || Variable.Map.mem var closure_bound_vars_inverse
+               (* If [var] is known to be a symbol projection, it doesn't
+                  matter if it isn't in scope at the place where we will
+                  eventually insert the "let symbol", as the binding to the
+                  projection from the relevant symbol can always be
+                  rematerialised. *)
+               || Variable.Map.mem var symbol_projections))
       closure_elements
   in
   { can_lift;
@@ -924,8 +923,8 @@ let simplify_non_lifted_set_of_closures dacc
           closure_bound_vars_inverse)
       (Closure_id.Map.empty, Variable.Map.empty)
       (Set_of_closures.function_decls set_of_closures
-        |> Function_declarations.funs_in_order
-        |> Closure_id.Lmap.keys)
+       |> Function_declarations.funs_in_order
+       |> Closure_id.Lmap.keys)
       closure_bound_vars
   in
   (* CR mshinwell: [closure_element_types] is barely worth keeping *)
@@ -952,11 +951,11 @@ let simplify_lifted_set_of_closures0 context ~closure_symbols
   in
   let dacc =
     DA.map_denv (C.dacc_prior_to_sets context) ~f:(fun denv ->
-      (* XXX This will already have been done now *)
-      Closure_id.Lmap.fold (fun _closure_id symbol denv ->
-          DE.define_symbol_if_undefined denv symbol K.value)
-        closure_symbols
-        denv)
+        (* XXX This will already have been done now *)
+        Closure_id.Lmap.fold (fun _closure_id symbol denv ->
+            DE.define_symbol_if_undefined denv symbol K.value)
+          closure_symbols
+          denv)
   in
   let { set_of_closures;
         code;
@@ -995,7 +994,7 @@ module List = struct
     match l1, l2, l3 with
     | [], [], [] -> accu
     | a1::l1, a2::l2, a3::l3 ->
-      fold_left3 f (f accu a1 a2 a3) l1 l2 l3
+        fold_left3 f (f accu a1 a2 a3) l1 l2 l3
     | _, _, _ -> invalid_arg "List.fold_left3"
 end
 
@@ -1007,15 +1006,15 @@ let simplify_lifted_sets_of_closures dacc ~all_sets_of_closures_and_symbols
   let closure_elements_and_types_all_sets =
     List.map
       (fun set_of_closures ->
-        let { can_lift = _;
-              closure_elements;
-              closure_element_types;
-              symbol_projections = _;
-            } =
-          type_closure_elements_for_previously_lifted_set
-            dacc ~min_name_mode:Name_mode.normal set_of_closures
-        in
-        closure_elements, closure_element_types)
+         let { can_lift = _;
+               closure_elements;
+               closure_element_types;
+               symbol_projections = _;
+             } =
+           type_closure_elements_for_previously_lifted_set
+             dacc ~min_name_mode:Name_mode.normal set_of_closures
+         in
+         closure_elements, closure_element_types)
       all_sets_of_closures
   in
   let closure_element_types_all_sets =
@@ -1034,9 +1033,9 @@ let simplify_lifted_sets_of_closures dacc ~all_sets_of_closures_and_symbols
   in
   List.fold_left3
     (fun (patterns_acc, static_consts_acc, dacc)
-         (closure_symbols, set_of_closures)
-         closure_bound_names_inside
-         (closure_elements, closure_element_types) ->
+      (closure_symbols, set_of_closures)
+      closure_bound_names_inside
+      (closure_elements, closure_element_types) ->
       let patterns, static_consts, dacc =
         if Set_of_closures.is_empty set_of_closures then begin
           let bound_symbols =
@@ -1046,7 +1045,7 @@ let simplify_lifted_sets_of_closures dacc ~all_sets_of_closures_and_symbols
           let static_consts =
             Rebuilt_static_const.Group.create
               [Rebuilt_static_const.create_set_of_closures
-                (DA.are_rebuilding_terms dacc) set_of_closures]
+                 (DA.are_rebuilding_terms dacc) set_of_closures]
           in
           bound_symbols, static_consts, dacc
         end else begin
