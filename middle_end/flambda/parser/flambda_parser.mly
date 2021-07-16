@@ -98,6 +98,7 @@ let make_boxed_const_int (i, m) : static_data =
 %token STARDOT [@symbol "*."]
 %token<string> STRING
 %token<Fexpr.compilation_unit option * string> SYMBOL
+%token TILDE [@symbol "~"]
 %token EOF
 
 %token KWD_ALWAYS [@symbol "always"]
@@ -116,6 +117,7 @@ let make_boxed_const_int (i, m) : static_data =
 %token KWD_DELETED [@symbol "deleted"]
 %token KWD_DEPTH [@symbol "depth"]
 %token KWD_DIRECT [@symbol "direct"]
+%token KWD_DO_NOT_INLINE [@symbol "do_not_inline"]
 %token KWD_DOMINATOR_SCOPED [@symbol "dominator_scoped"]
 %token KWD_DONE  [@symbol "done"]
 %token KWD_DYNAMIC [@symbol "dynamic"]
@@ -128,9 +130,11 @@ let make_boxed_const_int (i, m) : static_data =
 %token KWD_FLOAT_BLOCK [@symbol "Float_block"]
 %token KWD_HCF   [@symbol "halt_and_catch_fire"]
 %token KWD_HINT  [@symbol "hint"]
+%token KWD_ID    [@symbol "id"]
 %token KWD_IMM   [@symbol "imm" ]
 %token KWD_IMMUTABLE_UNIQUE [@symbol "immutable_unique"]
 %token KWD_IN    [@symbol "in"]
+%token KWD_INF   [@symbol "inf"]
 %token KWD_INLINE [@symbol "inline"]
 %token KWD_INLINING_STATE [@symbol "inlining_state"]
 %token KWD_INT32 [@symbol "int32"]
@@ -155,6 +159,7 @@ let make_boxed_const_int (i, m) : static_data =
 %token KWD_RERAISE [@symbol "reraise"]
 %token KWD_SET_OF_CLOSURES [@symbol "set_of_closures"]
 %token KWD_SIZE   [@symbol "size"]
+%token KWD_SUCC   [@symbol "succ"]
 %token KWD_SWITCH [@symbol "switch"]
 %token KWD_TAGGED [@symbol "tagged"]
 %token KWD_TUPLED [@symbol "tupled"]
@@ -217,6 +222,8 @@ let make_boxed_const_int (i, m) : static_data =
 %type <Fexpr.naked_number_kind> naked_number_kind
 %type <Fexpr.name> name
 %type <Fexpr.named> named
+%type <Fexpr.rec_info> rec_info
+%type <Fexpr.rec_info> rec_info_atom
 %type <Fexpr.special_continuation> special_continuation
 %type <Fexpr.standard_int> standard_int
 %type <Fexpr.static_data> static_data
@@ -276,6 +283,7 @@ code:
   | header = code_header;
     params = kinded_args;
     closure_var = variable;
+    depth_var = variable;
     MINUSGREATER; ret_cont = continuation_id;
     exn_cont = exn_continuation_id;
     ret_arity = return_arity;
@@ -283,8 +291,8 @@ code:
     EQUAL; body = expr;
     { let recursive, inline, id, newer_version_of, code_size = header in
       { id; newer_version_of; param_arity = None; ret_arity; recursive; inline;
-        params_and_body = Present { params; closure_var; ret_cont; exn_cont;
-                                    body };
+        params_and_body = Present { params; closure_var; depth_var; ret_cont;
+                                    exn_cont; body };
         code_size; is_tupled; } }
   | header = code_header;
     KWD_DELETED;
@@ -502,6 +510,12 @@ named:
   | t = ternop_app { Prim t }
   | b = block { Prim b }
   | c = fun_decl { Closure c }
+  (* CR lmaurer: This strikes me as a bit ugly, but it's necessary because
+     [let x = y] could be assigning either a simple or a rec_info. We could
+     also give a prefix to depth variables, but there are enough (too many?)
+     magic prefixes in the language as is. Could also leave it ambiguous and
+     infer from the kind of the variable. *)
+  | KWD_REC_INFO; ri = rec_info_atom { Rec_info ri }
 ;
 
 switch_case:
@@ -820,6 +834,27 @@ simple:
   | s = symbol { Symbol s }
   | v = variable { Var v }
   | c = const { Const c }
+  | s = simple; TILDE; c = coercion { Coerce (s, c) }
+;
+
+coercion:
+  | KWD_ID { Id }
+  | KWD_DEPTH; from = rec_info; MINUSGREATER; to_ = rec_info
+    { Change_depth { from; to_; } }
+;
+
+rec_info_atom:
+  | i = plain_int { Depth i }
+  | KWD_INF { Infinity }
+  | KWD_DO_NOT_INLINE { Do_not_inline }
+  | dv = variable { Var dv }
+  | LPAREN; ri = rec_info; RPAREN { ri }
+;
+
+rec_info:
+  | ri = rec_info_atom { ri }
+  | KWD_SUCC; ri = rec_info_atom { Succ ri }
+  | KWD_UNROLL; d = plain_int; ri = rec_info_atom { Unroll (d, ri) }
 ;
 
 code_id:
@@ -863,4 +898,5 @@ special_continuation:
 var_within_closure:
   | e = IDENT { make_located e ($startpos, $endpos) }
 ;
+
 %%

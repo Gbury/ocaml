@@ -2,6 +2,7 @@
 (* The type of tokens. *)
 
 type token = 
+  | TILDE
   | SYMBOL of (Fexpr.compilation_unit option * string)
   | STRING of (string)
   | STARDOT
@@ -68,6 +69,7 @@ type token =
   | KWD_TUPLED
   | KWD_TAGGED
   | KWD_SWITCH
+  | KWD_SUCC
   | KWD_SIZE
   | KWD_SET_OF_CLOSURES
   | KWD_RERAISE
@@ -92,9 +94,11 @@ type token =
   | KWD_INT32
   | KWD_INLINING_STATE
   | KWD_INLINE
+  | KWD_INF
   | KWD_IN
   | KWD_IMMUTABLE_UNIQUE
   | KWD_IMM
+  | KWD_ID
   | KWD_HINT
   | KWD_HCF
   | KWD_FLOAT_BLOCK
@@ -105,6 +109,7 @@ type token =
   | KWD_ERROR
   | KWD_END
   | KWD_DYNAMIC
+  | KWD_DO_NOT_INLINE
   | KWD_DONE
   | KWD_DOMINATOR_SCOPED
   | KWD_DIRECT

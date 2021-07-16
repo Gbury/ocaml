@@ -1,7 +1,9 @@
-let $camlTests9__immstring52 = "tests9.ml" in
-let $camlTests9__const_block54 = Block 0 ($camlTests9__immstring52, 27, 11)
+let $camlTests9__immstring60 = "tests9.ml" in
+let $camlTests9__const_block62 = Block 0 ($camlTests9__immstring60, 27, 11)
 in
-let code rec size(110) rev_sort_11 (n : imm tagged, l) my_closure -> k * k1 =
+let code rec size(110) rev_sort_11 (n : imm tagged, l) my_closure my_depth
+                         -> k * k1 =
+  let next_depth = rec_info (succ my_depth) in
   let cmp = %project_var rev_sort.cmp_12 my_closure in
   let sort = %select_closure (rev_sort -> sort) my_closure in
   (let prim = %phys_ne (n, 2) in
@@ -67,15 +69,18 @@ let code rec size(110) rev_sort_11 (n : imm tagged, l) my_closure -> k * k1 =
     where k2 =
       apply sort (n, l) -> k * k1
 in
-let code rec size(8) sort_10 (n : imm tagged, l) my_closure -> k * k1 =
+let code rec size(8) sort_10 (n : imm tagged, l) my_closure my_depth -> k
+                       * k1 =
+  let next_depth = rec_info (succ my_depth) in
   let cmp = %project_var sort.cmp_12 my_closure in
   let rev_sort = %select_closure (sort -> rev_sort) my_closure in
   apply rev_sort (n, l) -> k * k1
 in
-let code size(1755) sort_uniq_4 (cmp, l) my_closure -> k * k1 =
+let code size(1755) sort_uniq_4 (cmp, l) my_closure my_depth -> k * k1 =
+  let next_depth = rec_info (succ my_depth) in
+  let rev_append = %project_var sort_uniq.rev_append_2 my_closure in
   let chop = %project_var sort_uniq.chop_3 my_closure in
   let length = %project_var sort_uniq.length_1 my_closure in
-  let rev_append = %project_var sort_uniq.rev_append_2 my_closure in
   let rev_merge = closure rev_merge_5 @rev_merge
   with { rev_append_4 = rev_append; cmp_5 = cmp }
   in
@@ -102,11 +107,13 @@ let code size(1755) sort_uniq_4 (cmp, l) my_closure -> k * k1 =
          where k2 =
            apply sort (len, l) -> k * k1)
 in
-let code rec size(708) rev_sort_8 (n : imm tagged, l) my_closure -> k * k1 =
-  let chop = %project_var rev_sort_1.chop_8 my_closure in
+let code rec size(708) rev_sort_8 (n : imm tagged, l) my_closure my_depth
+                         -> k * k1 =
+  let next_depth = rec_info (succ my_depth) in
   let cmp = %project_var rev_sort_1.cmp_9 my_closure in
   let rev_merge_rev = %project_var rev_sort_1.rev_merge_rev_11 my_closure in
   let rev_merge = %project_var rev_sort_1.rev_merge_10 my_closure in
+  let chop = %project_var rev_sort_1.chop_8 my_closure in
   let sort = %select_closure (rev_sort_1 -> sort_1) my_closure in
   (let prim = %phys_ne (n, 2) in
    let Pintcomp = %Tag_imm prim in
@@ -602,7 +609,8 @@ let code rec size(708) rev_sort_8 (n : imm tagged, l) my_closure -> k * k1 =
                    where k2 (s2) =
                      apply rev_merge (s1, s2, 0) -> k * k1)))
 in
-let code rec size(37) rev_append_2 (l1, l2) my_closure -> k * k1 =
+let code rec size(37) rev_append_2 (l1, l2) my_closure my_depth -> k * k1 =
+  let next_depth = rec_info (succ my_depth) in
   (let prim = %is_int l1 in
    let is_scrutinee_int = %Tag_imm prim in
    let untagged = %untag_imm is_scrutinee_int in
@@ -623,11 +631,13 @@ let code rec size(37) rev_append_2 (l1, l2) my_closure -> k * k1 =
       let Pfield_1 = %block_load 0 size(2) (l1, 1) in
       apply my_closure (Pfield_1, Pmakeblock) -> k * k1
 in
-let code rec size(708) sort_7 (n : imm tagged, l) my_closure -> k * k1 =
+let code rec size(708) sort_7 (n : imm tagged, l) my_closure my_depth -> k
+                         * k1 =
+  let next_depth = rec_info (succ my_depth) in
   let rev_merge = %project_var sort_1.rev_merge_10 my_closure in
-  let chop = %project_var sort_1.chop_8 my_closure in
   let cmp = %project_var sort_1.cmp_9 my_closure in
   let rev_merge_rev = %project_var sort_1.rev_merge_rev_11 my_closure in
+  let chop = %project_var sort_1.chop_8 my_closure in
   let rev_sort = %select_closure (sort_1 -> rev_sort_1) my_closure in
   (let prim = %phys_ne (n, 2) in
    let Pintcomp = %Tag_imm prim in
@@ -1123,7 +1133,9 @@ let code rec size(708) sort_7 (n : imm tagged, l) my_closure -> k * k1 =
                    where k2 (s2) =
                      apply rev_merge_rev (s1, s2, 0) -> k * k1)))
 in
-let code rec size(58) chop_3 (k : imm tagged, l) my_closure -> k * k1 =
+let code rec size(58) chop_3 (k : imm tagged, l) my_closure my_depth -> k
+                        * k1 =
+  let next_depth = rec_info (succ my_depth) in
   let prim = %phys_eq (k, 0) in
   let Pintcomp = %Tag_imm prim in
   (let untagged = %untag_imm Pintcomp in
@@ -1150,17 +1162,18 @@ let code rec size(58) chop_3 (k : imm tagged, l) my_closure -> k * k1 =
            let Psubint = k - 1 in
            apply my_closure (Psubint, Pfield) -> k * k1
          where k2 =
-           let Pgetglobal = $`.predef_exn`.caml_exn_Assert_failure in
            let Pmakeblock =
              %Block 0
                ($`.predef_exn`.caml_exn_Assert_failure,
-                $camlTests9__const_block54)
+                $camlTests9__const_block62)
            in
            cont k1 pop(regular k1) (Pmakeblock))
 in
-let code rec size(137) rev_merge_5 (l1, l2, accu) my_closure -> k * k1 =
-  let cmp = %project_var rev_merge.cmp_5 my_closure in
+let code rec size(137) rev_merge_5 (l1, l2, accu) my_closure my_depth -> k
+                         * k1 =
+  let next_depth = rec_info (succ my_depth) in
   let rev_append = %project_var rev_merge.rev_append_4 my_closure in
+  let cmp = %project_var rev_merge.cmp_5 my_closure in
   (let prim = %is_int l1 in
    let is_scrutinee_int = %Tag_imm prim in
    let untagged = %untag_imm is_scrutinee_int in
@@ -1224,19 +1237,22 @@ let code rec size(137) rev_merge_5 (l1, l2, accu) my_closure -> k * k1 =
     where k2 =
       apply rev_append (l2, accu) -> k * k1
 in
-let code size(7) length_1 (l) my_closure -> k * k1 : imm tagged =
+let code size(7) length_1 (l) my_closure my_depth -> k * k1 : imm tagged =
+  let next_depth = rec_info (succ my_depth) in
   let length_aux = %project_var length.length_aux_0 my_closure in
   apply length_aux (0, l) -> k * k1
 in
-let code size(136) foo_9 (cmp, l) my_closure -> k * k1 =
+let code size(136) foo_9 (cmp, l) my_closure my_depth -> k * k1 =
+  let next_depth = rec_info (succ my_depth) in
   let sort = closure sort_10 @sort
   and rev_sort = closure rev_sort_11 @rev_sort
   with { cmp_12 = cmp }
   in
   apply sort (42, l) -> k * k1
 in
-let code rec size(31) length_aux_0 (len : imm tagged, param) my_closure -> k
-                        * k1 : imm tagged =
+let code rec size(31) length_aux_0 (len : imm tagged, param) my_closure
+                        my_depth -> k * k1 : imm tagged =
+  let next_depth = rec_info (succ my_depth) in
   (let prim = %is_int param in
    let is_scrutinee_int = %Tag_imm prim in
    let untagged = %untag_imm is_scrutinee_int in
@@ -1256,7 +1272,9 @@ let code rec size(31) length_aux_0 (len : imm tagged, param) my_closure -> k
       let Paddint = len + 1 in
       apply my_closure (Paddint, Pfield) -> k * k1
 in
-let code rec size(137) rev_merge_rev_6 (l1, l2, accu) my_closure -> k * k1 =
+let code rec size(137) rev_merge_rev_6 (l1, l2, accu) my_closure my_depth
+                         -> k * k1 =
+  let next_depth = rec_info (succ my_depth) in
   let cmp = %project_var rev_merge_rev.cmp_7 my_closure in
   let rev_append = %project_var rev_merge_rev.rev_append_6 my_closure in
   (let prim = %is_int l1 in
@@ -1346,8 +1364,8 @@ in
     in
     cont done ($camlTests9)
 ===>
-let $camlTests9__immstring52 = "tests9.ml" in
-let $camlTests9__const_block54 = Block 0 ($camlTests9__immstring52, 27, 11)
+let $camlTests9__immstring60 = "tests9.ml" in
+let $camlTests9__const_block62 = Block 0 ($camlTests9__immstring60, 27, 11)
 in
 let code rec size(110) rev_sort_11 deleted : imm tagged * val -> val in
 let code rec size(8) sort_10 deleted : imm tagged * val -> val in
@@ -1367,7 +1385,8 @@ let $camlTests9__length_aux_12 =
 and code rec size(18) newer_version_of(length_aux_0) length_aux_0_1
                                                        (len : imm tagged,
                                                         param) my_closure
-                                                       -> k * k1 : imm tagged =
+                                                       my_depth -> k * k1
+                                                       : imm tagged =
   (let prim = %is_int param in
    switch prim
      | 0 -> k2
@@ -1375,14 +1394,14 @@ and code rec size(18) newer_version_of(length_aux_0) length_aux_0_1
     where k2 =
       let Pfield = %block_load 0 size(2) (param, 1) in
       let Paddint = len + 1 in
-      apply direct(length_aux_0_1 @length_aux) inlining_state(depth(0))
+      apply direct(length_aux_0_1 @length_aux)
         ($camlTests9__length_aux_12 : _ -> imm tagged)
         (Paddint, Pfield)
         -> k * k1
 in
-let code size(4) newer_version_of(length_1) length_1_1 (l) my_closure -> k
-                                              * k1 : imm tagged =
-  apply direct(length_aux_0_1 @length_aux) inlining_state(depth(0))
+let code size(4) newer_version_of(length_1) length_1_1 (l) my_closure
+                                              my_depth -> k * k1 : imm tagged =
+  apply direct(length_aux_0_1 @length_aux)
     ($camlTests9__length_aux_12 : _ -> imm tagged)
     (0, l)
     -> k * k1
@@ -1392,7 +1411,7 @@ let $camlTests9__rev_append_14 =
   closure rev_append_2_1 @rev_append
 and code rec size(24) newer_version_of(rev_append_2) rev_append_2_1 (
                                                        l1, l2) my_closure
-                                                       -> k * k1 =
+                                                       my_depth -> k * k1 =
   (let prim = %is_int l1 in
    switch prim
      | 0 -> k2
@@ -1401,18 +1420,19 @@ and code rec size(24) newer_version_of(rev_append_2) rev_append_2_1 (
       let Pfield = %block_load 0 size(2) (l1, 0) in
       let Pmakeblock = %Block 0 (Pfield, l2) in
       let Pfield_1 = %block_load 0 size(2) (l1, 1) in
-      apply direct(rev_append_2_1 @rev_append) inlining_state(depth(0))
+      apply direct(rev_append_2_1 @rev_append)
         $camlTests9__rev_append_14
         (Pfield_1, Pmakeblock)
         -> k * k1
 in
-let $camlTests9__Pmakeblock564 =
-  Block 0 ($`.predef_exn`.caml_exn_Assert_failure, $camlTests9__const_block54)
+let $camlTests9__Pmakeblock595 =
+  Block 0 ($`.predef_exn`.caml_exn_Assert_failure, $camlTests9__const_block62)
 in
 let $camlTests9__chop_15 =
   closure chop_3_1 @chop
 and code rec size(30) newer_version_of(chop_3) chop_3_1 (k : imm tagged, l)
-                                                 my_closure -> k * k1 =
+                                                 my_closure my_depth -> k
+                                                 * k1 =
   let prim = %phys_eq (k, 0) in
   switch prim
     | 0 -> k2
@@ -1421,26 +1441,26 @@ and code rec size(30) newer_version_of(chop_3) chop_3_1 (k : imm tagged, l)
       ((let prim_1 = %is_int l in
         switch prim_1
           | 0 -> k2
-          | 1 -> k1 pop(regular k1) ($camlTests9__Pmakeblock564))
+          | 1 -> k1 pop(regular k1) ($camlTests9__Pmakeblock595))
          where k2 =
            let Pfield = %block_load 0 size(2) (l, 1) in
            let Psubint = k - 1 in
-           apply direct(chop_3_1 @chop) inlining_state(depth(0))
+           apply direct(chop_3_1 @chop)
              $camlTests9__chop_15
              (Psubint, Pfield)
              -> k * k1)
 in
-let code rec size(98) newer_version_of(rev_merge_rev_6) rev_merge_rev_6_1
+let code rec size(99) newer_version_of(rev_merge_rev_6) rev_merge_rev_6_1
                                                           (l1, l2, accu)
-                                                          my_closure -> k
-                                                          * k1 =
+                                                          my_closure my_depth
+                                                          -> k * k1 =
   let cmp = %project_var rev_merge_rev.cmp_7 my_closure in
   (let prim = %is_int l1 in
    switch prim
      | 0 -> k2
      | 1 -> k3)
     where k3 =
-      apply direct(rev_append_2_1 @rev_append) inlining_state(depth(0))
+      apply direct(rev_append_2_1 @rev_append)
         $camlTests9__rev_append_14
         (l2, accu)
         -> k * k1
@@ -1452,14 +1472,16 @@ let code rec size(98) newer_version_of(rev_merge_rev_6) rev_merge_rev_6_1
           | 0 -> k2
           | 1 -> k3)
          where k3 =
-           apply direct(rev_append_2_1 @rev_append) inlining_state(depth(0))
+           apply direct(rev_append_2_1 @rev_append)
              $camlTests9__rev_append_14
              (l1, accu)
              -> k * k1
          where k2 =
            let t2 = %block_load 0 size(2) (l2, 1) in
            let h2 = %block_load 0 size(2) (l2, 0) in
-           (apply inlining_state(depth(0)) cmp (h1, h2) -> k2 * k1
+           (apply cmp (h1, h2) -> k3 * k1
+              where k3 (param) =
+                cont k2 (param)
               where k2 (c : imm tagged) =
                 let prim = %phys_eq (c, 0) in
                 (switch prim
@@ -1468,7 +1490,6 @@ let code rec size(98) newer_version_of(rev_merge_rev_6) rev_merge_rev_6_1
                    where k3 =
                      let Pmakeblock = %Block 0 (h1, accu) in
                      apply direct(rev_merge_rev_6_1 @rev_merge_rev)
-                            inlining_state(depth(0))
                        my_closure
                        (t1, t2, Pmakeblock)
                        -> k * k1
@@ -1480,28 +1501,27 @@ let code rec size(98) newer_version_of(rev_merge_rev_6) rev_merge_rev_6_1
                         where k3 =
                           let Pmakeblock = %Block 0 (h1, accu) in
                           apply direct(rev_merge_rev_6_1 @rev_merge_rev)
-                                 inlining_state(depth(0))
                             my_closure
                             (t1, l2, Pmakeblock)
                             -> k * k1
                         where k2 =
                           let Pmakeblock = %Block 0 (h2, accu) in
                           apply direct(rev_merge_rev_6_1 @rev_merge_rev)
-                                 inlining_state(depth(0))
                             my_closure
                             (l1, t2, Pmakeblock)
                             -> k * k1))))
 in
-let code rec size(98) newer_version_of(rev_merge_5) rev_merge_5_1
+let code rec size(99) newer_version_of(rev_merge_5) rev_merge_5_1
                                                       (l1, l2, accu)
-                                                      my_closure -> k * k1 =
+                                                      my_closure my_depth
+                                                      -> k * k1 =
   let cmp = %project_var rev_merge.cmp_5 my_closure in
   (let prim = %is_int l1 in
    switch prim
      | 0 -> k2
      | 1 -> k3)
     where k3 =
-      apply direct(rev_append_2_1 @rev_append) inlining_state(depth(0))
+      apply direct(rev_append_2_1 @rev_append)
         $camlTests9__rev_append_14
         (l2, accu)
         -> k * k1
@@ -1513,14 +1533,16 @@ let code rec size(98) newer_version_of(rev_merge_5) rev_merge_5_1
           | 0 -> k2
           | 1 -> k3)
          where k3 =
-           apply direct(rev_append_2_1 @rev_append) inlining_state(depth(0))
+           apply direct(rev_append_2_1 @rev_append)
              $camlTests9__rev_append_14
              (l1, accu)
              -> k * k1
          where k2 =
            let t2 = %block_load 0 size(2) (l2, 1) in
            let h2 = %block_load 0 size(2) (l2, 0) in
-           (apply inlining_state(depth(0)) cmp (h1, h2) -> k2 * k1
+           (apply cmp (h1, h2) -> k3 * k1
+              where k3 (param) =
+                cont k2 (param)
               where k2 (c : imm tagged) =
                 let prim = %phys_eq (c, 0) in
                 (switch prim
@@ -1529,7 +1551,6 @@ let code rec size(98) newer_version_of(rev_merge_5) rev_merge_5_1
                    where k3 =
                      let Pmakeblock = %Block 0 (h1, accu) in
                      apply direct(rev_merge_5_1 @rev_merge)
-                            inlining_state(depth(0))
                        my_closure
                        (t1, t2, Pmakeblock)
                        -> k * k1
@@ -1541,21 +1562,20 @@ let code rec size(98) newer_version_of(rev_merge_5) rev_merge_5_1
                         where k3 =
                           let Pmakeblock = %Block 0 (h1, accu) in
                           apply direct(rev_merge_5_1 @rev_merge)
-                                 inlining_state(depth(0))
                             my_closure
                             (t1, l2, Pmakeblock)
                             -> k * k1
                         where k2 =
                           let Pmakeblock = %Block 0 (h2, accu) in
                           apply direct(rev_merge_5_1 @rev_merge)
-                                 inlining_state(depth(0))
                             my_closure
                             (l1, t2, Pmakeblock)
                             -> k * k1))))
 in
-let code rec size(588) newer_version_of(rev_sort_8) rev_sort_8_1
+let code rec size(595) newer_version_of(rev_sort_8) rev_sort_8_1
                                                       (n : imm tagged, l)
-                                                      my_closure -> k * k1 =
+                                                      my_closure my_depth
+                                                      -> k * k1 =
   let cmp = %project_var rev_sort.cmp_9 my_closure in
   let rev_merge = %project_var rev_sort.rev_merge_10 my_closure in
   let sort = %select_closure (rev_sort -> sort) my_closure in
@@ -1590,20 +1610,18 @@ let code rec size(588) newer_version_of(rev_sort_8) rev_sort_8_1
                           | 1 -> k2)
                          where k4 =
                            let x3 = %block_load 0 size(2) (`*match*_1`, 0) in
-                           (apply inlining_state(depth(0))
-                              cmp
-                              (x1, x2)
-                              -> k4 * k1
+                           (apply cmp (x1, x2) -> k5 * k1
+                              where k5 (param) =
+                                cont k4 (param)
                               where k4 (c : imm tagged) =
                                 let prim_2 = %phys_eq (c, 0) in
                                 (switch prim_2
                                    | 0 -> k4
                                    | 1 -> k5
                                    where k5 =
-                                     (apply inlining_state(depth(0))
-                                        cmp
-                                        (x2, x3)
-                                        -> k5 * k1
+                                     (apply cmp (x2, x3) -> k6 * k1
+                                        where k6 (param) =
+                                          cont k5 (param)
                                         where k5 (c_1 : imm tagged) =
                                           let prim_3 = %phys_eq (c_1, 0) in
                                           (switch prim_3
@@ -1643,10 +1661,9 @@ let code rec size(588) newer_version_of(rev_sort_8) rev_sort_8_1
                                         | 0 -> k4
                                         | 1 -> k5
                                         where k5 =
-                                          (apply inlining_state(depth(0))
-                                             cmp
-                                             (x2, x3)
-                                             -> k5 * k1
+                                          (apply cmp (x2, x3) -> k6 * k1
+                                             where k6 (param) =
+                                               cont k5 (param)
                                              where k5 (c_1 : imm tagged) =
                                                let prim_4 = %phys_eq (c_1, 0)
                                                in
@@ -1684,10 +1701,11 @@ let code rec size(588) newer_version_of(rev_sort_8) rev_sort_8_1
                                                                 (Pmakeblock_2)
                                                        where k5 =
                                                          (apply
-                                                                 inlining_state(depth(0))
                                                             cmp
                                                             (x1, x3)
-                                                            -> k5 * k1
+                                                            -> k6 * k1
+                                                            where k6 (param) =
+                                                              cont k5 (param)
                                                             where
                                                                    k5
                                                                    (c_2 :
@@ -1764,10 +1782,9 @@ let code rec size(588) newer_version_of(rev_sort_8) rev_sort_8_1
                                                                     k
                                                                     (Pmakeblock_2)))))))
                                         where k4 =
-                                          (apply inlining_state(depth(0))
-                                             cmp
-                                             (x1, x3)
-                                             -> k4 * k1
+                                          (apply cmp (x1, x3) -> k5 * k1
+                                             where k5 (param) =
+                                               cont k4 (param)
                                              where k4 (c_1 : imm tagged) =
                                                let prim_4 = %phys_eq (c_1, 0)
                                                in
@@ -1805,10 +1822,11 @@ let code rec size(588) newer_version_of(rev_sort_8) rev_sort_8_1
                                                                 (Pmakeblock_2)
                                                        where k4 =
                                                          (apply
-                                                                 inlining_state(depth(0))
                                                             cmp
                                                             (x2, x3)
-                                                            -> k4 * k1
+                                                            -> k5 * k1
+                                                            where k5 (param) =
+                                                              cont k4 (param)
                                                             where
                                                                    k4
                                                                    (c_2 :
@@ -1898,7 +1916,9 @@ let code rec size(588) newer_version_of(rev_sort_8) rev_sort_8_1
                 | 1 -> k2)
                where k3 =
                  let x2 = %block_load 0 size(2) (`*match*`, 0) in
-                 (apply inlining_state(depth(0)) cmp (x1, x2) -> k3 * k1
+                 (apply cmp (x1, x2) -> k4 * k1
+                    where k4 (param) =
+                      cont k3 (param)
                     where k3 (c : imm tagged) =
                       let prim_1 = %phys_eq (c, 0) in
                       (switch prim_1
@@ -1925,28 +1945,19 @@ let code rec size(588) newer_version_of(rev_sort_8) rev_sort_8_1
     where k2 =
       let n1 = n asr 1i in
       let n2 = n - n1 in
-      (apply direct(chop_3_1 @chop) inlining_state(depth(0))
-         $camlTests9__chop_15
-         (n1, l)
-         -> k2 * k1
+      (apply direct(chop_3_1 @chop) $camlTests9__chop_15 (n1, l) -> k2 * k1
          where k2 (l2) =
-           (apply direct(sort_7_1 @sort) inlining_state(depth(0))
-              sort
-              (n1, l)
-              -> k2 * k1
+           (apply direct(sort_7_1 @sort) sort (n1, l) -> k2 * k1
               where k2 (s1) =
-                (apply direct(sort_7_1 @sort) inlining_state(depth(0))
-                   sort
-                   (n2, l2)
-                   -> k2 * k1
+                (apply direct(sort_7_1 @sort) sort (n2, l2) -> k2 * k1
                    where k2 (s2) =
                      apply direct(rev_merge_5_1 @rev_merge)
-                            inlining_state(depth(0))
                        rev_merge
                        (s1, s2, 0)
                        -> k * k1)))
-and code rec size(588) newer_version_of(sort_7) sort_7_1 (n : imm tagged, l)
-                                                  my_closure -> k * k1 =
+and code rec size(595) newer_version_of(sort_7) sort_7_1 (n : imm tagged, l)
+                                                  my_closure my_depth -> k
+                                                  * k1 =
   let cmp = %project_var sort.cmp_9 my_closure in
   let rev_merge_rev = %project_var sort.rev_merge_rev_11 my_closure in
   let rev_sort = %select_closure (sort -> rev_sort) my_closure in
@@ -1981,20 +1992,18 @@ and code rec size(588) newer_version_of(sort_7) sort_7_1 (n : imm tagged, l)
                           | 1 -> k2)
                          where k4 =
                            let x3 = %block_load 0 size(2) (`*match*_1`, 0) in
-                           (apply inlining_state(depth(0))
-                              cmp
-                              (x1, x2)
-                              -> k4 * k1
+                           (apply cmp (x1, x2) -> k5 * k1
+                              where k5 (param) =
+                                cont k4 (param)
                               where k4 (c : imm tagged) =
                                 let prim_2 = %phys_eq (c, 0) in
                                 (switch prim_2
                                    | 0 -> k4
                                    | 1 -> k5
                                    where k5 =
-                                     (apply inlining_state(depth(0))
-                                        cmp
-                                        (x2, x3)
-                                        -> k5 * k1
+                                     (apply cmp (x2, x3) -> k6 * k1
+                                        where k6 (param) =
+                                          cont k5 (param)
                                         where k5 (c_1 : imm tagged) =
                                           let prim_3 = %phys_eq (c_1, 0) in
                                           (switch prim_3
@@ -2034,10 +2043,9 @@ and code rec size(588) newer_version_of(sort_7) sort_7_1 (n : imm tagged, l)
                                         | 0 -> k4
                                         | 1 -> k5
                                         where k5 =
-                                          (apply inlining_state(depth(0))
-                                             cmp
-                                             (x2, x3)
-                                             -> k5 * k1
+                                          (apply cmp (x2, x3) -> k6 * k1
+                                             where k6 (param) =
+                                               cont k5 (param)
                                              where k5 (c_1 : imm tagged) =
                                                let prim_4 = %phys_eq (c_1, 0)
                                                in
@@ -2075,10 +2083,11 @@ and code rec size(588) newer_version_of(sort_7) sort_7_1 (n : imm tagged, l)
                                                                 (Pmakeblock_2)
                                                        where k5 =
                                                          (apply
-                                                                 inlining_state(depth(0))
                                                             cmp
                                                             (x1, x3)
-                                                            -> k5 * k1
+                                                            -> k6 * k1
+                                                            where k6 (param) =
+                                                              cont k5 (param)
                                                             where
                                                                    k5
                                                                    (c_2 :
@@ -2155,10 +2164,9 @@ and code rec size(588) newer_version_of(sort_7) sort_7_1 (n : imm tagged, l)
                                                                     k
                                                                     (Pmakeblock_2)))))))
                                         where k4 =
-                                          (apply inlining_state(depth(0))
-                                             cmp
-                                             (x1, x3)
-                                             -> k4 * k1
+                                          (apply cmp (x1, x3) -> k5 * k1
+                                             where k5 (param) =
+                                               cont k4 (param)
                                              where k4 (c_1 : imm tagged) =
                                                let prim_4 = %phys_eq (c_1, 0)
                                                in
@@ -2196,10 +2204,11 @@ and code rec size(588) newer_version_of(sort_7) sort_7_1 (n : imm tagged, l)
                                                                 (Pmakeblock_2)
                                                        where k4 =
                                                          (apply
-                                                                 inlining_state(depth(0))
                                                             cmp
                                                             (x2, x3)
-                                                            -> k4 * k1
+                                                            -> k5 * k1
+                                                            where k5 (param) =
+                                                              cont k4 (param)
                                                             where
                                                                    k4
                                                                    (c_2 :
@@ -2289,7 +2298,9 @@ and code rec size(588) newer_version_of(sort_7) sort_7_1 (n : imm tagged, l)
                 | 1 -> k2)
                where k3 =
                  let x2 = %block_load 0 size(2) (`*match*`, 0) in
-                 (apply inlining_state(depth(0)) cmp (x1, x2) -> k3 * k1
+                 (apply cmp (x1, x2) -> k4 * k1
+                    where k4 (param) =
+                      cont k3 (param)
                     where k3 (c : imm tagged) =
                       let prim_1 = %phys_eq (c, 0) in
                       (switch prim_1
@@ -2316,30 +2327,23 @@ and code rec size(588) newer_version_of(sort_7) sort_7_1 (n : imm tagged, l)
     where k2 =
       let n1 = n asr 1i in
       let n2 = n - n1 in
-      (apply direct(chop_3_1 @chop) inlining_state(depth(0))
-         $camlTests9__chop_15
-         (n1, l)
-         -> k2 * k1
+      (apply direct(chop_3_1 @chop) $camlTests9__chop_15 (n1, l) -> k2 * k1
          where k2 (l2) =
-           (apply direct(rev_sort_8_1 @rev_sort) inlining_state(depth(0))
-              rev_sort
-              (n1, l)
-              -> k2 * k1
+           (apply direct(rev_sort_8_1 @rev_sort) rev_sort (n1, l) -> k2 * k1
               where k2 (s1) =
                 (apply direct(rev_sort_8_1 @rev_sort)
-                        inlining_state(depth(0))
                    rev_sort
                    (n2, l2)
                    -> k2 * k1
                    where k2 (s2) =
                      apply direct(rev_merge_rev_6_1 @rev_merge_rev)
-                            inlining_state(depth(0))
                        rev_merge_rev
                        (s1, s2, 0)
                        -> k * k1)))
 in
-let code size(1427) newer_version_of(sort_uniq_4) sort_uniq_4_1 (cmp, l)
-                                                    my_closure -> k * k1 =
+let code size(1444) newer_version_of(sort_uniq_4) sort_uniq_4_1 (cmp, l)
+                                                    my_closure my_depth -> k
+                                                    * k1 =
   let rev_merge = closure rev_merge_5_1 @rev_merge
   with { rev_append_4 = $camlTests9__rev_append_14; cmp_5 = cmp }
   in
@@ -2358,23 +2362,29 @@ let code size(1427) newer_version_of(sort_uniq_4) sort_uniq_4_1 (cmp, l)
   apply direct(length_aux_0_1 @length_aux) inlining_state(depth(1))
     ($camlTests9__length_aux_12 : _ -> imm tagged)
     (0, l)
-    -> k2 * k1
+    -> k3 * k1
+    where k3 (param : imm tagged) =
+      cont k2 (param)
     where k2 (len : imm tagged) =
       let prim = len < 2 in
       (switch prim
          | 0 -> k2
          | 1 -> k (l)
          where k2 =
-           apply direct(sort_7_1 @sort) inlining_state(depth(0))
-             sort
-             (len, l)
-             -> k * k1)
+           apply direct(sort_7_1 @sort) sort (len, l) -> k * k1)
 in
 let $camlTests9__sort_uniq_16 = closure sort_uniq_4_1 @sort_uniq in
-let code rec size(76) newer_version_of(rev_sort_11) rev_sort_11_1
+let code rec size(5) newer_version_of(sort_10) sort_10_1 (n : imm tagged, l)
+                                                 my_closure my_depth -> k
+                                                 * k1 =
+  let rev_sort = %select_closure (sort_1 -> rev_sort_1) my_closure in
+  apply direct(rev_sort_11_1 @rev_sort_1) rev_sort (n, l) -> k * k1
+and code rec size(78) newer_version_of(rev_sort_11) rev_sort_11_1
                                                       (n : imm tagged, l)
-                                                      my_closure -> k * k1 =
+                                                      my_closure my_depth
+                                                      -> k * k1 =
   let cmp = %project_var rev_sort_1.cmp_12 my_closure in
+  let sort = %select_closure (rev_sort_1 -> sort_1) my_closure in
   (let prim = %phys_ne (n, 2) in
    switch prim
      | 0 -> k3
@@ -2393,7 +2403,9 @@ let code rec size(76) newer_version_of(rev_sort_11) rev_sort_11_1
                 | 1 -> k2)
                where k3 =
                  let x2 = %block_load 0 size(2) (`*match*`, 0) in
-                 (apply inlining_state(depth(0)) cmp (x1, x2) -> k3 * k1
+                 (apply cmp (x1, x2) -> k4 * k1
+                    where k4 (param) =
+                      cont k3 (param)
                     where k3 (c : imm tagged) =
                       let prim_1 = c < 0 in
                       (switch prim_1
@@ -2406,21 +2418,10 @@ let code rec size(76) newer_version_of(rev_sort_11) rev_sort_11_1
                            let Pmakeblock = %Block 0 (x2, 0) in
                            cont k (Pmakeblock))))))
     where k2 =
-      apply direct(rev_sort_11_1 @rev_sort_1) inlining_state(depth(1))
-        my_closure
-        (n, l)
-        -> k * k1
+      apply direct(sort_10_1 @sort_1) sort (n, l) -> k * k1
 in
-let code rec size(5) newer_version_of(sort_10) sort_10_1 (n : imm tagged, l)
-                                                 my_closure -> k * k1 =
-  let rev_sort = %select_closure (sort_1 -> rev_sort_1) my_closure in
-  apply direct(rev_sort_11_1 @rev_sort_1) inlining_state(depth(0))
-    rev_sort
-    (n, l)
-    -> k * k1
-in
-let code size(97) newer_version_of(foo_9) foo_9_1 (cmp, l) my_closure -> k
-                                            * k1 =
+let code size(99) newer_version_of(foo_9) foo_9_1 (cmp, l) my_closure
+                                            my_depth -> k * k1 =
   let sort = closure sort_10_1 @sort_1
   and rev_sort = closure rev_sort_11_1 @rev_sort_1
   with { cmp_12 = cmp }

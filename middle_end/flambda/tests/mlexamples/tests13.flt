@@ -1,5 +1,7 @@
-let $camlTests13__first_const62 = Block 0 () in
-let code rec size(84) map_foo_4 (f, seq, param) my_closure -> k * k1 =
+let $camlTests13__first_const74 = Block 0 () in
+let code rec size(82) map_foo_4 (f, seq, param : imm tagged) my_closure
+                        my_depth -> k * k1 =
+  let next_depth = rec_info (succ my_depth) in
   let bar = %project_var map_foo.bar_2 my_closure in
   apply seq (0) -> k2 * k1
     where k2 (`*match*`) =
@@ -24,14 +26,19 @@ let code rec size(84) map_foo_4 (f, seq, param) my_closure -> k * k1 =
                 | 0 -> k3
                 | 1 -> k4)
                where k4 =
-                 apply bar (10, my_closure) -> k2 * k1
+                 apply
+                   bar
+                   (10, my_closure ~ depth my_depth -> next_depth)
+                   -> k2 * k1
                where k3 =
-                 apply bar (20, my_closure) -> k2 * k1)
+                 apply
+                   bar
+                   (20, my_closure ~ depth my_depth -> next_depth)
+                   -> k2 * k1)
               where k2 (g) =
                 (apply inline(always) g (0) -> k2 * k1
                    where k2 (g_result) =
                      ((let ignore = %Opaque g_result in
-                       let const = 0 in
                        cont k2 (0))
                         where k2 (sequence) =
                           let `anon-fn[tests13.ml:29,15--28]` =
@@ -49,9 +56,9 @@ let code rec size(84) map_foo_4 (f, seq, param) my_closure -> k * k1 =
                                in
                                cont k (Pmakeblock))))))
 in
-let code inline(always) size(40) bar_0 (i : imm tagged, map_foo) my_closure
-                                   -> k * k1 =
-  let sequence = 0 in
+let code inline(always) size(37) bar_0 (i : imm tagged, map_foo) my_closure
+                                   my_depth -> k * k1 =
+  let next_depth = rec_info (succ my_depth) in
   let `anon-fn[tests13.ml:16,2--118]` =
     closure `anon-fn[tests13.ml:16,2--118]_1`
       @`anon-fn[tests13.ml:16,2--118]`
@@ -59,20 +66,20 @@ let code inline(always) size(40) bar_0 (i : imm tagged, map_foo) my_closure
   in
   cont k (`anon-fn[tests13.ml:16,2--118]`)
 in
-let code size(2) `anon-fn[tests13.ml:19,44--59]_2` (param) my_closure -> k
-                   * k1 =
-  let const = 0 in
+let code size(1) `anon-fn[tests13.ml:19,44--59]_2` (param : imm tagged)
+                   my_closure my_depth -> k * k1 =
+  let next_depth = rec_info (succ my_depth) in
   cont k (0)
 in
-let code size(29) `anon-fn[tests13.ml:16,2--118]_1` (param) my_closure -> k
-                    * k1 =
+let code size(27) `anon-fn[tests13.ml:16,2--118]_1` (param : imm tagged)
+                    my_closure my_depth -> k * k1 =
+  let next_depth = rec_info (succ my_depth) in
   let map_foo =
     %project_var `anon-fn[tests13.ml:16,2--118]`.map_foo_1 my_closure
   in
   let i = %project_var `anon-fn[tests13.ml:16,2--118]`.i_0 my_closure in
   let j = i + 3 in
   (let ignore = %Opaque j in
-   let const = 0 in
    cont k2 (0))
     where k2 (sequence) =
       let `anon-fn[tests13.ml:19,44--59]` =
@@ -88,12 +95,14 @@ let code size(29) `anon-fn[tests13.ml:16,2--118]_1` (param) my_closure -> k
         (`anon-fn[tests13.ml:19,31--43]`, `anon-fn[tests13.ml:19,44--59]`, 0)
         -> k * k1
 in
-let code size(1) `anon-fn[tests13.ml:19,31--43]_3` (x) my_closure -> k * k1 =
+let code size(1) `anon-fn[tests13.ml:19,31--43]_3` (x) my_closure my_depth
+                   -> k * k1 =
+  let next_depth = rec_info (succ my_depth) in
   cont k (x)
 in
-let code size(2) `anon-fn[tests13.ml:29,15--28]_5` (param) my_closure -> k
-                   * k1 =
-  let const = 0 in
+let code size(1) `anon-fn[tests13.ml:29,15--28]_5` (param : imm tagged)
+                   my_closure my_depth -> k * k1 =
+  let next_depth = rec_info (succ my_depth) in
   cont k (0)
 in
 (let bar = closure bar_0 @bar in
@@ -105,12 +114,20 @@ in
     let $camlTests13 = Block 0 (field_0) in
     cont done ($camlTests13)
 ===>
-let code rec size(84) map_foo_4 deleted : val * val * val -> val in
-let code size(2) `anon-fn[tests13.ml:19,44--59]_2` deleted : val -> val in
+let code rec size(82) map_foo_4 deleted : val * val * imm tagged -> val in
+let code size(1) `anon-fn[tests13.ml:19,44--59]_2` deleted :
+                   imm tagged -> val
+in
+let code size(27) `anon-fn[tests13.ml:16,2--118]_1` deleted :
+                    imm tagged -> val
+in
 let code size(1) `anon-fn[tests13.ml:19,31--43]_3` deleted : val -> val in
-let code size(2) `anon-fn[tests13.ml:29,15--28]_5` deleted : val -> val in
+let code size(1) `anon-fn[tests13.ml:29,15--28]_5` deleted :
+                   imm tagged -> val
+in
 let code size(1) newer_version_of(`anon-fn[tests13.ml:19,44--59]_2`) 
-  `anon-fn[tests13.ml:19,44--59]_2_1` (param) my_closure -> k * k1 =
+  `anon-fn[tests13.ml:19,44--59]_2_1` (param : imm tagged) my_closure
+    my_depth -> k * k1 =
   cont k (0)
 in
 let $`camlTests13__anon-fn[tests13.ml:19,44--59]_7` =
@@ -118,26 +135,67 @@ let $`camlTests13__anon-fn[tests13.ml:19,44--59]_7` =
     @`anon-fn[tests13.ml:19,44--59]`
 in
 let code size(1) newer_version_of(`anon-fn[tests13.ml:19,31--43]_3`) 
-  `anon-fn[tests13.ml:19,31--43]_3_1` (x) my_closure -> k * k1 =
+  `anon-fn[tests13.ml:19,31--43]_3_1` (x) my_closure my_depth -> k * k1 =
   cont k (x)
 in
 let $`camlTests13__anon-fn[tests13.ml:19,31--43]_8` =
   closure `anon-fn[tests13.ml:19,31--43]_3_1`
     @`anon-fn[tests13.ml:19,31--43]`
 in
+let code size(10) newer_version_of(`anon-fn[tests13.ml:16,2--118]_1`) 
+  `anon-fn[tests13.ml:16,2--118]_1_1` (param : imm tagged) my_closure
+    my_depth -> k * k1 =
+  let map_foo =
+    %project_var `anon-fn[tests13.ml:16,2--118]`.map_foo_1 my_closure
+  in
+  let i = %project_var `anon-fn[tests13.ml:16,2--118]`.i_0 my_closure in
+  let j = i + 3 in
+  let ignore = %Opaque j in
+  apply inline(never)
+    map_foo
+    ($`camlTests13__anon-fn[tests13.ml:19,31--43]_8`,
+     $`camlTests13__anon-fn[tests13.ml:19,44--59]_7`,
+     0)
+    -> k * k1
+in
 let code size(1) newer_version_of(`anon-fn[tests13.ml:29,15--28]_5`) 
-  `anon-fn[tests13.ml:29,15--28]_5_1` (param) my_closure -> k * k1 =
+  `anon-fn[tests13.ml:29,15--28]_5_1` (param : imm tagged) my_closure
+    my_depth -> k * k1 =
   cont k (0)
 in
-let $`camlTests13__anon-fn[tests13.ml:29,15--28]_12` =
+let $`camlTests13__anon-fn[tests13.ml:29,15--28]_10` =
   closure `anon-fn[tests13.ml:29,15--28]_5_1`
     @`anon-fn[tests13.ml:29,15--28]`
 in
 let $camlTests13__map_foo_9 =
   closure map_foo_4_1 @map_foo
-and code rec size(49) newer_version_of(map_foo_4) map_foo_4_1 (f, seq, param)
-                                                    my_closure -> k * k1 =
-  apply inlining_state(depth(0)) seq (0) -> k2 * k1
+and code size(4) newer_version_of(`anon-fn[tests13.ml:16,2--118]_1_1`) 
+  `anon-fn[tests13.ml:16,2--118]_1_2` (param : imm tagged) my_closure
+    my_depth -> k * k1 =
+  let ignore = %Opaque 23 in
+  apply direct(map_foo_4_1 @map_foo) inline(never) inlining_state(depth(1))
+    $camlTests13__map_foo_9
+    ($`camlTests13__anon-fn[tests13.ml:19,31--43]_8`,
+     $`camlTests13__anon-fn[tests13.ml:19,44--59]_7`,
+     0)
+    -> k * k1
+and code size(4) newer_version_of(`anon-fn[tests13.ml:16,2--118]_1_1`) 
+  `anon-fn[tests13.ml:16,2--118]_1_3` (param : imm tagged) my_closure
+    my_depth -> k * k1 =
+  let ignore = %Opaque 13 in
+  apply direct(map_foo_4_1 @map_foo) inline(never) inlining_state(depth(1))
+    $camlTests13__map_foo_9
+    ($`camlTests13__anon-fn[tests13.ml:19,31--43]_8`,
+     $`camlTests13__anon-fn[tests13.ml:19,44--59]_7`,
+     0)
+    -> k * k1
+and code rec size(75) newer_version_of(map_foo_4) map_foo_4_1
+                                                    (f,
+                                                     seq,
+                                                     param : imm tagged)
+                                                    my_closure my_depth -> k
+                                                    * k1 =
+  apply seq (0) -> k2 * k1
     where k2 (`*match*`) =
       ((let prim = %is_int `*match*` in
         switch prim
@@ -145,29 +203,48 @@ and code rec size(49) newer_version_of(map_foo_4) map_foo_4_1 (f, seq, param)
           | 1 -> k (0))
          where k2 =
            ((let Popaque = %Opaque 0 in
-             let untagged = %untag_imm Popaque in
-             switch untagged
-               | 0 -> k2 (20)
-               | 1 -> k2 (10))
-              where k2 (i_0) =
-                ((let j = i_0 + 3 in
-                  let ignore = %Opaque j in
-                  apply direct(map_foo_4_1 @map_foo) inline(never)
-                         inlining_state(depth(1))
-                    $camlTests13__map_foo_9
-                    ($`camlTests13__anon-fn[tests13.ml:19,31--43]_8`,
-                     $`camlTests13__anon-fn[tests13.ml:19,44--59]_7`,
-                     0)
-                    -> k2 * k1)
+             (let untagged = %untag_imm Popaque in
+              switch untagged
+                | 0 -> k3
+                | 1 -> k4)
+               where k4 =
+                 let `anon-fn[tests13.ml:16,2--118]` =
+                   closure `anon-fn[tests13.ml:16,2--118]_1_3`
+                     @`anon-fn[tests13.ml:16,2--118]`
+                 with {
+                   i_0 = 10;
+                   map_foo_1 =
+                     $camlTests13__map_foo_9 ~ depth my_depth -> succ my_depth
+                 }
+                 in
+                 cont k2 (`anon-fn[tests13.ml:16,2--118]`)
+               where k3 =
+                 let `anon-fn[tests13.ml:16,2--118]` =
+                   closure `anon-fn[tests13.ml:16,2--118]_1_2`
+                     @`anon-fn[tests13.ml:16,2--118]`
+                 with {
+                   i_0 = 20;
+                   map_foo_1 =
+                     $camlTests13__map_foo_9 ~ depth my_depth -> succ my_depth
+                 }
+                 in
+                 cont k2 (`anon-fn[tests13.ml:16,2--118]`))
+              where k2 (g) =
+                (apply
+                        direct(`anon-fn[tests13.ml:16,2--118]_1_1`
+                        @`anon-fn[tests13.ml:16,2--118]`) inline(always)
+                   g
+                   (0)
+                   -> k2 * k1
                    where k2 (g_result) =
                      let ignore = %Opaque g_result in
                      let Pfield = %block_load 0 size(2) (`*match*`, 0) in
-                     (apply inlining_state(depth(0)) f (Pfield) -> k2 * k1
+                     (apply f (Pfield) -> k2 * k1
                         where k2 (apply_result) =
                           let Pmakeblock =
                             %Block 0
                               (apply_result,
-                               $`camlTests13__anon-fn[tests13.ml:29,15--28]_12`)
+                               $`camlTests13__anon-fn[tests13.ml:29,15--28]_10`)
                           in
                           cont k (Pmakeblock)))))
 in

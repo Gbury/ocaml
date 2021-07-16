@@ -128,6 +128,21 @@ type trap_action =
       raise_kind : raise_kind option;
     }
 
+type rec_info =
+  | Depth of int
+  | Infinity
+  | Do_not_inline
+  | Var of variable
+  | Succ of rec_info
+  | Unroll of int * rec_info
+
+type coercion =
+  | Id
+  | Change_depth of {
+      from : rec_info;
+      to_ : rec_info;
+    }
+
 type kinded_parameter = {
   param : variable;
   kind : kind_with_subkind option;
@@ -141,6 +156,7 @@ type simple =
   | Var of variable
   | Symbol of symbol
   | Const of const
+  | Coerce of simple * coercion
 
 type array_kind = Flambda_primitive.Array_kind.t =
   | Immediates
@@ -368,6 +384,7 @@ and named =
   | Simple of simple
   | Prim of prim
   | Closure of fun_decl
+  | Rec_info of rec_info
 
 and fun_decl = {
   code_id : code_id;
@@ -423,6 +440,7 @@ and code_size = int
 and params_and_body = {
   params : kinded_parameter list;
   closure_var : variable;
+  depth_var : variable;
   ret_cont : continuation_id;
   exn_cont : continuation_id;
   body : expr;

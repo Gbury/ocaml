@@ -312,13 +312,53 @@ let const c : Fexpr.const =
   | Naked_nativeint i ->
     Naked_nativeint (i |> targetint)
 
+let depth_or_infinity (d : int Or_infinity.t) : Fexpr.rec_info =
+  match d with
+  | Finite d -> Depth d
+  | Infinity -> Infinity
+
+let rec rec_info env (ri : Rec_info_expr.t) : Fexpr.rec_info =
+  match ri with
+  | Const { depth; unrolling } ->
+    begin match unrolling with
+    | Not_unrolling ->
+      depth_or_infinity depth
+    | Unrolling { remaining_depth } ->
+      Unroll (remaining_depth, depth_or_infinity depth)
+    | Do_not_unroll ->
+      begin match depth with
+      | Infinity -> Do_not_inline
+      | Finite _ ->
+        Misc.fatal_errorf "unexpected finite depth with Do_not_unroll:@ %a"
+          Rec_info_expr.print ri
+      end
+    end
+  | Var dv ->
+    Var (Env.find_var_exn env dv)
+  | Succ ri ->
+    Succ (rec_info env ri)
+  | Unroll_to (d, ri) ->
+    Unroll (d, rec_info env ri)
+
+let coercion env (co : Coercion.t) : Fexpr.coercion =
+  match co with
+  | Id -> Id
+  | Change_depth { from; to_ } ->
+    let from = rec_info env from in
+    let to_ = rec_info env to_ in
+    Change_depth { from; to_ }
+
 let simple env s =
   Simple.pattern_match s
-    (* CR lmaurer: Add coercions *)
-    ~name:(fun n ~coercion:_ : Fexpr.simple ->
-      match name env n with
-      | Var v -> Var v
-      | Symbol s -> Symbol s
+    ~name:(fun n ~coercion:co : Fexpr.simple ->
+      let s : Fexpr.simple =
+        match name env n with
+        | Var v -> Var v
+        | Symbol s -> Symbol s
+      in
+      if Coercion.is_id co then s else
+        let co = coercion env co in
+        Coerce (s, co)
     )
     ~const:(fun c -> Fexpr.Const (const c))
 
@@ -579,7 +619,9 @@ and dynamic_let_expr env vars (defining_expr : Flambda.Named.t) body
         List.map (fun decl : Fexpr.named -> Fexpr.Closure decl) fun_decls
       in
       defining_exprs, closure_elements
-    | Static_consts _ | Rec_info _ ->
+    | Rec_info ri ->
+      ([ Rec_info (rec_info env ri) ] : Fexpr.named list), None
+    | Static_consts _ ->
       assert false
   in
   if (List.compare_lengths vars defining_exprs <> 0) then
@@ -692,12 +734,11 @@ and static_let_expr env bound_symbols scoping_rule defining_expr body
                     env params
                 in
                 let closure_var, env = Env.bind_var env my_closure in
+                let depth_var, env = Env.bind_var env my_depth in
                 let body = expr env body in
-                (* CR lmaurer: Add depth variables to syntax *)
-                ignore my_depth;
                 (* CR-someday lmaurer: Omit exn_cont, closure_var if
                    not used *)
-                { params; ret_cont; exn_cont; closure_var; body }
+                { params; ret_cont; exn_cont; closure_var; depth_var; body }
               )
           in
           Present params_and_body

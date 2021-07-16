@@ -1,7 +1,4 @@
-[@@@ocaml.warning "+a-4-30-40-41-42"]
-
-(* CR lmaurer: Need to adjust to new syntax once that's more settled. (Also
- * need to update error messages once the syntax is settled.) *)
+[@@@ocaml.warning "+a-30-40-41-42"]
 
 open! Fexpr
 
@@ -143,21 +140,17 @@ let kind ppf (k : kind) =
   | Rec_info -> Format.pp_print_string ppf "rec_info"
 
 let kind_with_subkind ppf (k : kind_with_subkind) =
+  let str s = Format.pp_print_string ppf s in
   match k with
+  | Any_value -> str "val"
+  | Block _ -> str "block" (* CR mshinwell: improve this *)
   | Naked_number nnk -> naked_number_kind ppf nnk
-  | _ ->
-    Format.pp_print_string ppf
-    @@
-    match k with
-    | Any_value -> "val"
-    | Block _ -> "block" (* CR mshinwell: improve this *)
-    | Naked_number _ -> assert false
-    | Boxed_float -> "float boxed"
-    | Boxed_int32 -> "int32 boxed"
-    | Boxed_int64 -> "int64 boxed"
-    | Boxed_nativeint -> "nativeint boxed"
-    | Tagged_immediate -> "imm tagged"
-    | Rec_info -> "rec_info"
+  | Boxed_float -> str "float boxed"
+  | Boxed_int32 -> str "int32 boxed"
+  | Boxed_int64 -> str "int64 boxed"
+  | Boxed_nativeint -> str "nativeint boxed"
+  | Tagged_immediate -> str "imm tagged"
+  | Rec_info -> str "rec_info"
 
 let arity ppf (a : arity) =
   match a with
@@ -202,6 +195,39 @@ let field_of_block ppf : field_of_block -> unit = function
   | Dynamically_computed v -> variable ppf v
   | Tagged_immediate i -> Format.fprintf ppf "%s" i
 
+type parens =
+  | Never
+  | If_complex
+
+let rec rec_info ~parens ppf (ri:Fexpr.rec_info) =
+  let with_parens ~f ppf =
+    match parens with
+    | Never -> f ppf ()
+    | If_complex -> Format.fprintf ppf "(%a)" f ()
+  in
+  match ri with
+  | Depth d -> Format.fprintf ppf "%d" d
+  | Infinity -> Format.pp_print_string ppf "inf"
+  | Do_not_inline -> Format.pp_print_string ppf "do_not_inline"
+  | Var dv -> variable ppf dv
+  | Succ ri ->
+    with_parens ppf ~f:(fun ppf () ->
+      Format.fprintf ppf "succ %a"
+        (rec_info ~parens:If_complex) ri)
+  | Unroll (d, ri) ->
+    with_parens ppf ~f:(fun ppf () ->
+      Format.fprintf ppf "unroll %d %a"
+        d
+        (rec_info ~parens:If_complex) ri)
+
+let coercion ppf : coercion -> unit = function
+  | Id ->
+    Format.pp_print_string ppf "id"
+  | Change_depth { from; to_; } ->
+    Format.fprintf ppf "depth %a -> %a"
+      (rec_info ~parens:Never) from
+      (rec_info ~parens:Never) to_
+
 let float ppf f = Format.fprintf ppf "%h" f
 
 let const ppf (c:Fexpr.const) = match c with
@@ -212,10 +238,11 @@ let const ppf (c:Fexpr.const) = match c with
   | Naked_int64 i -> Format.fprintf ppf "%LiL" i
   | Naked_nativeint i -> Format.fprintf ppf "%Lin" i
 
-let simple ppf : simple -> unit = function
+let rec simple ppf : simple -> unit = function
   | Symbol s -> symbol ppf s
   | Var v -> variable ppf v
   | Const c -> const ppf c
+  | Coerce (s, co) -> Format.fprintf ppf "%a ~ %a" simple s coercion co
 
 let simple_args ~space ~omit_if_empty ppf = function
   | [] when omit_if_empty -> ()
@@ -559,6 +586,9 @@ let named ppf = function
     prim ppf p
   | (Closure decl : named) ->
     fun_decl ppf decl
+  | Rec_info ri ->
+    Format.fprintf ppf "@[<hv 2>rec_info@ %a@]"
+      (rec_info ~parens:If_complex) ri
 
 let static_closure_binding ppf (scb : static_closure_binding) =
   Format.fprintf ppf "%a =@ %a"
@@ -778,10 +808,11 @@ and code_binding ppf ({ recursive = rec_; inline; id; newer_version_of;
           is_tupled
         pp_arity
         arity ret_arity
-    | Present { params; closure_var; ret_cont; exn_cont; body } ->
-      Format.fprintf ppf "%a@ %a@ -> %a@ * %a%a%a@] =@ %a"
+    | Present { params; closure_var; depth_var; ret_cont; exn_cont; body } ->
+      Format.fprintf ppf "%a@ %a@ %a@ -> %a@ * %a%a%a@] =@ %a"
         (kinded_parameters ~space:Before) params
         variable closure_var
+        variable depth_var
         continuation_id ret_cont
         continuation_id exn_cont
         (pp_option ~space:Before (pp_like ": %a" arity)) ret_arity

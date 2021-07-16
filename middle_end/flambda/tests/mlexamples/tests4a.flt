@@ -1,6 +1,7 @@
-let $camlTests4a__first_const14 = Block 0 () in
-let code size(21) pr2162_3_as_int64_0 (z, x : imm tagged) my_closure -> k
-                    * k1 =
+let $camlTests4a__first_const16 = Block 0 () in
+let code size(21) pr2162_3_as_int64_0 (z : imm tagged, x : imm tagged)
+                    my_closure my_depth -> k * k1 : imm tagged =
+  let next_depth = rec_info (succ my_depth) in
   (let untagged = %untag_imm z in
    switch untagged
      | 0 -> k2 (x)
@@ -21,11 +22,15 @@ in
     let $camlTests4a = Block 0 (field_0) in
     cont done ($camlTests4a)
 ===>
-let code size(21) pr2162_3_as_int64_0 deleted : val * imm tagged -> val in
+let code size(21) pr2162_3_as_int64_0 deleted :
+                    imm tagged * imm tagged -> imm tagged
+in
 let code size(21) newer_version_of(pr2162_3_as_int64_0) pr2162_3_as_int64_0_1
-                                                          (z, x : imm tagged)
-                                                          my_closure -> k
-                                                          * k1 =
+                                                          (z : imm tagged,
+                                                           x : imm tagged)
+                                                          my_closure my_depth
+                                                          -> k * k1
+                                                          : imm tagged =
   (let untagged = %untag_imm z in
    switch untagged
      | 0 -> k2 (x)

@@ -1,5 +1,7 @@
 [@@@ocaml.warning "+a-4-30-40-41-42"]
 
+(* CR lmaurer: Get rid of -4 and fix the fragile matches. *)
+
 let map_accum_left f env l =
   let next (acc, env) x = let (y, env) = f env x in (y :: acc, env) in
   let (acc, env) = List.fold_left next ([], env) l in
@@ -282,7 +284,37 @@ let const (c:Fexpr.const) : Reg_width_const.t =
   | Naked_nativeint i ->
     Reg_width_const.naked_nativeint (i |> targetint)
 
-let simple env (s:Fexpr.simple) : Simple.t =
+let rec rec_info env (ri:Fexpr.rec_info) : Rec_info_expr.t =
+  let module US = Rec_info_expr.Unrolling_state in
+  match ri with
+  | Depth d ->
+    Rec_info_expr.const ~depth:(Finite d) ~unrolling:US.not_unrolling
+  | Infinity ->
+    Rec_info_expr.const ~depth:Infinity ~unrolling:US.not_unrolling
+  | Do_not_inline ->
+    Rec_info_expr.do_not_inline
+  | Var dv ->
+    Rec_info_expr.var (find_var env dv)
+  | Succ ri ->
+    Rec_info_expr.succ (rec_info env ri)
+  | Unroll (u, Depth d) ->
+    Rec_info_expr.const
+      ~depth:(Finite d)
+      ~unrolling:(US.unrolling ~remaining_depth:u)
+  | Unroll (u, Infinity) ->
+    Rec_info_expr.const
+      ~depth:Infinity
+      ~unrolling:(US.unrolling ~remaining_depth:u)
+  | Unroll (d, ri) ->
+    Rec_info_expr.unroll_to d (rec_info env ri)
+
+let coercion env (co:Fexpr.coercion) : Coercion.t =
+  match co with
+  | Id -> Coercion.id
+  | Change_depth { from; to_; } ->
+    Coercion.change_depth ~from:(rec_info env from) ~to_:(rec_info env to_)
+
+let rec simple env (s:Fexpr.simple) : Simple.t =
   match s with
   | Var { txt = v; loc } -> begin
       match VM.find_opt v env.variables with
@@ -297,6 +329,8 @@ let simple env (s:Fexpr.simple) : Simple.t =
   | Symbol sym -> begin
       Simple.symbol (get_symbol env sym)
     end
+  | Coerce (s, co) ->
+    Simple.apply_coercion_exn (simple env s) (coercion env co)
 
 let name env (s:Fexpr.name) : Name.t =
   match s with
@@ -434,6 +468,9 @@ let defining_expr env (named:Fexpr.named) : Flambda.Named.t =
   | Prim p ->
     let p = prim env p in
     Flambda.Named.create_prim p Debuginfo.none
+  | Rec_info ri ->
+    let ri = rec_info env ri in
+    Flambda.Named.create_rec_info ri
   | _ -> assert false
 
 let set_of_closures env fun_decls closure_elements =
@@ -748,7 +785,8 @@ let rec expr env (e : Fexpr.expr) : Flambda.Expr.t =
         let params_and_body : _ Or_deleted.t =
           match params_and_body with
           | Deleted -> Deleted
-          | Present { params; closure_var; ret_cont; exn_cont; body } ->
+          | Present { params; closure_var; depth_var; ret_cont;
+                      exn_cont; body } ->
             let params, env =
               map_accum_left
                 (fun env ({ param; kind }:Fexpr.kinded_parameter) ->
@@ -761,9 +799,7 @@ let rec expr env (e : Fexpr.expr) : Flambda.Expr.t =
                 env params
             in
             let my_closure, env = fresh_var env closure_var in
-            let my_depth, env =
-              fresh_var env { txt = "depth"; loc = Loc_unknown }
-            in
+            let my_depth, env = fresh_var env depth_var in
             let return_continuation, env =
               fresh_cont env ret_cont ~sort:Return
                 ~arity:(List.length result_arity)

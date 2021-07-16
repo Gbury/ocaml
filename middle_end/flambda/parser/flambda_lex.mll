@@ -56,9 +56,11 @@ let keyword_table =
     "float", KWD_FLOAT;
     "halt_and_catch_fire", KWD_HCF;
     "hint", KWD_HINT;
+    "id", KWD_ID;
     "imm", KWD_IMM;
     "immutable_unique", KWD_IMMUTABLE_UNIQUE;
     "in", KWD_IN;
+    "inf", KWD_INF;
     "inline", KWD_INLINE;
     "inlining_state", KWD_INLINING_STATE;
     "int32", KWD_INT32;
@@ -80,6 +82,7 @@ let keyword_table =
     "reraise", KWD_RERAISE;
     "set_of_closures", KWD_SET_OF_CLOSURES;
     "size", KWD_SIZE;
+    "succ", KWD_SUCC;
     "switch", KWD_SWITCH;
     "tagged", KWD_TAGGED;
     "tupled", KWD_TUPLED;
@@ -240,6 +243,7 @@ rule token = parse
   | "->" { MINUSGREATER }
   | "@" { AT }
   | "|"  { PIPE }
+  | "~"  { TILDE }
   | "===>" { BIGARROW }
   | identstart identchar* as ident
          { ident_or_keyword ident }

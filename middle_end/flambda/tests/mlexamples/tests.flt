@@ -1,7 +1,8 @@
-let $camlTests__first_const49 = Block 0 () in
+let $camlTests__first_const53 = Block 0 () in
 let code size(93) f_1
                     (c : imm tagged, m, n, x' : imm tagged, y' : imm tagged)
-                    my_closure -> k * k1 : imm tagged =
+                    my_closure my_depth -> k * k1 : imm tagged =
+  let next_depth = rec_info (succ my_depth) in
   let to_inline = %project_var f.to_inline_0 my_closure in
   (let prim = c < 0 in
    let Pintcomp = %Tag_imm prim in
@@ -59,9 +60,9 @@ let code size(93) f_1
                      let Paddint_1 = x + y in
                      apply to_inline (Paddint_1, Paddint) -> k * k1)))
 in
-let code inline(always) size(2) to_inline_0 (_x, _y) my_closure -> k * k1
-                                  : imm tagged =
-  let const = 42 in
+let code inline(always) size(1) to_inline_0 (_x, _y) my_closure my_depth -> k
+                                  * k1 : imm tagged =
+  let next_depth = rec_info (succ my_depth) in
   cont k (42)
 in
 (let to_inline = closure to_inline_0 @to_inline in
@@ -78,12 +79,13 @@ let code size(93) f_1 deleted :
                     imm tagged * val * val * imm tagged * imm tagged -> 
                     imm tagged
 in
-let code inline(always) size(2) to_inline_0 deleted : val * val -> imm tagged
+let code inline(always) size(1) to_inline_0 deleted : val * val -> imm tagged
 in
 let code inline(always) size(1) newer_version_of(to_inline_0) to_inline_0_1
                                                                 (_x, _y)
                                                                 my_closure
-                                                                -> k * k1
+                                                                my_depth -> k
+                                                                * k1
                                                                 : imm tagged =
   cont k (42)
 in
@@ -93,8 +95,8 @@ let code size(22) newer_version_of(f_1) f_1_1
                                            m,
                                            n,
                                            x' : imm tagged,
-                                           y' : imm tagged) my_closure -> k
-                                          * k1 : imm tagged =
+                                           y' : imm tagged) my_closure
+                                          my_depth -> k * k1 : imm tagged =
   (let prim = %is_int m in
    switch prim
      | 0 -> k2
