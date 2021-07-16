@@ -29,8 +29,21 @@ module UE = Upwards_env
 module VB = Var_in_binding_pos
 
 type let_creation_result =
+  | Defining_expr_deleted_at_compile_time
   | Defining_expr_deleted_at_runtime
   | Nothing_deleted_at_runtime
+
+let equal_let_creation_results r1 r2 =
+  match r1, r2 with
+  | Defining_expr_deleted_at_compile_time,
+    Defining_expr_deleted_at_compile_time
+  | Defining_expr_deleted_at_runtime,
+    Defining_expr_deleted_at_runtime
+  | Nothing_deleted_at_runtime,
+    Nothing_deleted_at_runtime -> true
+  | (Defining_expr_deleted_at_compile_time |
+     Defining_expr_deleted_at_runtime |
+     Nothing_deleted_at_runtime), _ -> false
 
 let create_let uacc (bound_vars : BLB.t) defining_expr
       ~free_names_of_defining_expr ~body ~cost_metrics_of_defining_expr =
@@ -110,7 +123,7 @@ let create_let uacc (bound_vars : BLB.t) defining_expr
         not (has_uses || (generate_phantom_lets && can_phantomise))
       in
       if will_delete_binding then begin
-        bound_vars, None, Defining_expr_deleted_at_runtime
+        bound_vars, None, Defining_expr_deleted_at_compile_time
       end else
         let name_mode =
           match greatest_name_mode with
@@ -122,6 +135,13 @@ let create_let uacc (bound_vars : BLB.t) defining_expr
         if Name_mode.is_normal name_mode then
           bound_vars, Some name_mode, Nothing_deleted_at_runtime
         else
+          (* CR lmaurer: This seems to suggest (and the code toward the end
+             of [make_new_let_mindings] seems to assume) that we're phantomising
+             the binding right now, but in fact it may have been phantom already
+             if there has already been a simplifier pass. Presumably this will
+             cause double-counting of deleted code, which is to say, the second
+             pass will get as much credit for phantomising as the first one
+             did. *)
           bound_vars, Some name_mode, Defining_expr_deleted_at_runtime
     end
   in
@@ -163,6 +183,66 @@ let create_let uacc (bound_vars : BLB.t) defining_expr
     uacc,
     let_creation_result
 
+let create_coerced_singleton_let
+      uacc var defining_expr ~coercion_from_defining_expr_to_var
+      ~free_names_of_defining_expr ~body
+      ~cost_metrics_of_defining_expr =
+  if Coercion.is_id coercion_from_defining_expr_to_var then
+    create_let uacc (BLB.singleton var) defining_expr
+      ~free_names_of_defining_expr ~body ~cost_metrics_of_defining_expr
+  else
+    match (defining_expr : Named.t) with
+    | Simple simple ->
+      let defining_expr =
+        Simple.apply_coercion_exn simple coercion_from_defining_expr_to_var
+        |> Named.create_simple
+      in
+      create_let uacc (BLB.singleton var) defining_expr
+        ~free_names_of_defining_expr ~body ~cost_metrics_of_defining_expr
+    | Prim _ | Set_of_closures _ | Static_consts _ | Rec_info _ ->
+      let uncoerced_var =
+        let name = "uncoerced_" ^ Variable.raw_name (VB.var var) in
+        Variable.create name
+      in
+      (* Generate [let var = uncoerced_var @ <coercion>] *)
+      let (body, uacc, inner_result) as inner =
+        let defining_simple =
+          Simple.with_coercion (Simple.var uncoerced_var)
+            coercion_from_defining_expr_to_var
+        in
+        let defining_expr = defining_simple |> Named.create_simple in
+        let free_names_of_defining_expr =
+          Named.free_names defining_expr
+        in
+        let cost_metrics_of_defining_expr =
+          Code_size.simple defining_simple
+          |> Cost_metrics.from_size
+        in
+        create_let uacc (BLB.singleton var) defining_expr
+          ~free_names_of_defining_expr ~body ~cost_metrics_of_defining_expr
+      in
+      let generate_outer_binding name_mode =
+        (* Generate [let uncoerced_var = <defining_expr>] *)
+        let (_body, _uacc, outer_result) as outer =
+          let bound =
+            BLB.singleton (VB.create uncoerced_var name_mode)
+          in
+          create_let uacc bound defining_expr
+            ~free_names_of_defining_expr ~body ~cost_metrics_of_defining_expr
+        in
+        (* Can't somehow end up with one but not the other *)
+        assert (equal_let_creation_results inner_result outer_result);
+        outer
+      in
+      match inner_result with
+      | Defining_expr_deleted_at_compile_time ->
+        (* No need to wrap what's not there after all *)
+        inner
+      | Defining_expr_deleted_at_runtime ->
+        generate_outer_binding Name_mode.phantom
+      | Nothing_deleted_at_runtime ->
+        generate_outer_binding Name_mode.normal
+
 let make_new_let_bindings uacc
       ~(bindings_outermost_first : Simplify_named_result.binding_to_place list)
       ~body =
@@ -202,6 +282,7 @@ let make_new_let_bindings uacc
         let uacc =
           match creation_result with
           | Nothing_deleted_at_runtime -> uacc
+          | Defining_expr_deleted_at_compile_time
           | Defining_expr_deleted_at_runtime ->
             begin
               match (original_defining_expr : Named.t option) with
@@ -380,9 +461,18 @@ let create_let_symbols uacc (scoping_rule : Symbol_scoping_rule.t)
       expr, uacc
   in
   Variable.Map.fold (fun var proj (expr, uacc) ->
-      let rec apply_projection proj =
+      let rec apply_projection proj coercion_from_proj_to_var =
         match LC.apply_projection lifted_constant proj with
         | Some simple ->
+          let stop_here () =
+            let coercion_from_simple_to_var =
+              (* Since [simple] is just an evaluated form of [proj] *)
+              coercion_from_proj_to_var
+            in
+            Named.create_simple simple,
+            coercion_from_simple_to_var,
+            Code_size.simple simple
+          in
           (* If the projection is from one of the symbols bound by the
              "let symbol" that we've just created, we'll always end up here,
              avoiding any problem about where to do the projection versus
@@ -397,17 +487,29 @@ let create_let_symbols uacc (scoping_rule : Symbol_scoping_rule.t)
              in turn defined by another symbol projection, so we need to
              expand transitively. *)
           Simple.pattern_match' simple
-            ~const:(fun _ ->
-              Named.create_simple simple, Code_size.simple simple)
+            ~const:(fun _ -> stop_here ())
             ~symbol:(fun _ ~coercion:_ ->
-              Named.create_simple simple, Code_size.simple simple)
-            ~var:(fun var ~coercion:_ ->
-              match Variable.Map.find var symbol_projections with
+              (* We're not dropping the coercion: it gets used in
+                 [stop_here] *)
+              stop_here ())
+            ~var:(fun var' ~coercion:coercion_from_var'_to_simple ->
+              match Variable.Map.find var' symbol_projections with
               | exception Not_found ->
-                Named.create_simple simple, Code_size.simple simple
-              | proj ->
-                (* CR lmaurer: Coercion dropped? *)
-                apply_projection proj)
+                stop_here ()
+              | proj' ->
+                let coercion_from_var'_to_proj =
+                  (* Since [simple] is just an evaluated form of [proj] *)
+                  coercion_from_var'_to_simple
+                in
+                let coercion_from_proj'_to_proj =
+                  (* Since [proj'] is just an expanded form of [var'] *)
+                  coercion_from_var'_to_proj
+                in
+                let coercion_from_proj'_to_var =
+                  Coercion.compose_exn coercion_from_proj'_to_proj
+                    ~then_:coercion_from_proj_to_var
+                in
+                apply_projection proj' coercion_from_proj'_to_var)
         | None ->
           let prim : P.t =
             let symbol = Simple.symbol (Symbol_projection.symbol proj) in
@@ -426,21 +528,26 @@ let create_let_symbols uacc (scoping_rule : Symbol_scoping_rule.t)
             | Project_var { project_from; var; } ->
               Unary (Project_var { project_from; var; }, symbol)
           in
-          Named.create_prim prim Debuginfo.none, Code_size.prim prim
+          Named.create_prim prim Debuginfo.none,
+          coercion_from_proj_to_var,
+          Code_size.prim prim
       in
       (* It's possible that this might create duplicates of the same
          projection operation, but it's unlikely there will be a
          significant number, and since we're at toplevel we tolerate
          them. *)
-      let defining_expr, code_size_of_defining_expr = apply_projection proj in
+      let defining_expr, coercion_from_defining_expr_to_var,
+          code_size_of_defining_expr =
+        apply_projection proj Coercion.id
+      in
       let cost_metrics_of_defining_expr =
         Cost_metrics.from_size code_size_of_defining_expr
       in
       let free_names_of_defining_expr = Named.free_names defining_expr in
       let expr, uacc, _ =
-        create_let uacc (BLB.singleton (VB.create var Name_mode.normal))
-          defining_expr ~free_names_of_defining_expr ~body:expr
-          ~cost_metrics_of_defining_expr
+        create_coerced_singleton_let uacc (VB.create var Name_mode.normal)
+          defining_expr ~coercion_from_defining_expr_to_var
+          ~free_names_of_defining_expr ~body:expr ~cost_metrics_of_defining_expr
       in
       (* Not removing any operation here as the let bindings would have
          been created for the first time here.*)
