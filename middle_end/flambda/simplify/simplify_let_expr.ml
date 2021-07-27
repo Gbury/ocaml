@@ -123,6 +123,7 @@ let simplify_let ~simplify_expr ~simplify_toplevel dacc let_expr ~down_to_up =
        always used, leading to the free_names in their defining expressions to
        be considered as used unconditionally. *)
     let closure_info = DE.closure_info (DA.denv dacc) in
+    let lifted_constants_from_defining_expr = DA.get_lifted_constants dacc in
     let dacc =
       DA.map_data_flow dacc ~f:(fun data_flow ->
         let data_flow =
@@ -135,7 +136,7 @@ let simplify_let ~simplify_expr ~simplify_toplevel dacc let_expr ~down_to_up =
             data_flow
           | Not_in_a_closure ->
             let module D = LC.Definition in
-            LCS.fold (DA.get_lifted_constants dacc)
+            LCS.fold lifted_constants_from_defining_expr
               ~init:data_flow ~f:(fun data_flow lifted_constant ->
                 let data_flow =
                   (* Record all projections as potential dependencies. *)
@@ -238,7 +239,6 @@ let simplify_let ~simplify_expr ~simplify_toplevel dacc let_expr ~down_to_up =
        of the defining expression.  (Not even in the case of a
        [Set_of_closures] binding, since "let symbol" is disallowed under a
        lambda.) *)
-    let lifted_constants_from_defining_expr = DA.get_lifted_constants dacc in
     let dacc = DA.add_lifted_constants dacc prior_lifted_constants in
     let at_unit_toplevel = DE.at_unit_toplevel (DA.denv dacc) in
     (* Simplify the body of the let-expression and make the new [Let] bindings
